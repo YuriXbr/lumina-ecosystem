@@ -100,7 +100,7 @@ export default function CommandsPage() {
           name: "/inventory",
           description: "Mostra seu inventário de skins (via dashboard)",
           usage: "Acesse /inventory no navegador",
-          example: "${import.meta.env.VITE_DASHBOARD_HOST}/inventory"
+          example: "https://bot.luminasink.com/inventory"
         }
       ]
     },

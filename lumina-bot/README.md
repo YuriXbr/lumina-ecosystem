@@ -2,7 +2,7 @@
 
 > Bot Discord avançado para League of Legends com recursos de moderação, estatísticas e muito mais!
 
-[![Version](https://img.shields.io/badge/version-1.5.0--beta-orange.svg)](https://github.com/YuriXbr/lumina-bot)
+[![Version](https://img.shields.io/badge/version-1.5.0--beta-orange.svg)](https://github.com/YuriXbr/lumina-ecosystem)
 [![License](https://img.shields.io/badge/license-ISC-green.svg)](LICENSE)
 [![Discord.js](https://img.shields.io/badge/discord.js-14.15.3-blue.svg)](https://discord.js.org/)
 [![Node.js](https://img.shields.io/badge/node.js-20.9.0-green.svg)](https://nodejs.org/)

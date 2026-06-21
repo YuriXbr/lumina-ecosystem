@@ -1,0 +1,29 @@
+# Privacy Policy for Lumina
+
+1. Information Collection
+Lumina collects the following information:
+
+Discord user IDs and messages for interaction purposes.
+League of Legends data from Riot Games API.
+2. Use of Information
+The collected information is used to:
+
+Provide and improve Lumina's services.
+Generate match history and statistics.
+3. Data Sharing
+Lumina does not share your personal data with third parties, except as required by law or to protect the rights and safety of the developer and users.
+
+4. Data Security
+The developer takes reasonable measures to protect your data from unauthorized access, alteration, or destruction.
+
+5. User Rights
+You have the right to:
+
+Access the data Lumina has collected about you.
+Request the deletion of your data.
+Withdraw consent for data collection.
+6. Changes to Privacy Policy
+The developer reserves the right to modify this privacy policy at any time. Changes will be posted, and continued use of Lumina constitutes acceptance of the new policy.
+
+7. Contact Information
+For any questions or concerns about these terms or the privacy policy, please contact the developer.

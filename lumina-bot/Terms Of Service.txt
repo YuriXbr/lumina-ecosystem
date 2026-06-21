@@ -1,0 +1,25 @@
+# Terms of Service (TOS) for Lumina
+1. Acceptance of Terms
+By using Lumina, you agree to comply with and be bound by these Terms of Service. If you do not agree to these terms, please do not use the bot.
+
+2. Description of Service
+Lumina is a Discord bot that provides various functionalities related to League of Legends, including match history and statistics.
+
+3. User Conduct
+You agree to use Lumina only for lawful purposes. You are prohibited from using the bot to violate any laws, regulations, or third-party rights.
+
+4. Data Collection
+Lumina collects data from Riot Games API and Discord interactions to provide its services. By using Lumina, you consent to this data collection.
+
+5. Intellectual Property
+All content provided by Lumina, including but not limited to text, graphics, and code, is the property of the developer and is protected by intellectual property laws.
+
+6. Limitation of Liability
+Lumina is provided "as is" without any warranties. The developer is not liable for any damages arising from the use or inability to use the bot.
+
+7. Changes to Terms
+The developer reserves the right to modify these terms at any time. Changes will be posted, and continued use of Lumina constitutes acceptance of the new terms.
+
+8. Governing Law
+These terms are governed by the laws of Brazil. Any disputes will be resolved in the courts of Brazil.
+

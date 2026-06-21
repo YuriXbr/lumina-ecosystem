@@ -1,0 +1,14 @@
+
+Hope you enjoy your new logo, here are the people that
+made your beautiful logo happen :)
+font name: Quicksand-Bold
+font link: https://www.fontsquirrel.com/fonts/quicksand
+font author: Andrew Paglinawan
+font author site: http://andrewpaglinawan.com/
+
+
+icon designer: Icons By Alfredo
+icon designer link: /AlfredoCreates
+        
+{"bg-gradient-0":"#4B279B","bg-gradient-1":"#DF99D8","icon":"#ffffff","font":"#ffffff","slogan":"#ffffff"}
+      

@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import SkinGrid from './components/SkinGrid';
+import FilterDrawer from './components/FilterDrawer';
 import luminaLogo from '../assets/isolated-monochrome-white.svg';
+import OpenChestModal from './components/OpenChestModal';
 
 async function getInventoryFromId(id) {
     console.log('Buscando inventário do usuário', id);
@@ -11,6 +13,15 @@ async function getInventoryFromId(id) {
         .then(data => data);
     return response;
 }
+
+const RARITY_TO_K_FORMAT = {
+    legacy: 'kLegacy',
+    epic: 'kEpic',
+    legendary: 'kLegendary',
+    mythic: 'kMythic',
+    ultimate: 'kUltimate',
+    transcendent: 'kTranscendent',
+};
 
 const rarityOptions = [
     { key: 'kNoRarity', label: 'Sem raridade' },
@@ -23,6 +34,7 @@ const rarityOptions = [
 ];
 
 export function InventoryPage() {
+    const [isChestModalOpen, setIsChestModalOpen] = useState(false);
     const [skins, setSkins] = useState([]);
     const [user, setUser] = useState(null);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -47,6 +59,8 @@ export function InventoryPage() {
     const [showScrollTop, setShowScrollTop] = useState(false);
     // Estado para controlar o carregamento do inventário
     const [inventoryLoading, setInventoryLoading] = useState(false);
+    // Estado do drawer de filtros no mobile/tablet
+    const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
     // Carrega usuário e valida token
     useEffect(() => {
@@ -102,6 +116,20 @@ export function InventoryPage() {
                 });
         }
     }, []);
+
+    // Busca automaticamente as skins do próprio usuário assim que o Discord
+    // vincula — exceto se a página já foi aberta com ?user=ID na URL, caso
+    // em que esse parâmetro tem prioridade (ex: link compartilhado de
+    // inventário de outra pessoa).
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasUserParam = urlParams.has('user');
+
+        if (discordInfo && discordInfo.id && !hasUserParam) {
+            setUser(prev => ({ ...prev, id: discordInfo.id }));
+            handleGetInventory(discordInfo.id);
+        }
+    }, [discordInfo]);
 
     // Evento de scroll para exibir botão de "voltar ao início"
     useEffect(() => {
@@ -358,14 +386,36 @@ export function InventoryPage() {
                                         Sobre Nós
                                     </a>
                                 </div>
-                                
                                 <div className="flex items-center space-x-4">
-                                    <a
-                                        href="/login"
-                                        className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors font-medium backdrop-blur-sm border border-white/20"
-                                    >
-                                        Login
-                                    </a>
+                                    {isLoggedIn ? (
+                                        <a
+                                            href="/dashboard"
+                                            className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-lg transition-colors font-medium backdrop-blur-sm border border-white/20"
+                                            title={discordInfo?.username ? `Ir para o dashboard — ${discordInfo.username}` : 'Ir para o dashboard'}
+                                        >
+                                            {discordInfo?.avatar && discordInfo?.id ? (
+                                                <img
+                                                    src={`https://cdn.discordapp.com/avatars/${discordInfo.id}/${discordInfo.avatar}.png`}
+                                                    alt="Avatar"
+                                                    className="w-6 h-6 rounded-full border border-white/30"
+                                                />
+                                            ) : (
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
+                                            )}
+                                            <span className="hidden sm:inline">
+                                                {discordInfo?.username || 'Minha conta'}
+                                            </span>
+                                        </a>
+                                    ) : (
+                                        <a
+                                            href="/login"
+                                            className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors font-medium backdrop-blur-sm border border-white/20"
+                                        >
+                                            Login
+                                        </a>
+                                    )}
                                 </div>
                             </nav>
                             
@@ -381,18 +431,18 @@ export function InventoryPage() {
                                 handleGetInventory={handleGetInventory}
                                 user={user}
                                 inventoryLoading={inventoryLoading}
+                                onOpenChestModal={() => setIsChestModalOpen(true)}
                             />
                         </div>
 
                         {/* Content Area */}
-                        <div className="flex flex-col xl:flex-row">
-                            {/* Enhanced Sidebar */}
-                            <div className="xl:w-80 bg-gray-50/80 border-b xl:border-b-0 xl:border-r border-gray-200">
-                                <div className="p-6">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
-                                        <span className="text-2xl mr-3">🔍</span>
-                                        Filtros
-                                    </h3>
+                        <div className="flex flex-col lg:flex-row">
+                            <FilterDrawer
+                                isOpen={isFilterDrawerOpen}
+                                onClose={() => setIsFilterDrawerOpen(false)}
+                                onOpenButtonClick={() => setIsFilterDrawerOpen(true)}
+                                activeFilterCount={selectedChampions.length + selectedRarities.length}
+                                renderFilters={() => (
                                     <Sidebar
                                         skins={groupedSkins}
                                         generalSearch={generalSearch}
@@ -408,11 +458,11 @@ export function InventoryPage() {
                                         toggleRarity={toggleRarity}
                                         rarityOptions={rarityOptions}
                                     />
-                                </div>
-                            </div>
+                                )}
+                            />
 
                             {/* Main Content Area */}
-                            <div className="flex-1 p-6 xl:p-8">
+                            <div className="flex-1 p-6 lg:p-8">
                                 {inventoryLoading ? (
                                     <div className="flex flex-col justify-center items-center h-96">
                                         <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mb-4"></div>
@@ -580,6 +630,31 @@ export function InventoryPage() {
                     </svg>
                 </button>
             )}
+
+            <OpenChestModal
+                isOpen={isChestModalOpen}
+                onClose={() => setIsChestModalOpen(false)}
+                isLoggedIn={isLoggedIn}
+                discordError={discordError}
+                loginWithDiscord={loginWithDiscord}
+                onSkinObtained={(skin) => {
+                    // Atualiza a lista de skins em tela sem precisar de um novo
+                    // fetch completo do inventário, já convertendo a raridade
+                    // para o formato "kXxx" usado pelo resto do app.
+                    setSkins(prev => [...prev, {
+                        id: skin.skinId,
+                        name: skin.skinName,
+                        championName: skin.championName,
+                        rarity: RARITY_TO_K_FORMAT[skin.rarity] || skin.rarity,
+                        isBase: skin.isBase,
+                        isLegacy: skin.isLegacy,
+                        splashPath: skin.splashPath,
+                        loadScreenPath: skin.loadScreenPath,
+                        tilePath: skin.tilePath,
+                        uncenteredSplashPath: skin.uncenteredSplashPath,
+                    }]);
+                }}
+            />
         </div>
     );
 }

@@ -69,7 +69,7 @@ module.exports = {
                     },
                     { headers: 
                         { 
-                            'internal-key': "lumyYpomO1f3sk2fmOtlgMOLXTOujHQX5iLvEXE0tYrjctjpDIVfODiSOHiHSdncR9Iba1NrariICEpVByLHwoayA51FPNOsxAGuINvhS6v19zCnoB3Th4ze8hJzu8FO-i"
+                            'internal-key': process.env.INTERNAL_KEY,
                         } 
                     }
                 )

@@ -1,4 +1,10 @@
-require('@dotenvx/dotenvx').config()
+if (process.env.NODE_ENV === 'production') {
+    console.log('Carregando variáveis de ambiente de .env');
+    require('@dotenvx/dotenvx').config({ path: '.env' });
+} else {
+    console.log('Carregando variáveis de ambiente de .env.dev');
+    require('@dotenvx/dotenvx').config({path: '.env.dev'});
+}
 const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
@@ -11,7 +17,7 @@ const { checkAuth, loginLimiter, registerLimiter, internalKeyCheck } = require('
 
 const app = express();
 const port = process.env.PORT || process.env.DASHBOARD_PORT;
-const ip = process.env.IP || process.env.DASHBOARD_HOST;
+const ip = process.env.IP || process.env.API_BASE_URL || 'localhost';
 
 const csrfProtection = csrf({ 
     cookie: {
@@ -129,8 +135,12 @@ const loadRoutes = (dir) => {
                 middlewares.push(checkAuth);
             }
             if (route.csrfProtectionNeeded) {
-                console.log(`Rota ${route.route} precisa de csrfProtection`);
-                middlewares.push(csrfProtection);
+                if(process.env.NODE_ENV === 'production') {
+                    console.log(`Rota ${route.route} precisa de csrfProtection`);
+                    middlewares.push(csrfProtection);
+                } else { 
+                    console.log(`Rota ${route.route} não tem csrfProtection por estar em desenvolvimento`);
+                }
             }
             if(route.internalKeyNeeded) {
                 console.log(`Rota ${route.route} precisa de internalKey`);
@@ -298,14 +308,28 @@ app.all('*', (req, res) => {
     res.status(404).send('Endpoint Not found.');
 });
 
+app.use((err, req, res, next) => {
+    // Erro específico do csurf quando o token CSRF é inválido/ausente
+    if (err.code === 'EBADCSRFTOKEN') {
+        console.warn(`CSRF inválido em ${req.method} ${req.originalUrl}`);
+        return res.status(403).json({ error: 'Sessão expirada, tente novamente.' });
+    }
+ 
+    // Qualquer outro erro não tratado: loga completo no servidor,
+    // mas nunca devolve o stack trace pro cliente.
+    console.error(`Erro não tratado em ${req.method} ${req.originalUrl}:`, err);
+    const status = err.status || err.statusCode || 500;
+    return res.status(status).json({ error: 'Erro interno do servidor.' });
+});
+
 
 axios = require('axios');
 (async () => {
     try {
 
         app.listen(port, async () => {
-            addLog('API', 'start', `API iniciada em ${ip}:${port}`);
-            console.log(`API iniciada em ${ip}:${port}`);
+            addLog('API', 'start', `API iniciada em ${ip}`);
+            console.log(`API iniciada em ${ip}`);
         });
     } catch (error) {
             addLog('API', 'start', `Erro ao iniciar API: ${error}`);

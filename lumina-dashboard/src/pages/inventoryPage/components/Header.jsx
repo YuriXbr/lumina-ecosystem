@@ -1,21 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-function Header({ 
-    generalSearch, 
-    setGeneralSearch, 
-    isLoggedIn, 
-    discordError, 
-    loginWithDiscord, 
-    handleGetInventory, 
+function Header({
+    generalSearch,
+    setGeneralSearch,
+    isLoggedIn,
+    discordError,
+    loginWithDiscord,
+    handleGetInventory,
     user,
-    inventoryLoading
+    inventoryLoading,
+    onOpenChestModal,
 }) {
+    const [isUserBlockHovered, setIsUserBlockHovered] = useState(false);
+
     const getDiscordAvatarUrl = () => {
         if (user && user.avatar && user.id) {
             return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
         }
         return '/defaultAvatar.png';
     };
+
+    const isDiscordLinked = isLoggedIn && user && user.username;
 
     return (
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
@@ -33,7 +38,7 @@ function Header({
             </div>
 
             {/* Área de Ações */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
                 {/* Campo de busca mobile */}
                 <div className="lg:hidden w-full">
                     <div className="relative">
@@ -50,27 +55,46 @@ function Header({
                     </div>
                 </div>
 
-                {/* Botões de ação */}
+                {/* Bloco unificado: identidade do usuário + abrir baú + buscar por ID */}
                 <div className="flex flex-col sm:flex-row gap-3 min-w-0">
-                    {/* Botão do usuário logado */}
-                    {isLoggedIn ? (
+                    {/* Identidade do usuário (avatar + nome + recarregar) OU CTA de login/discord */}
+                    {isDiscordLinked ? (
                         <button
                             onClick={() => handleGetInventory(user?.id)}
                             disabled={inventoryLoading}
-                            className="flex items-center justify-center space-x-3 bg-white/20 hover:bg-white/30 text-white px-4 py-2.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm border border-white/20"
+                            onMouseEnter={() => setIsUserBlockHovered(true)}
+                            onMouseLeave={() => setIsUserBlockHovered(false)}
+                            className="flex items-center space-x-3 bg-white/10 hover:bg-white/20 rounded-lg px-4 py-2 backdrop-blur-sm border border-white/20 transition-all disabled:opacity-60 disabled:cursor-not-allowed text-left"
+                            title="Recarregar minhas skins"
                         >
-                            <img 
-                                src={getDiscordAvatarUrl()} 
-                                alt="Avatar" 
-                                className="w-6 h-6 rounded-full border border-white/30" 
+                            <img
+                                src={getDiscordAvatarUrl()}
+                                alt="Avatar"
+                                className="w-8 h-8 rounded-full border border-white/30 shrink-0"
                             />
-                            <span className="font-medium">Minha Coleção</span>
-                            {inventoryLoading && (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            )}
+                            <div className="min-w-0">
+                                <p className="text-white font-medium text-sm truncate">{user.username}</p>
+                                <p className="text-indigo-200 text-xs flex items-center gap-1">
+                                    {inventoryLoading ? (
+                                        <>
+                                            <span className="inline-block h-3 w-3 border-b-2 border-indigo-200 rounded-full animate-spin" />
+                                            Carregando...
+                                        </>
+                                    ) : isUserBlockHovered ? (
+                                        <>
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                            Recarregar minhas skins
+                                        </>
+                                    ) : (
+                                        'Recarregar minhas skins'
+                                    )}
+                                </p>
+                            </div>
                         </button>
                     ) : discordError ? (
-                        <button 
+                        <button
                             onClick={loginWithDiscord}
                             disabled={inventoryLoading}
                             className="flex items-center justify-center space-x-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm border border-white/20"
@@ -80,8 +104,8 @@ function Header({
                             </svg>
                             <span className="font-medium">Conectar Discord</span>
                         </button>
-                    ) : (
-                        <a 
+                    ) : !isLoggedIn ? (
+                        <a
                             href="/login"
                             className="flex items-center justify-center space-x-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2.5 rounded-lg transition-all backdrop-blur-sm border border-white/20"
                         >
@@ -90,9 +114,20 @@ function Header({
                             </svg>
                             <span className="font-medium">Fazer Login</span>
                         </a>
+                    ) : null}
+
+                    {/* Abrir baú — fica junto do bloco de identidade, só disponível com Discord vinculado */}
+                    {isDiscordLinked && (
+                        <button
+                            onClick={onOpenChestModal}
+                            className="flex items-center justify-center space-x-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2.5 rounded-lg transition-all backdrop-blur-sm border border-white/20 font-medium"
+                        >
+                            <span>🗝️</span>
+                            <span>Abrir baú</span>
+                        </button>
                     )}
 
-                    {/* Campo para buscar por ID */}
+                    {/* Campo para buscar por ID (ver coleção de outros usuários) */}
                     <div className="flex items-center space-x-2">
                         <input
                             type="text"
@@ -119,21 +154,6 @@ function Header({
                         </button>
                     </div>
                 </div>
-
-                {/* Informações do usuário */}
-                {user && user.username && (
-                    <div className="flex items-center space-x-3 bg-white/10 rounded-lg px-4 py-2 backdrop-blur-sm border border-white/20">
-                        <img 
-                            src={getDiscordAvatarUrl()} 
-                            alt="Avatar" 
-                            className="w-8 h-8 rounded-full border border-white/30" 
-                        />
-                        <div className="min-w-0">
-                            <p className="text-white font-medium text-sm truncate">{user.username}</p>
-                            <p className="text-indigo-200 text-xs">ID: {user.id}</p>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

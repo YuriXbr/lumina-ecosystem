@@ -180,6 +180,9 @@ const loadRoutes = (dir) => {
 
 loadRoutes(path.join(__dirname, 'src', 'routes'));
 
+const swaggerRoute = require('./src/routes/docs/swagger-route.js');
+swaggerRoute(app);
+
 app.get('/expapi/v1/csrf-token', csrfProtection, (req, res) => {
     console.log('CSRF token solicitado, cookies:', req.headers.cookie);
     res.json({ csrfToken: req.csrfToken() });
@@ -319,8 +322,7 @@ app.use((err, req, res, next) => {
         return res.status(403).json({ error: 'Sessão expirada, tente novamente.' });
     }
  
-    // Qualquer outro erro não tratado: loga completo no servidor,
-    // mas nunca devolve o stack trace pro cliente.
+    // Qualquer outro erro não tratado: logar e retornar 500
     console.error(`Erro não tratado em ${req.method} ${req.originalUrl}:`, err);
     const status = err.status || err.statusCode || 500;
     return res.status(status).json({ error: 'Erro interno do servidor.' });

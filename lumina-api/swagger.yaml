@@ -1,0 +1,1467 @@
+openapi: 3.0.3
+info:
+  title: Lumina Bot API
+  description: |
+    API da LuminaBot para gerenciamento de inventário, skins, usuários do dashboard e integração com Discord.
+
+    ## Autenticação
+    A maioria das rotas protegidas usa **Bearer JWT** no header `Authorization`.
+    Rotas internas (bot Discord ↔ API) usam o header `internal-key`.
+    Algumas rotas também exigem um **token CSRF** obtido em `GET /expapi/v1/csrf-token`,
+    que deve ser enviado no header `X-CSRF-Token`.
+
+    ## Níveis de acesso
+    | Tipo | Nível |
+    |------|-------|
+    | user | 0 |
+    | vipUser | 1 |
+    | enterpriseUser | 2 |
+    | contentCreator | 3 |
+    | tester | 4 |
+    | support | 5 |
+    | moderator | 6 |
+    | admin | 7 |
+    | headadmin | 8 |
+    | developer | 9 |
+    | coowner | 10 |
+    | owner | 11 |
+  version: 1.3.0
+  contact:
+    name: Lumina Dev Team
+
+servers:
+  - url: https://api.bot.luminasink.com
+    description: Produção (domínio)
+  - url: https://lumina-api-tau.vercel.app
+    description: Produção (Vercel — uso interno)
+  - url: https://preview.api.bot.luminasink.com
+    description: Preview (ainda não disponível)
+  - url: http://localhost:3000
+    description: Desenvolvimento local
+
+tags:
+  - name: Auth
+    description: Login, registro, validação de token e CSRF
+  - name: Discord OAuth2
+    description: Vinculação e fluxo OAuth2 com Discord
+  - name: User
+    description: Perfil, configurações e senha do usuário autenticado
+  - name: Inventory
+    description: Inventário de chaves, baús e skins
+  - name: Admin
+    description: Endpoints administrativos (nível 5+)
+  - name: Discord Info
+    description: Dados do Discord do usuário logado
+  - name: Internal
+    description: Endpoints internos usados pelo bot (requer internal-key)
+  - name: System
+    description: Status do sistema e banco de dados
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT obtido em POST /expapi/v1/login
+    InternalKey:
+      type: apiKey
+      in: header
+      name: internal-key
+      description: Chave interna compartilhada entre API e bot Discord
+    ApiKey:
+      type: apiKey
+      in: query
+      name: apiKey
+      description: Chave de API pública
+    CsrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Token obtido em GET /expapi/v1/csrf-token (obrigatório em produção para rotas que mutam estado)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Mensagem de erro
+
+    SkinResult:
+      type: object
+      properties:
+        skinId:
+          type: integer
+          example: 45051
+        skinName:
+          type: string
+          example: King Beegar
+        rarity:
+          type: string
+          enum: [legacy, epic, legendary, ultimate, mythic, transcendent]
+          example: epic
+        championId:
+          type: string
+          example: "45"
+        championName:
+          type: string
+          example: Veigar
+        isBase:
+          type: boolean
+        isLegacy:
+          type: boolean
+        skinlines:
+          type: array
+          items:
+            type: object
+        splashPath:
+          type: string
+          description: Caminho interno do client League (não é URL pública)
+          example: /lol-game-data/assets/ASSETS/...
+        loadScreenPath:
+          type: string
+        tilePath:
+          type: string
+        uncenteredSplashPath:
+          type: string
+
+    InventoryCounters:
+      type: object
+      properties:
+        keys:
+          type: integer
+          example: 5
+        masterWorkChests:
+          type: integer
+          example: 1
+        hextechChests:
+          type: integer
+          example: 3
+
+    UserProfile:
+      type: object
+      properties:
+        accountId:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        accessType:
+          type: string
+          example: user
+        emailVerified:
+          type: boolean
+        discordOauth2Id:
+          type: string
+        registrationDate:
+          type: string
+          format: date-time
+        lastLogin:
+          type: string
+          format: date-time
+        blocked:
+          type: boolean
+        banned:
+          type: boolean
+        emailNotifications:
+          type: boolean
+        discordNotifications:
+          type: boolean
+        botActivityAlerts:
+          type: boolean
+        publicProfile:
+          type: boolean
+        showOnlineStatus:
+          type: boolean
+        language:
+          type: string
+          example: pt-BR
+        timezone:
+          type: string
+          example: America/Sao_Paulo
+
+    UserSettings:
+      type: object
+      properties:
+        emailNotifications:
+          type: boolean
+        discordNotifications:
+          type: boolean
+        botActivityAlerts:
+          type: boolean
+        publicProfile:
+          type: boolean
+        showOnlineStatus:
+          type: boolean
+        language:
+          type: string
+          enum: [pt-BR, en-US, es-ES]
+        timezone:
+          type: string
+          enum: [America/Sao_Paulo, America/New_York, Europe/London, Asia/Tokyo]
+
+    GuildSummary:
+      type: object
+      properties:
+        guildId:
+          type: string
+        guildName:
+          type: string
+        memberCount:
+          type: integer
+        botEnabled:
+          type: boolean
+        welcomeEnabled:
+          type: boolean
+        moderationEnabled:
+          type: boolean
+        musicEnabled:
+          type: boolean
+        addedDate:
+          type: string
+          format: date-time
+        lastActivity:
+          type: string
+          format: date-time
+        prefix:
+          type: string
+        language:
+          type: string
+        djEnabled:
+          type: boolean
+        memberDmToggle:
+          type: boolean
+        persistentMute:
+          type: boolean
+        autoWarnPunishment:
+          type: boolean
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        hasMore:
+          type: boolean
+
+paths:
+
+  # ─────────────────────────────────────────────
+  # AUTH
+  # ─────────────────────────────────────────────
+
+  /expapi/v1/csrf-token:
+    get:
+      tags: [Auth]
+      summary: Obter token CSRF
+      description: |
+        Retorna um token CSRF e seta um cookie httpOnly de sessão.
+        Deve ser chamado antes de qualquer requisição que muta estado em produção.
+        Enviar `credentials: 'include'` no fetch para que o cookie seja enviado de volta.
+      responses:
+        "200":
+          description: Token CSRF gerado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  csrfToken:
+                    type: string
+                    example: abc123xyz
+
+  /expapi/v1/login:
+    post:
+      tags: [Auth]
+      summary: Login no dashboard
+      description: Autentica email/senha e retorna um JWT com validade de 1h.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        "200":
+          description: Login realizado — retorna JWT
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        "400":
+          description: Email ou senha ausentes
+        "401":
+          description: Credenciais inválidas
+      security:
+        - CsrfToken: []
+
+  /expapi/v1/register:
+    post:
+      tags: [Auth]
+      summary: Registrar nova conta
+      description: |
+        Cria uma nova conta no dashboard.
+        Senha mínima: 8 caracteres, deve conter maiúscula, minúscula e número.
+        Rate limited: 3 registros por hora por IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, firstName, lastName]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+      responses:
+        "200":
+          description: Conta criada com sucesso
+        "400":
+          description: Dados inválidos ou conta já existe
+        "500":
+          description: Erro ao criar conta
+      security:
+        - CsrfToken: []
+
+  /expapi/v1/logout:
+    get:
+      tags: [Auth]
+      summary: Logout
+      description: Limpa o cookie JWT e redireciona para /.
+      responses:
+        "302":
+          description: Redirecionamento para /
+
+  /expapi/v1/validate-token:
+    post:
+      tags: [Auth]
+      summary: Validar token JWT
+      description: Verifica se o JWT no header Authorization é válido.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Token válido
+        "401":
+          description: Token inválido ou ausente
+
+  # ─────────────────────────────────────────────
+  # DISCORD OAUTH2
+  # ─────────────────────────────────────────────
+
+  /expapi/oauth2/discord/prepare:
+    post:
+      tags: [Discord OAuth2]
+      summary: Preparar URL de autorização Discord
+      description: |
+        Gera a URL de redirecionamento para o fluxo OAuth2 do Discord.
+        O `accountId` é extraído do JWT — não é necessário enviar no body.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                origin:
+                  type: string
+                  description: URL de retorno após autorização
+                  example: https://bot.luminasink.com/inventory
+      responses:
+        "200":
+          description: URL de redirecionamento gerada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  redirectUrl:
+                    type: string
+        "401":
+          description: Token não fornecido ou inválido
+        "500":
+          description: Erro de configuração
+
+  /expapi/oauth2/discord/login:
+    get:
+      tags: [Discord OAuth2]
+      summary: Iniciar login OAuth2 Discord (sem JWT)
+      description: Redireciona diretamente para a tela de autorização do Discord. Usado quando não há JWT disponível.
+      parameters:
+        - in: query
+          name: origin
+          schema:
+            type: string
+          description: URL de retorno após autorização
+      responses:
+        "302":
+          description: Redirecionamento para Discord
+
+  /expapi/oauth2/discord/redirect:
+    get:
+      tags: [Discord OAuth2]
+      summary: Callback OAuth2 Discord
+      description: |
+        Recebe o código de autorização do Discord após o usuário aprovar.
+        Salva o token OAuth2 na conta e redireciona de volta para a origem.
+        **Não chame diretamente — é o endpoint de callback do Discord.**
+      parameters:
+        - in: query
+          name: code
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: state
+          required: true
+          schema:
+            type: string
+            description: JSON string com { origin, accountId }
+        - in: query
+          name: error
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirecionamento para origin após vínculo
+        "400":
+          description: Código ou estado ausente/inválido
+        "500":
+          description: Erro durante OAuth2
+
+  # ─────────────────────────────────────────────
+  # DISCORD INFO
+  # ─────────────────────────────────────────────
+
+  /expapi/v1/discordinfo:
+    get:
+      tags: [Discord Info]
+      summary: Informações do Discord do usuário logado
+      description: |
+        Retorna avatar, username e ID do Discord da conta vinculada.
+        Realiza refresh automático do token OAuth2 se expirado.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Dados do Discord
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  avatar:
+                    type: string
+                    example: a_abc123
+                  username:
+                    type: string
+                    example: user#0000
+                  id:
+                    type: string
+                    example: "123456789012345678"
+        "400":
+          description: Conta Discord não vinculada
+        "401":
+          description: Token não fornecido
+        "404":
+          description: Conta não encontrada
+        "500":
+          description: Erro interno
+
+  /expapi/v1/discord/guild/{guildId}:
+    get:
+      tags: [Discord Info]
+      summary: Informações de uma guilda do Discord
+      description: Busca dados da guilda diretamente da API do Discord via bot token. Requer JWT válido.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: guildId
+          required: true
+          schema:
+            type: string
+            pattern: '^\d{17,19}$'
+          description: ID da guilda Discord (17-19 dígitos)
+      responses:
+        "200":
+          description: Dados detalhados da guilda
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  icon:
+                    type: string
+                  member_count:
+                    type: integer
+                  approximate_member_count:
+                    type: integer
+                  owner_id:
+                    type: string
+                  roles:
+                    type: array
+                    items:
+                      type: object
+        "400":
+          description: Guild ID inválido
+        "401":
+          description: Token inválido
+        "403":
+          description: Bot sem permissão
+        "404":
+          description: Guilda não encontrada
+        "500":
+          description: Erro interno
+
+  /expapi/v1/unlink-discord:
+    post:
+      tags: [Discord Info]
+      summary: Desvincular conta Discord
+      description: Remove todos os dados OAuth2 do Discord da conta do usuário logado.
+      security:
+        - BearerAuth: []
+        - CsrfToken: []
+      responses:
+        "200":
+          description: Discord desvinculado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  success:
+                    type: boolean
+        "400":
+          description: Discord não estava vinculado
+        "401":
+          description: Token inválido
+        "404":
+          description: Conta não encontrada
+        "500":
+          description: Erro interno
+
+  # ─────────────────────────────────────────────
+  # USER
+  # ─────────────────────────────────────────────
+
+  /expapi/v1/user/profile:
+    get:
+      tags: [User]
+      summary: Perfil do usuário autenticado
+      description: Retorna dados do perfil sem informações sensíveis (sem senha, sem tokens OAuth2).
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Perfil do usuário
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        "401":
+          description: Token não fornecido
+        "404":
+          description: Conta não encontrada
+
+  /expapi/v1/user/settings:
+    get:
+      tags: [User]
+      summary: Configurações do usuário autenticado
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Configurações atuais
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettings'
+        "401":
+          description: Token não fornecido
+        "404":
+          description: Conta não encontrada
+    put:
+      tags: [User]
+      summary: Atualizar configurações do usuário
+      description: |
+        Atualiza as preferências do usuário. Apenas campos enviados são atualizados.
+        Idiomas aceitos: `pt-BR`, `en-US`, `es-ES`.
+        Fusos aceitos: `America/Sao_Paulo`, `America/New_York`, `Europe/London`, `Asia/Tokyo`.
+      security:
+        - BearerAuth: []
+        - CsrfToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSettings'
+      responses:
+        "200":
+          description: Configurações atualizadas
+        "400":
+          description: Idioma ou fuso inválido
+        "401":
+          description: Token não fornecido
+        "404":
+          description: Conta não encontrada
+
+  /expapi/v1/user/change-password:
+    put:
+      tags: [User]
+      summary: Alterar senha
+      description: |
+        Altera a senha do usuário autenticado.
+        Nova senha: mínimo 8 caracteres, deve conter maiúscula, minúscula e número.
+        Rate limited: 5 tentativas por minuto.
+      security:
+        - BearerAuth: []
+        - CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                  format: password
+                newPassword:
+                  type: string
+                  format: password
+                  minLength: 8
+      responses:
+        "200":
+          description: Senha alterada com sucesso
+        "400":
+          description: Senha atual incorreta, nova senha fraca ou igual à atual
+        "401":
+          description: Token não fornecido
+        "404":
+          description: Conta não encontrada
+
+  # ─────────────────────────────────────────────
+  # INVENTORY
+  # ─────────────────────────────────────────────
+
+  /expapi/v1/myinventory:
+    get:
+      tags: [Inventory]
+      summary: Inventário de chaves e baús do usuário logado
+      description: |
+        Retorna a quantidade de chaves, baús Hextech e baús de Maestria da conta Discord vinculada.
+        O discordId é resolvido automaticamente a partir do JWT — não é necessário enviar.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Contadores do inventário
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryCounters'
+        "400":
+          description: Conta Discord não vinculada
+        "401":
+          description: Token não fornecido
+        "404":
+          description: Conta não encontrada
+
+  /expapi/v1/rollskin:
+    post:
+      tags: [Inventory]
+      summary: Abrir baú (usuário logado no dashboard)
+      description: |
+        Consome 1 chave + 1 baú do tipo escolhido e retorna a skin sorteada.
+        O discordId é resolvido automaticamente a partir do JWT.
+        Requer CSRF token em produção.
+      security:
+        - BearerAuth: []
+        - CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [chestType]
+              properties:
+                chestType:
+                  type: string
+                  enum: [masterWorkChests, hextechChests]
+      responses:
+        "200":
+          description: Skin sorteada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkinResult'
+        "400":
+          description: Parâmetro ausente, tipo inválido ou sem chaves/baús suficientes
+        "401":
+          description: Token não fornecido
+        "403":
+          description: CSRF inválido (produção)
+        "500":
+          description: Erro ao sortear skin
+
+  /expapi/internal/fetchuserskins:
+    get:
+      tags: [Inventory]
+      summary: Buscar skins de um usuário (por ID)
+      description: |
+        Retorna o array de skins do inventário do usuário.
+        `userId` deve conter apenas dígitos (ID Discord).
+        **Atenção:** esta rota não requer autenticação — qualquer um pode consultar o inventário de qualquer usuário sabendo o ID.
+      parameters:
+        - in: query
+          name: userId
+          required: true
+          schema:
+            type: string
+            pattern: '^\d+$'
+          description: ID Discord do usuário (apenas dígitos)
+      responses:
+        "200":
+          description: Array de skins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SkinResult'
+        "400":
+          description: userId ausente ou formato inválido
+        "500":
+          description: Erro ao buscar inventário
+    post:
+      tags: [Inventory]
+      summary: Buscar skins de um usuário (por ID) — via POST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+      responses:
+        "200":
+          description: Array de skins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SkinResult'
+        "400":
+          description: userId ausente ou inválido
+
+  /expapi/internal/fetchinventory:
+    get:
+      tags: [Inventory]
+      summary: Buscar inventário completo de um usuário
+      description: |
+        Retorna o objeto de inventário completo (chaves, baús, essências, fragmentos etc).
+        **Atenção:** sem autenticação — qualquer um pode consultar sabendo o userId.
+      parameters:
+        - in: query
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Inventário completo
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          description: userId ausente
+    post:
+      tags: [Inventory]
+      summary: Buscar inventário completo — via POST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+      responses:
+        "200":
+          description: Inventário completo
+
+  # ─────────────────────────────────────────────
+  # ADMIN
+  # ─────────────────────────────────────────────
+
+  /expapi/v1/admin/users:
+    get:
+      tags: [Admin]
+      summary: Listar usuários (nível 5+)
+      description: |
+        Retorna lista paginada de usuários com filtros opcionais.
+        Dados visíveis variam por nível do admin requisitante.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Filtrar por nome ou email
+        - in: query
+          name: accessType
+          schema:
+            type: string
+          description: Filtrar por tipo de acesso
+      responses:
+        "200":
+          description: Lista de usuários paginada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserProfile'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        "401":
+          description: Token não fornecido
+        "403":
+          description: Permissão insuficiente (nível < 5)
+
+  /expapi/v1/admin/users/{userId}:
+    put:
+      tags: [Admin]
+      summary: Atualizar usuário específico (nível 5+)
+      description: |
+        Campos permitidos variam por nível do admin:
+        - Nível 5+: pode bloquear/desbloquear usuários comuns
+        - Nível 6+: pode banir, alterar notificações
+        - Nível 7+: pode alterar `accessType` (só até o próprio nível)
+        - Nível 8+: pode alterar nome, emailVerified, preferências
+      security:
+        - BearerAuth: []
+        - CsrfToken: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+          description: accountId do usuário alvo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                blocked:
+                  type: boolean
+                banned:
+                  type: boolean
+                accessType:
+                  type: string
+                emailNotifications:
+                  type: boolean
+                discordNotifications:
+                  type: boolean
+                botActivityAlerts:
+                  type: boolean
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                emailVerified:
+                  type: boolean
+                publicProfile:
+                  type: boolean
+                showOnlineStatus:
+                  type: boolean
+                language:
+                  type: string
+                timezone:
+                  type: string
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  updatedFields:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          description: Token não fornecido
+        "403":
+          description: Permissão insuficiente ou nenhum campo permitido
+        "404":
+          description: Usuário não encontrado
+
+  /expapi/v1/admin/guilds:
+    get:
+      tags: [Admin]
+      summary: Listar guildas (nível 7+)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Filtrar por nome ou ID da guilda
+      responses:
+        "200":
+          description: Lista de guildas paginada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  guilds:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GuildSummary'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        "401":
+          description: Token não fornecido
+        "403":
+          description: Permissão insuficiente (nível < 7)
+
+  /expapi/v1/admin/guilds/{guildId}:
+    put:
+      tags: [Admin]
+      summary: Atualizar configurações de guilda (nível 7+)
+      description: |
+        Campos permitidos variam por nível:
+        - Nível 7+: configurações básicas (djEnabled, moderação, punições)
+        - Nível 8+: canais, roles, mensagens de boas-vindas
+        - Nível 9+: limites avançados de gacha, warns, canais bloqueados
+      security:
+        - BearerAuth: []
+        - CsrfToken: []
+      parameters:
+        - in: path
+          name: guildId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Campos de configuração da guilda (apenas os enviados serão atualizados)
+      responses:
+        "200":
+          description: Guilda atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  updatedFields:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          description: Token não fornecido
+        "403":
+          description: Permissão insuficiente ou nenhum campo permitido
+        "404":
+          description: Guilda não encontrada
+
+  # ─────────────────────────────────────────────
+  # INTERNAL (bot Discord ↔ API)
+  # ─────────────────────────────────────────────
+
+  /expapi/internal/rollskin:
+    post:
+      tags: [Internal]
+      summary: Sortear skin (bot Discord)
+      description: |
+        Versão interna do roll de skin, chamada pelo bot Discord.
+        Requer `internal-key` no header.
+      security:
+        - InternalKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, chestType]
+              properties:
+                userId:
+                  type: string
+                  description: ID Discord do usuário
+                chestType:
+                  type: string
+                  enum: [masterWorkChests, hextechChests]
+      responses:
+        "200":
+          description: Skin sorteada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkinResult'
+        "400":
+          description: Parâmetros ausentes, tipo inválido ou sem itens suficientes
+        "401":
+          description: internal-key ausente ou inválida
+        "500":
+          description: Erro ao sortear
+
+  /expapi/internal/addinventory:
+    post:
+      tags: [Internal]
+      summary: Adicionar item ao inventário
+      security:
+        - InternalKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, item, amount]
+              properties:
+                userId:
+                  type: string
+                item:
+                  type: string
+                  description: Nome do campo do inventário (ex. keys, hextechChests)
+                amount:
+                  type: integer
+      responses:
+        "200":
+          description: Inventário atualizado
+        "400":
+          description: Parâmetros ausentes
+        "401":
+          description: internal-key inválida
+        "500":
+          description: Erro ao atualizar
+
+  /expapi/internal/addskin:
+    post:
+      tags: [Internal]
+      summary: Adicionar skin ao inventário diretamente
+      security:
+        - InternalKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, skinId]
+              properties:
+                userId:
+                  type: string
+                skinId:
+                  type: integer
+      responses:
+        "200":
+          description: Skin adicionada
+        "400":
+          description: Parâmetros ausentes
+        "401":
+          description: internal-key inválida
+        "500":
+          description: Erro ao adicionar
+
+  /expapi/internal/newguild:
+    post:
+      tags: [Internal]
+      summary: Criar nova guilda
+      security:
+        - InternalKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [guildId, ownerId, guildName]
+              properties:
+                guildId:
+                  type: string
+                ownerId:
+                  type: string
+                guildName:
+                  type: string
+      responses:
+        "200":
+          description: Guilda criada
+        "401":
+          description: internal-key inválida
+        "500":
+          description: Erro ao criar
+
+  /expapi/internal/deleteguild:
+    post:
+      tags: [Internal]
+      summary: Deletar guilda
+      description: Endpoint presente mas ainda não implementado.
+      security:
+        - InternalKey: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: (não implementado)
+        "401":
+          description: internal-key inválida
+
+  /expapi/internal/fetchguilddata:
+    post:
+      tags: [Internal]
+      summary: Buscar dados de uma guilda
+      security:
+        - InternalKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [guildId]
+              properties:
+                guildId:
+                  type: string
+      responses:
+        "200":
+          description: Dados da guilda
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          description: guildId ausente
+        "401":
+          description: internal-key inválida
+        "404":
+          description: Guilda não encontrada
+        "500":
+          description: Erro interno
+
+  /expapi/internal/updateguilddata:
+    post:
+      tags: [Internal]
+      summary: Atualizar dados de uma guilda
+      security:
+        - InternalKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [guildId]
+              properties:
+                guildId:
+                  type: string
+              additionalProperties: true
+              description: Qualquer campo válido do schema de guilds
+      responses:
+        "200":
+          description: Guilda atualizada
+        "400":
+          description: guildId ausente
+        "401":
+          description: internal-key inválida
+        "500":
+          description: Erro interno
+
+  /expapi/internal/newpunishrecord:
+    post:
+      tags: [Internal]
+      summary: Criar registro de punição
+      security:
+        - InternalKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, guildId, targetId, staffId]
+              properties:
+                type:
+                  type: string
+                  enum: [ban, mute, warn]
+                guildId:
+                  type: string
+                targetId:
+                  type: string
+                staffId:
+                  type: string
+                reason:
+                  type: string
+                endTime:
+                  type: string
+                  format: date-time
+      responses:
+        "200":
+          description: Registro criado
+        "400":
+          description: Tipo inválido
+        "401":
+          description: internal-key inválida
+        "500":
+          description: Erro interno
+
+  /expapi/internal/modifypunishrecord:
+    post:
+      tags: [Internal]
+      summary: Modificar registro de punição
+      security:
+        - InternalKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, guildId, targetId, updateData]
+              properties:
+                type:
+                  type: string
+                  enum: [ban, mute, warn]
+                guildId:
+                  type: string
+                targetId:
+                  type: string
+                updateData:
+                  type: object
+      responses:
+        "200":
+          description: Registro modificado
+        "400":
+          description: Tipo inválido
+        "401":
+          description: internal-key inválida
+        "500":
+          description: Erro interno
+
+  /expapi/internal/removepunishrecord:
+    post:
+      tags: [Internal]
+      summary: Remover registro de punição
+      security:
+        - InternalKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, guildId, targetId]
+              properties:
+                type:
+                  type: string
+                  enum: [ban, mute, warn]
+                guildId:
+                  type: string
+                targetId:
+                  type: string
+      responses:
+        "200":
+          description: Registro removido
+        "400":
+          description: Tipo inválido
+        "401":
+          description: internal-key inválida
+        "500":
+          description: Erro interno
+
+  /expapi/internal/staff:
+    get:
+      tags: [Internal]
+      summary: Buscar lista de staff do bot
+      security:
+        - ApiKey: []
+      responses:
+        "200":
+          description: Lista de staff
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  owners:
+                    type: array
+                    items:
+                      type: string
+                  admins:
+                    type: array
+                    items:
+                      type: string
+                  moderators:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          description: API key inválida
+        "500":
+          description: Erro ao buscar bot
+
+  /expapi/internal/fetchbot:
+    get:
+      tags: [Internal]
+      summary: Buscar configuração do bot (criptografada)
+      description: |
+        Retorna a configuração completa do bot criptografada com AES-256-CBC.
+        Requer API key E internal-key.
+      security:
+        - ApiKey: []
+        - InternalKey: []
+      responses:
+        "200":
+          description: Dados do bot criptografados (string AES-256-CBC)
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "a1b2c3...:d4e5f6..."
+        "401":
+          description: Chave inválida
+        "500":
+          description: Erro ao buscar ou criptografar
+
+  /expapi/internal/updatebot:
+    post:
+      tags: [Internal]
+      summary: Atualizar configuração do bot (criptografada)
+      description: O body deve conter os dados criptografados com AES-256-CBC usando o mesmo ENCRYPTION_KEY do servidor.
+      security:
+        - ApiKey: []
+        - InternalKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data]
+              properties:
+                data:
+                  type: string
+                  description: Dados criptografados AES-256-CBC (formato iv:dados)
+      responses:
+        "200":
+          description: Configuração atualizada
+        "400":
+          description: Dados ausentes
+        "401":
+          description: Chave inválida
+        "500":
+          description: Erro interno
+
+  # ─────────────────────────────────────────────
+  # SYSTEM
+  # ─────────────────────────────────────────────
+
+  /expapi/v1/:
+    get:
+      tags: [System]
+      summary: Ping da Experimental API
+      responses:
+        "200":
+          description: Pong!
+
+  /expapi/v1/db:
+    get:
+      tags: [System]
+      summary: Status da conexão com o banco de dados
+      description: Retorna o estado atual da conexão MongoDB (0=desconectado, 1=conectado, 2=conectando).
+      responses:
+        "200":
+          description: Estado da conexão
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Connection State: 1 -- 1 = Connected, 2 = Connecting, 0 = Disconnected"
+        "500":
+          description: Conexão falhou

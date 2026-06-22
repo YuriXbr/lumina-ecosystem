@@ -1,7 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogPanel } from '@headlessui/react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
-import { useNavigate } from 'react-router-dom'
 import monochrome from '../../assets/monochromeBlack.svg'
 
 const navigation = [
@@ -11,38 +10,67 @@ const navigation = [
   { name: 'Sobre Nós', href: '/about' },
 ]
 
-function GotoLogin() {
-  const navigate = useNavigate()
-  return () => navigate('/login')
-}
-
 export default function HomeNavBar() {
-const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-return (
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [discordInfo, setDiscordInfo] = useState(null)
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    // Valida o token
+    fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/validate-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(res => {
+        setIsLoggedIn(res.ok)
+        return res.ok
+      })
+      .then(valid => {
+        if (!valid) return
+        // Busca informações do Discord para mostrar avatar + nome
+        return fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/discordinfo`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then(res => (res.ok ? res.json() : null))
+          .then(data => { if (data) setDiscordInfo(data) })
+      })
+      .catch(() => setIsLoggedIn(false))
+  }, [])
+
+  const avatarUrl = discordInfo?.avatar && discordInfo?.id
+    ? `https://cdn.discordapp.com/avatars/${discordInfo.id}/${discordInfo.avatar}.png`
+    : null
+
+  return (
     <div className="bg-white">
       <header className="absolute inset-x-0 top-0 z-50">
         <nav aria-label="Global" className="flex items-center justify-between p-6 lg:px-8">
           <div className="flex lg:flex-1">
             <a href="/" className="-m-1.5 p-1.5">
               <span className="sr-only">LuminaBot</span>
-              <img
-                alt="LuminaBot"
-                src={monochrome}
-                className="h-4 w-auto"
-                href="/"
-              />
+              <img alt="LuminaBot" src={monochrome} className="h-4 w-auto" />
             </a>
           </div>
+
+          {/* Botão hambúrguer mobile */}
           <div className="flex lg:hidden">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
               className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700"
             >
-              <span className="sr-only">Open main menu</span>
+              <span className="sr-only">Abrir menu</span>
               <Bars3Icon aria-hidden="true" className="h-6 w-6" />
             </button>
           </div>
+
+          {/* Links de navegação desktop */}
           <div className="hidden lg:flex lg:gap-x-12">
             {navigation.map((item) => (
               <a key={item.name} href={item.href} className="text-sm font-semibold leading-6 text-gray-900">
@@ -50,33 +78,57 @@ return (
               </a>
             ))}
           </div>
+
+          {/* Área de auth desktop */}
           <div className="hidden lg:flex lg:flex-1 lg:justify-end">
-            <a href="/login" className="text-sm font-semibold leading-6 text-gray-900" onClick={GotoLogin()}>
-              Log in <span aria-hidden="true">&rarr;</span>
-            </a>
+            {isLoggedIn ? (
+              <a
+                href="/dashboard"
+                className="flex items-center space-x-2 text-sm font-semibold leading-6 text-gray-900 hover:text-gray-600 transition-colors"
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="w-6 h-6 rounded-full border border-gray-200"
+                    onError={(e) => { e.target.style.display = 'none' }}
+                  />
+                ) : (
+                  // Placeholder genérico enquanto discordinfo carrega ou sem Discord vinculado
+                  <span className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-bold">
+                    {discordInfo?.username?.[0]?.toUpperCase() || '?'}
+                  </span>
+                )}
+                <span>{discordInfo?.username || 'Dashboard'}</span>
+                <span aria-hidden="true">&rarr;</span>
+              </a>
+            ) : (
+              <a href="/login" className="text-sm font-semibold leading-6 text-gray-900">
+                Log in <span aria-hidden="true">&rarr;</span>
+              </a>
+            )}
           </div>
         </nav>
+
+        {/* Menu mobile */}
         <Dialog open={mobileMenuOpen} onClose={setMobileMenuOpen} className="lg:hidden">
           <div className="fixed inset-0 z-50" />
           <DialogPanel className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10">
             <div className="flex items-center justify-between">
               <a href="/" className="-m-1.5 p-1.5">
                 <span className="sr-only">LuminaBot</span>
-                <img
-                  alt="LuminaBot"
-                  src={monochrome}
-                  className="h-8 w-auto"
-                />
+                <img alt="LuminaBot" src={monochrome} className="h-8 w-auto" />
               </a>
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}
                 className="-m-2.5 rounded-md p-2.5 text-gray-700"
               >
-                <span className="sr-only">Close menu</span>
+                <span className="sr-only">Fechar menu</span>
                 <XMarkIcon aria-hidden="true" className="h-6 w-6" />
               </button>
             </div>
+
             <div className="mt-6 flow-root">
               <div className="-my-6 divide-y divide-gray-500/10">
                 <div className="space-y-2 py-6">
@@ -91,12 +143,33 @@ return (
                   ))}
                 </div>
                 <div className="py-6">
-                  <a
-                    href="/login"
-                    className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
-                  >
-                    Log in
-                  </a>
+                  {isLoggedIn ? (
+                    <a
+                      href="/dashboard"
+                      className="-mx-3 flex items-center space-x-3 rounded-lg px-3 py-2.5 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
+                    >
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt="Avatar"
+                          className="w-7 h-7 rounded-full border border-gray-200"
+                          onError={(e) => { e.target.style.display = 'none' }}
+                        />
+                      ) : (
+                        <span className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-bold">
+                          {discordInfo?.username?.[0]?.toUpperCase() || '?'}
+                        </span>
+                      )}
+                      <span>{discordInfo?.username || 'Dashboard'}</span>
+                    </a>
+                  ) : (
+                    <a
+                      href="/login"
+                      className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
+                    >
+                      Log in
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -104,5 +177,5 @@ return (
         </Dialog>
       </header>
     </div>
-    )
+  )
 }

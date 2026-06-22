@@ -8,7 +8,8 @@ import {
   ChartBarIcon,
   CommandLineIcon,
   ServerIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  HomeIcon
 } from '@heroicons/react/24/outline';
 
 // Componentes das abas
@@ -208,13 +209,20 @@ export default function DashboardTabs() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center justify-between sm:justify-end space-x-4">
+              <div className="flex items-center justify-between sm:justify-end space-x-3">
                 <div className="text-left sm:text-right">
                   <p className="text-sm text-gray-500">Último login</p>
                   <p className="text-sm font-medium text-gray-900">
                     {new Date(user.lastLogin).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
+                <a
+                  href="/"
+                  title="Voltar para o site"
+                  className="inline-flex items-center justify-center p-2 border border-gray-300 shadow-sm rounded-md text-gray-500 bg-white hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+                >
+                  <HomeIcon className="h-4 w-4" />
+                </a>
                 <button
                   onClick={handleLogout}
                   className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"

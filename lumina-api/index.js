@@ -108,7 +108,11 @@ const loadRoutes = (dir) => {
             if (route.jwtNeeded) {
                 console.log(`Rota ${route.route} precisa de JWT`);
                 middlewares.push((req, res, next) => {
-                    const token = req.headers.authorization.split(' ')[1];
+                    const authHeader = req.headers.authorization;
+                    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                        return res.status(401).json({ error: 'Token não fornecido.' });
+                    }
+                    const token = authHeader.split(' ')[1];
                     if (!token) {
                         return res.status(401).send('Invalid token.');
                     }

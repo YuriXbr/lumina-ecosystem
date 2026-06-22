@@ -56,7 +56,7 @@ function SkinCard({ skin }) {
                 {skin.rarity !== 'kLegacy' && skin.rarity !== 'kNoRarity' && (
                     <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm rounded-full p-2">
                         <img
-                            src={`/public/${skin.rarity}.png`}
+                            src={`/${skin.rarity}.png`}
                             alt={getRarityLabel(skin.rarity)}
                             className="w-6 h-6"
                             title={getRarityLabel(skin.rarity)}

@@ -69,7 +69,7 @@ module.exports = {
                     },
                     { headers: 
                         { 
-                            'internal-key': process.env.INTERNAL_KEY,
+                            'internal-key': process.env.INTERNAL_API_KEY,
                         } 
                     }
                 )

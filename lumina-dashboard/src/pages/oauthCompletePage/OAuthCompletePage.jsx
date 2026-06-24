@@ -94,7 +94,7 @@ export default function OAuthCompletePage() {
                 navigate("/dashboard", { replace: true });
             } else if (isNewAccount || !hasPassword) {
                 // Conta nova ou sem senha — leva ao fluxo de definir senha
-                navigate("/dashboard/settings?setupPassword=1", { replace: true });
+                navigate("/dashboard?setupPassword=1", { replace: true });
             } else {
                 navigate("/dashboard", { replace: true });
             }

@@ -31,12 +31,27 @@ export default function SettingsTab() {
   });
   const [showSetPassword, setShowSetPassword] = useState(false);
       useEffect(() => {
-        if (!user) return;
-        const params = new URLSearchParams(window.location.search);
-        if (!user.hasPassword || params.get('setupPassword') === '1') {
-          setShowSetPassword(true);
-        }
-      }, [user]);
+	  if (!user) return;
+
+	  const params = new URLSearchParams(window.location.search);
+	  const shouldSetupPassword =
+		!user.hasPassword ||
+		params.get('setupPassword') === '1';
+
+	  if (shouldSetupPassword) {
+		setShowSetPassword(true);
+
+		// remove ?setupPassword=1 da URL
+		if (params.get('setupPassword') === '1') {
+		  window.history.replaceState(
+			{},
+			'',
+			window.location.pathname
+		  );
+		}
+	  }
+	}, [user]);
+
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,

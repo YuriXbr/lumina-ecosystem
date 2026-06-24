@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser } from '../../../contexts/UserContext';
 import { 
   UserIcon, 
@@ -23,6 +23,22 @@ import ConsoleTab from './tabs/ConsoleTab';
 export default function DashboardTabs() {
   const { user, loading, error, hasPermission, isStaff, getUserLevel, logout } = useUser();
   const [activeTab, setActiveTab] = useState('profile');
+  const [openSetupPasswordModal, setOpenSetupPasswordModal] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('setupPassword') === '1') {
+      setActiveTab('settings');
+      setOpenSetupPasswordModal(true);
+
+      // Remove o parâmetro da URL para evitar reabrir ao atualizar
+      window.history.replaceState(
+        {},
+        '',
+        window.location.pathname
+      );
+    }
+  }, []);
 
   const getDiscordAvatarUrl = () => {
     console.log('getDiscordAvatarUrl chamado', { user });
@@ -161,7 +177,12 @@ export default function DashboardTabs() {
       case 'profile':
         return <ProfileTab />;
       case 'settings':
-        return <SettingsTab />;
+        return (
+		<SettingsTab
+		  openSetupPasswordModal={openSetupPasswordModal}
+		  setOpenSetupPasswordModal={setOpenSetupPasswordModal}
+		/>
+	  );
       case 'metrics':
         return <MetricsTab />;
       case 'users':

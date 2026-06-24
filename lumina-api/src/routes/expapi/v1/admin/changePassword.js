@@ -7,13 +7,14 @@ module.exports = {
     description: "Altera a senha do usuário autenticado",
     apiKeyNeeded: false,
     jwtNeeded: false,
-    enabled: true,
+    enabled: false,
     loginLimiterNeeded: true,
     csrfProtectionNeeded: true,
     checkAuthNeeded: false,
     method: 'put',
 
     async execute(req, res) {
+        return res.status(501).json({ error: 'Rota desativada. Use /expapi/v1/user/set-password para definir ou alterar a senha.' });
         const authHeader = req.headers.authorization;
         if (!authHeader) {
             return res.status(401).json({ error: 'Token não fornecido' });

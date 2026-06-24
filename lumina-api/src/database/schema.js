@@ -188,8 +188,15 @@ const dashboardAccounts= {
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    // ALTERADO: senha agora é opcional — contas criadas via OAuth2 (Discord, etc.)
+    // nascem sem senha até o usuário definir uma (ver rota /expapi/v1/user/set-password).
+    password: { type: String, required: false, default: '' },
     accessType: { type: String, required: false, default: 'user' },
+
+    // NOVO: registro genérico de provedores OAuth2 vinculados a esta conta.
+    // Formato: { discord: { providerId, linkedAt }, google: { providerId, linkedAt }, ... }
+    // Pensado para ser modular: plugar um novo provedor não exige migração de schema.
+    authProviders: { type: Object, default: {} },
 
     // User email verification status
     emailVerified: { type: Boolean, default: false },

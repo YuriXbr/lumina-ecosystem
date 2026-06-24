@@ -23,39 +23,35 @@ module.exports = {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             const accountId = decoded.accountId;
 
-            // Buscar conta do usuário
             const account = await DashboardAccountService.getDashboardAccountByAccountId(accountId);
             if (!account) {
                 return res.status(404).json({ error: 'Conta não encontrada' });
             }
 
-            // Verificar se o Discord está vinculado
-            if (!account.discordOauth2Id) {
+            // Checa nos dois lugares: campo legado e nova estrutura
+            const isLinked = account.discordOauth2Id || account.authProviders?.discord?.providerId;
+            if (!isLinked) {
                 return res.status(400).json({ error: 'Discord não está vinculado a esta conta' });
             }
 
-            // Remover dados do Discord da conta
-            const updateData = {
-                discordOauth2Id: '',
-                discordOauth2Token: '',
-                discordOauth2RefreshToken: '',
-                discordOauth2TokenExpiresAt: null,
-                discordOauth2TokenScope: '',
-                discordOauth2TokenType: '',
-                discordOauth2TokenRequestDate: null,
-                discordOauth2TokenRequestIp: ''
-            };
+            await DashboardAccountService.update(
+                { accountId },
+                {
+                    $set: {
+                        discordOauth2Id: '',
+                        discordOauth2Token: '',
+                        discordOauth2RefreshToken: '',
+                        discordOauth2TokenExpiresAt: null,
+                        discordOauth2TokenScope: '',
+                        discordOauth2TokenType: '',
+                        discordOauth2TokenRequestDate: null,
+                        discordOauth2TokenRequestIp: ''
+                    },
+                    $unset: { 'authProviders.discord': '' }
+                }
+            );
 
-            const success = await DashboardAccountService.updateAccount(accountId, updateData);
-            
-            if (success) {
-                return res.status(200).json({ 
-                    message: 'Discord deslinkado com sucesso',
-                    success: true 
-                });
-            } else {
-                return res.status(500).json({ error: 'Erro ao deslinkar Discord' });
-            }
+            return res.status(200).json({ message: 'Discord deslinkado com sucesso', success: true });
 
         } catch (error) {
             if (error.name === 'JsonWebTokenError') {

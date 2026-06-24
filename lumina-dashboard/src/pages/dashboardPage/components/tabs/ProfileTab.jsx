@@ -31,35 +31,14 @@ export default function ProfileTab() {
     return 'https://static.vecteezy.com/system/resources/thumbnails/003/337/584/small/default-avatar-photo-placeholder-profile-icon-vector.jpg';
   };
 
-  const handleLinkDiscord = async () => {
+const handleLinkDiscord = () => {
     setIsLinking(true);
-    try {
-      const origin = window.location.href;
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/oauth2/discord/prepare`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ origin })
-      });
-      
-      const data = await response.json();
-      if (data.redirectUrl) {
-        window.location.href = data.redirectUrl;
-      } else {
-        console.error('URL de redirecionamento não recebida.');
-        alert('Erro ao preparar redirecionamento para Discord');
-      }
-    } catch (error) {
-      console.error('Erro ao linkar Discord:', error);
-      alert('Erro ao conectar com Discord: ' + error.message);
-    } finally {
-      setIsLinking(false);
-    }
-  };
+    const origin = window.location.origin;
+    const token = localStorage.getItem('token');
+    const params = new URLSearchParams({ origin, intent: 'link' });
+    if (token) params.set('linkToken', token);
+    window.location.href = `${import.meta.env.VITE_API_BASE_URL}expapi/oauth2/discord/auth/start?${params}`;
+};
 
   const handleUnlinkDiscord = async () => {
     setIsUnlinking(true);

@@ -1,21 +1,25 @@
 const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 
 async function checkAuth(req, res, next) {
     const authHeader = req.headers['authorization'];
-    if (!authHeader) {
-        return res.status(401).send('Access denied. No token provided.');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Access denied. No token provided.' });
     }
 
     const token = authHeader.split(' ')[1]; // Extrai o token do formato "Bearer <token>"
+    if (!token) {
+        return res.status(401).json({ error: 'Access denied. No token provided.' });
+    }
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded;
         next();
     } catch (ex) {
-        res.status(400).send('Invalid token.');
+        res.status(401).json({ error: 'Invalid token.' });
     }
 }
 
@@ -37,9 +41,16 @@ const registerLimiter = rateLimit({
 });
 
 const internalKeyCheck = (req, res, next) => {
-    const internalKey = req.headers['internal-key'];
-    if (!internalKey || internalKey !== process.env.INTERNAL_API_KEY) {
-        return res.status(401).send('Invalid or missing internal key.');
+    const internalKey = req.headers['internal-key'] || '';
+    const expected = process.env.INTERNAL_API_KEY || '';
+
+    const valid =
+        expected.length > 0 &&
+        internalKey.length === expected.length &&
+        crypto.timingSafeEqual(Buffer.from(internalKey), Buffer.from(expected));
+
+    if (!valid) {
+        return res.status(401).json({ error: 'Invalid or missing internal key.' });
     }
     next();
 };

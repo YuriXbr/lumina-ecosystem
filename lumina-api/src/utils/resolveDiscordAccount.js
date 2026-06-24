@@ -29,7 +29,7 @@ async function resolveDiscordAccount(email) {
                 client_secret: process.env.DISCORD_CLIENT_SECRET,
                 grant_type: 'refresh_token',
                 refresh_token: account.discordOauth2RefreshToken,
-                redirect_uri: process.env.DISCORD_REDIRECT_URI,
+                redirect_uri: process.env.DISCORD_AUTH_REDIRECT_URI,
                 scope: 'identify email messages.read'
             });
 

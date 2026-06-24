@@ -9,6 +9,7 @@ import {
   ClipboardDocumentIcon,
   CheckIcon
 } from '@heroicons/react/24/outline';
+import SetPasswordModal from '../SetPasswordModal.jsx';
 
 export default function SettingsTab() {
   const { user, refreshUser } = useUser();
@@ -28,6 +29,14 @@ export default function SettingsTab() {
     newPassword: '',
     confirmPassword: ''
   });
+  const [showSetPassword, setShowSetPassword] = useState(false);
+      useEffect(() => {
+        if (!user) return;
+        const params = new URLSearchParams(window.location.search);
+        if (!user.hasPassword || params.get('setupPassword') === '1') {
+          setShowSetPassword(true);
+        }
+      }, [user]);
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
@@ -45,6 +54,7 @@ export default function SettingsTab() {
         botActivityAlerts: user.botActivityAlerts || false,
         publicProfile: user.publicProfile || false,
         showOnlineStatus: user.showOnlineStatus || true,
+        hasPassword: user.hasPassword || false,
         language: user.language || 'pt-BR',
         timezone: user.timezone || 'America/Sao_Paulo'
       });
@@ -68,7 +78,7 @@ export default function SettingsTab() {
       });
       const { csrfToken } = await csrfResponse.json();
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/settings`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/profile`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -115,7 +125,7 @@ export default function SettingsTab() {
       });
       const { csrfToken } = await csrfResponse.json();
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/change-password`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/set-password`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -339,6 +349,12 @@ export default function SettingsTab() {
       </div>
 
       {/* Alterar Senha */}
+      {showSetPassword && (
+      <SetPasswordModal
+        onSuccess={() => setShowSetPassword(false)}
+        onSkip={() => setShowSetPassword(false)}
+      />
+      )}
       <div className="bg-white shadow-lg rounded-lg border border-gray-100">
         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-purple-100 rounded-t-lg">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center">

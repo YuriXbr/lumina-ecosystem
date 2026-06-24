@@ -10,6 +10,20 @@ info:
     Algumas rotas também exigem um **token CSRF** obtido em `GET /expapi/v1/csrf-token`,
     que deve ser enviado no header `X-CSRF-Token`.
 
+    ## Login/cadastro via OAuth2 (modular)
+    Além de email/senha, contas podem ser criadas e autenticadas via provedores
+    OAuth2 (atualmente Discord; a arquitetura suporta plugar outros provedores
+    como Google/GitHub sem mudanças de contrato). O fluxo:
+
+    1. Frontend redireciona para `GET /expapi/oauth2/{provider}/auth/start?origin=...`
+    2. Usuário autoriza no provedor
+    3. Provedor chama `GET /expapi/oauth2/{provider}/auth/callback`
+    4. API cria a conta (sem senha) ou autentica a existente, e redireciona para
+       `{origin}/oauth/complete#token=...&isNewAccount=...&hasPassword=...`
+
+    Contas criadas dessa forma nascem **sem senha** e podem definir uma depois em
+    `POST /expapi/v1/user/set-password`.
+
     ## Níveis de acesso
     | Tipo | Nível |
     |------|-------|
@@ -25,7 +39,7 @@ info:
     | developer | 9 |
     | coowner | 10 |
     | owner | 11 |
-  version: 1.3.0
+  version: 1.4.0
   contact:
     name: Lumina Dev Team
 
@@ -43,7 +57,9 @@ tags:
   - name: Auth
     description: Login, registro, validação de token e CSRF
   - name: Discord OAuth2
-    description: Vinculação e fluxo OAuth2 com Discord
+    description: Vinculação e fluxo OAuth2 com Discord (conta já logada)
+  - name: OAuth2 Login/Cadastro
+    description: Login e cadastro automático via provedores OAuth2 (modular)
   - name: User
     description: Perfil, configurações e senha do usuário autenticado
   - name: Inventory
@@ -87,6 +103,10 @@ components:
         error:
           type: string
           example: Mensagem de erro
+        code:
+          type: string
+          description: Código estável do erro, para o frontend tratar programaticamente
+          example: INVALID_CREDENTIALS
 
     SkinResult:
       type: object
@@ -158,6 +178,17 @@ components:
           type: boolean
         discordOauth2Id:
           type: string
+        hasPassword:
+          type: boolean
+          description: |
+            Se false, a conta foi criada via OAuth2 e ainda não tem senha definida.
+            O frontend deve oferecer a tela de "definir senha" nesse caso.
+          example: true
+        authProviders:
+          type: array
+          items:
+            type: string
+          description: Lista de provedores OAuth2 vinculados a esta conta (ex. ["discord"])
         registrationDate:
           type: string
           format: date-time
@@ -283,7 +314,10 @@ paths:
     post:
       tags: [Auth]
       summary: Login no dashboard
-      description: Autentica email/senha e retorna um JWT com validade de 1h.
+      description: |
+        Autentica email/senha e retorna um JWT com validade de 1h.
+        Se a conta foi criada via OAuth2 e não tem senha, retorna 400 com
+        `code: "OAUTH_ONLY"`.
       requestBody:
         required: true
         content:
@@ -308,10 +342,26 @@ paths:
                 properties:
                   token:
                     type: string
+                  hasPassword:
+                    type: boolean
         "400":
-          description: Email ou senha ausentes
+          description: Email/senha ausentes, ou conta usa apenas login OAuth2 (code OAUTH_ONLY)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         "401":
           description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "403":
+          description: Conta banida ou bloqueada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       security:
         - CsrfToken: []
 
@@ -321,7 +371,7 @@ paths:
       summary: Registrar nova conta
       description: |
         Cria uma nova conta no dashboard.
-        Senha mínima: 8 caracteres, deve conter maiúscula, minúscula e número.
+        Senha: 8 a 128 caracteres, deve conter maiúscula, minúscula e número.
         Rate limited: 3 registros por hora por IP.
       requestBody:
         required: true
@@ -338,6 +388,7 @@ paths:
                   type: string
                   format: password
                   minLength: 8
+                  maxLength: 128
                 firstName:
                   type: string
                 lastName:
@@ -347,6 +398,10 @@ paths:
           description: Conta criada com sucesso
         "400":
           description: Dados inválidos ou conta já existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         "500":
           description: Erro ao criar conta
       security:
@@ -375,7 +430,76 @@ paths:
           description: Token inválido ou ausente
 
   # ─────────────────────────────────────────────
-  # DISCORD OAUTH2
+  # OAUTH2 LOGIN/CADASTRO (genérico, modular)
+  # ─────────────────────────────────────────────
+
+  /expapi/oauth2/{provider}/auth/start:
+    get:
+      tags: [OAuth2 Login/Cadastro]
+      summary: Inicia login/cadastro automático via OAuth2
+      description: |
+        Não exige conta ou JWT prévios. Funciona para qualquer provedor
+        registrado em `src/oauthProviders` (hoje: `discord`).
+        Redireciona para a tela de autorização do provedor.
+      parameters:
+        - in: path
+          name: provider
+          required: true
+          schema:
+            type: string
+            example: discord
+        - in: query
+          name: origin
+          schema:
+            type: string
+          description: URL de retorno após o login (precisa estar na allow-list do servidor)
+      responses:
+        "302":
+          description: Redirecionamento para o provedor OAuth2
+        "400":
+          description: Origin não permitida
+        "404":
+          description: Provedor OAuth2 não suportado
+
+  /expapi/oauth2/{provider}/auth/callback:
+    get:
+      tags: [OAuth2 Login/Cadastro]
+      summary: Callback de login/cadastro via OAuth2
+      description: |
+        Endpoint de callback do provedor. Cria a conta (sem senha) caso não
+        exista, ou autentica a conta existente (por providerId, ou por e-mail
+        verificado), e redireciona para
+        `{origin}/oauth/complete#token=...&isNewAccount=...&hasPassword=...`.
+        **Não chame diretamente — é o endpoint de callback do provedor.**
+      parameters:
+        - in: path
+          name: provider
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: code
+          schema:
+            type: string
+        - in: query
+          name: state
+          schema:
+            type: string
+            description: State assinado (HMAC) gerado por /auth/start
+        - in: query
+          name: error
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirecionamento para {origin}/oauth/complete com o token no fragmento da URL
+        "400":
+          description: State inválido/expirado, ou origin não permitida
+        "404":
+          description: Provedor OAuth2 não suportado
+
+  # ─────────────────────────────────────────────
+  # DISCORD OAUTH2 (vincular a conta já logada)
   # ─────────────────────────────────────────────
 
   /expapi/oauth2/discord/prepare:
@@ -385,6 +509,9 @@ paths:
       description: |
         Gera a URL de redirecionamento para o fluxo OAuth2 do Discord.
         O `accountId` é extraído do JWT — não é necessário enviar no body.
+        Use esta rota para **vincular** Discord a uma conta já autenticada.
+        Para login/cadastro automático sem conta prévia, use
+        `/expapi/oauth2/discord/auth/start`.
       security:
         - BearerAuth: []
       requestBody:
@@ -416,8 +543,10 @@ paths:
   /expapi/oauth2/discord/login:
     get:
       tags: [Discord OAuth2]
-      summary: Iniciar login OAuth2 Discord (sem JWT)
-      description: Redireciona diretamente para a tela de autorização do Discord. Usado quando não há JWT disponível.
+      summary: (Legado) Iniciar login OAuth2 Discord sem JWT
+      description: |
+        **Depreciado** — use `/expapi/oauth2/discord/auth/start`, que tem
+        `state` assinado (HMAC) e `origin` validado contra allow-list.
       parameters:
         - in: query
           name: origin
@@ -431,7 +560,7 @@ paths:
   /expapi/oauth2/discord/redirect:
     get:
       tags: [Discord OAuth2]
-      summary: Callback OAuth2 Discord
+      summary: Callback OAuth2 Discord (vínculo a conta já logada)
       description: |
         Recebe o código de autorização do Discord após o usuário aprovar.
         Salva o token OAuth2 na conta e redireciona de volta para a origem.
@@ -649,7 +778,7 @@ paths:
       summary: Alterar senha
       description: |
         Altera a senha do usuário autenticado.
-        Nova senha: mínimo 8 caracteres, deve conter maiúscula, minúscula e número.
+        Nova senha: 8 a 128 caracteres, deve conter maiúscula, minúscula e número.
         Rate limited: 5 tentativas por minuto.
       security:
         - BearerAuth: []
@@ -669,6 +798,7 @@ paths:
                   type: string
                   format: password
                   minLength: 8
+                  maxLength: 128
       responses:
         "200":
           description: Senha alterada com sucesso
@@ -676,6 +806,48 @@ paths:
           description: Senha atual incorreta, nova senha fraca ou igual à atual
         "401":
           description: Token não fornecido
+        "404":
+          description: Conta não encontrada
+
+  /expapi/v1/user/set-password:
+    post:
+      tags: [User]
+      summary: Definir senha (contas OAuth2) ou alterar senha existente
+      description: |
+        Se a conta ainda não tem senha (criada via OAuth2), defina-a enviando
+        apenas `newPassword`. Se a conta já tem senha, envie também
+        `currentPassword` (mesmas regras de `/user/change-password`).
+      security:
+        - BearerAuth: []
+        - CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                  format: password
+                  description: Obrigatório apenas se a conta já tiver uma senha definida
+                newPassword:
+                  type: string
+                  format: password
+                  minLength: 8
+                  maxLength: 128
+      responses:
+        "200":
+          description: Senha definida/alterada com sucesso
+        "400":
+          description: Senha atual incorreta/ausente, nova senha fraca, ou igual à atual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "401":
+          description: Token não fornecido ou inválido
         "404":
           description: Conta não encontrada
 

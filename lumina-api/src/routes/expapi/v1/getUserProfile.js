@@ -38,6 +38,10 @@ module.exports = {
                 accessType: account.accessType || 'user',
                 emailVerified: account.emailVerified || false,
                 discordOauth2Id: account.discordOauth2Id || '',
+                // NOVO: o frontend usa isso pra saber se precisa oferecer a tela
+                // de "definir senha" (contas criadas via OAuth2 nascem sem senha).
+                hasPassword: !!account.password,
+                authProviders: Object.keys(account.authProviders || {}),
                 // Campos para compatibilidade com inventory page
                 id: account.discordOauth2Id || '',
                 avatar: account.discordAvatar || '',

@@ -97,6 +97,12 @@ export default function CommandsPage() {
           example: "/openchest"
         },
         {
+          name: "/daily",
+          description: "Resgata sua recompensa diária: 3 Baús Hextech + 1 Chave (também disponível no dashboard)",
+          usage: "/daily",
+          example: "/daily"
+        },
+        {
           name: "/inventory",
           description: "Mostra seu inventário de skins (via dashboard)",
           usage: "Acesse /inventory no navegador",

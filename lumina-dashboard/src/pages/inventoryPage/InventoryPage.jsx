@@ -5,6 +5,7 @@ import SkinGrid from './components/SkinGrid';
 import FilterDrawer from './components/FilterDrawer';
 import luminaLogo from '../assets/isolated-monochrome-white.svg';
 import OpenChestModal from './components/OpenChestModal';
+import DailyRewardModal from './components/DailyRewardModal';
 
 async function getInventoryFromId(id) {
     console.log('Buscando inventário do usuário', id);
@@ -35,6 +36,7 @@ const rarityOptions = [
 
 export function InventoryPage() {
     const [isChestModalOpen, setIsChestModalOpen] = useState(false);
+    const [isDailyModalOpen, setIsDailyModalOpen] = useState(false);
     const [skins, setSkins] = useState([]);
     const [user, setUser] = useState(null);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -432,6 +434,7 @@ export function InventoryPage() {
                                 user={user}
                                 inventoryLoading={inventoryLoading}
                                 onOpenChestModal={() => setIsChestModalOpen(true)}
+                                onOpenDailyModal={() => setIsDailyModalOpen(true)}
                             />
                         </div>
 
@@ -654,6 +657,14 @@ export function InventoryPage() {
                         uncenteredSplashPath: skin.uncenteredSplashPath,
                     }]);
                 }}
+            />
+
+            <DailyRewardModal
+                isOpen={isDailyModalOpen}
+                onClose={() => setIsDailyModalOpen(false)}
+                isLoggedIn={isLoggedIn}
+                discordError={discordError}
+                loginWithDiscord={loginWithDiscord}
             />
         </div>
     );

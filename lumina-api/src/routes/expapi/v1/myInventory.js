@@ -30,13 +30,22 @@ module.exports = {
             let userInventory = await InventoryService.getInventory(discordId);
 
             if (!userInventory) {
-                userInventory = await InventoryService.create(discordId);
+                // Nota: corrigido para passar um objeto ({ userId }) em vez da
+                // string crua — InventoryService.create() delega pro
+                // mongoose .create(), que espera um documento.
+                userInventory = await InventoryService.create({ userId: discordId });
             }
+
+            const nextDailyReward = userInventory.nextDailyReward || null;
+            const dailyRewardAvailable = !nextDailyReward || new Date() >= new Date(nextDailyReward);
 
             return res.status(200).json({
                 keys: userInventory.keys || 0,
                 masterWorkChests: userInventory.masterWorkChests || 0,
                 hextechChests: userInventory.hextechChests || 0,
+                dailyRewardAvailable,
+                nextDailyReward,
+                dailyRewardStreak: userInventory.dailyRewardStreak || 0,
             });
         } catch (error) {
             console.error('Error fetching inventory:', error);

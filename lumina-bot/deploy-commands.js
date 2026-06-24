@@ -5,9 +5,18 @@ const path = require('node:path');
 const c = require('./src/utils/colorCodes.js');
 const LuminaApiService = require('./src/utils/services/LuminaApiService.js');
 const EncryptionService = require('./src/utils/services/EncryptionService.js');
+const botConfigService = require('./src/utils/services/EncryptionService');
 
 const luminaApi = new LuminaApiService();
 let deployGuilds = [];
+
+process.on('unhandledRejection', (reason) => {
+    console.error('[UNHANDLED REJECTION]', reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('[UNCAUGHT EXCEPTION]', err);
+});
 
 if (!process.env.DISCORD_BOT_TOKEN) {
     console.error(c.error + " DISCORD_BOT_TOKEN is not defined in the environment variables. Please set it up in the .env file.");
@@ -24,57 +33,79 @@ if (!process.env.API_BASE_URL || !process.env.INTERNAL_API_KEY || !process.env.L
     process.exit(1);
 }
 
-try {
-    luminaApi.get('/expapi/internal/fetchbot').then(botConfig => {
-        console.log(c.arrow + c.verdebold(`[SUCCESS] Bot configuration fetched successfully.`));
-        const encryptionService = new EncryptionService(luminaApi);
-        //Decrypt the bot configuration
-        const decryptedBotConfig = JSON.parse(encryptionService.decrypt(botConfig));
-        console.log(c.arrow + c.verdebold(`[SUCCESS] Bot configuration decrypted successfully.`));
-        deployGuilds = decryptedBotConfig.deployGuilds || [];
-    }).catch(error => {
-        console.error(c.error + " " + error);
-        process.exit(1); // Exit the process if the bot configuration cannot be fetched
-    });
-} catch (error) {
-    console.error(c.error + " " + error);
-    console.error(c.error + " Failed to fetch bot configuration. Ensure the API is running and the bot is configured correctly.");
-    process.exit(1); // Exit the process if there's an error during the API call
-}
-
-
-const globalCommands = [];
-const localCommands = [];
-const foldersPath = path.join(__dirname, 'src', 'commands');
-const commandFolders = fs.readdirSync(foldersPath);
-
-console.log(c.arrow + c.alerta('[WARNING] Local commands are only available in deployGuilds. Be sure to add the guilds in the config file.'));
-console.log(c.arrow + c.verde('Started refreshing application (/) commands.'));
-
-for (const folder of commandFolders) {
-    const commandsPath = path.join(foldersPath, folder);
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-    for (const file of commandFiles) {
-        const filePath = path.join(commandsPath, file);
-        const command = require(filePath);
-        if ('data' in command && 'execute' in command) {
-            if (folder === 'admin') {
-                localCommands.push(command.data.toJSON());
-                console.log(c.arrow + c.alerta(`[WARNING] The command ${command.data.name} is admin only.`));
-                console.log(c.arrow + c.verdebold(`[SUCCESS] The command ${command.data.name} was added to the LOCAL commands.`));
-            } else {
-                globalCommands.push(command.data.toJSON());
-                console.log(c.arrow + c.verdebold(`[SUCCESS] The command ${command.data.name} was added to the GLOBAL commands.`));
-            }
-        } else {
-            console.log(c.arrow + c.alerta(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`));
-        }
+async function bootstrap() {
+    try {
+        await botConfigService.setupConfig();
+        console.log(c.arrow + c.verdebold('[SUCCESS] Bot configuration loaded successfully'));
+    } catch (err) {
+        console.error(c.error + " Failed to load bot configuration. Ensure the .env file is set up correctly and the API is accessible.");
+        console.error(c.error + " Error details: ", err);
+        process.exit(1);
     }
 }
 
-const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
 
+async function fetchBotConfig() {
+    try {
+        mainGuild = botConfigService.bot.mainGuild;
+        deployGuilds = botConfigService.bot.deployGuilds || [];
+        console.log(c.arrow + c.verdebold('[SUCCESS] MainGuild: ' + mainGuild));
+        console.log(c.arrow + c.verdebold('[SUCCESS] DeployGuilds: ' + deployGuilds.join(', ')));
+        console.log(c.arrow + c.verdebold('[SUCCESS] Bot configuration fetched successfully'));
+        return;
+    } catch (error) {
+        console.error(c.error + " Failed to fetch bot configuration. Ensure the API is running and the bot is configured correctly.");
+        console.error(c.error + " " + error);
+        process.exit(1); // Exit the process if there's an error during the API call
+    }
+}
+
+let globalCommands = [];
+let localCommands = [];
+
+async function deployCommands() {
+
+    const foldersPath = path.join(__dirname, 'src', 'commands');
+    const commandFolders = fs.readdirSync(foldersPath);
+
+    console.log(c.arrow + c.alerta('[WARNING] Local commands are only available in deployGuilds. Be sure to add the guilds in the config file.'));
+    console.log(c.arrow + c.verde('Started refreshing application (/) commands.'));
+
+    for (const folder of commandFolders) {
+        const commandsPath = path.join(foldersPath, folder);
+        const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+        for (const file of commandFiles) {
+            const filePath = path.join(commandsPath, file);
+            const command = require(filePath);
+            if ('data' in command && 'execute' in command) {
+                if (folder === 'admin') {
+                    localCommands.push(command.data.toJSON());
+                    console.log(c.arrow + c.alerta(`[WARNING] The command ${command.data.name} is admin only.`));
+                    console.log(c.arrow + c.verdebold(`[SUCCESS] The command ${command.data.name} was added to the LOCAL commands.`));
+                } else {
+                    globalCommands.push(command.data.toJSON());
+                    console.log(c.arrow + c.verdebold(`[SUCCESS] The command ${command.data.name} was added to the GLOBAL commands.`));
+                }
+            } else {
+                console.log(c.arrow + c.alerta(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`));
+            }
+        }
+    }
+
+}
+
+const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
 (async () => {
+    try{
+        await bootstrap();
+        await fetchBotConfig();
+        await deployCommands();
+    } catch (error) {
+        console.error(c.error + " An error occurred during the initialization process. Please check the configuration and try again.");
+        console.error(c.error + " " + error);
+        process.exit(1); // Exit the process if there's an error during bootstrap
+    }
+
     try {
         console.log(c.arrow + c.verde('Started refreshing application (/) commands.'));
 
@@ -98,6 +129,8 @@ const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
 
         console.log(c.arrow + c.verde('Successfully reloaded application (/) commands.'));
     } catch (error) {
+        console.error(c.error + " An error occurred while reloading application (/) commands.");
         console.error(c.error + " " + error);
+        process.exit(1); // Exit the process if there's an error during command deployment
     }
 })();

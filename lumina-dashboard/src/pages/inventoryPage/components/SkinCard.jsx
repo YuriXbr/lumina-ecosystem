@@ -32,7 +32,7 @@ function SkinCard({ skin }) {
             {/* Imagem da Skin */}
             <div className="relative aspect-[9/16] overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
                 <img
-                    src={`https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${skin.championName}_${skin.id.toString().slice(-3).replace(/^0+/, '')}.jpg`}
+                    src={`https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${skin.championId}_${skin.id.toString().slice(-3).replace(/^0+/, '')}.jpg`}
                     alt={skin.name}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     loading="lazy"

@@ -141,7 +141,10 @@ async function rollSkin(userId, chest) {
             championName: selectedSkin.championName,
             isBase: selectedSkin.isBase,
             isLegacy: selectedSkin.isLegacy,
-            skinlines: selectedSkin.skinlines,
+            // CORREÇÃO: o campo no documento (skinsIdList) é `skinLines` (L
+            // maiúsculo), não `skinlines`. Como o schema mudou, esse campo
+            // sempre vinha undefined na resposta.
+            skinLines: selectedSkin.skinLines,
             splashPath: selectedSkin.splashPath,
             loadScreenPath: selectedSkin.loadScreenPath,
             tilePath: selectedSkin.tilePath,

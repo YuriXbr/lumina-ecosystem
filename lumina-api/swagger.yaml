@@ -110,6 +110,10 @@ components:
 
     SkinResult:
       type: object
+      description: |
+        Resultado de um sorteio de skin (rotas de roll/abrir baú).
+        Não confundir com `StoredSkin`, que é o formato salvo no inventário
+        do usuário e retornado por `/expapi/internal/fetchuserskins`.
       properties:
         skinId:
           type: integer
@@ -119,22 +123,27 @@ components:
           example: King Beegar
         rarity:
           type: string
+          description: Raridade "sorteada" (categoria de drop), não o campo `rarity` (kXxx) da skin em si.
           enum: [legacy, epic, legendary, ultimate, mythic, transcendent]
           example: epic
         championId:
           type: string
-          example: "45"
+          description: Chave do campeão usada pelo DDragon (ex. "Naafiri", "Braum"), não um ID numérico.
+          example: "Naafiri"
         championName:
           type: string
-          example: Veigar
+          example: Naafiri
         isBase:
           type: boolean
         isLegacy:
           type: boolean
-        skinlines:
+        skinLines:
           type: array
           items:
             type: object
+            properties:
+              id:
+                type: integer
         splashPath:
           type: string
           description: Caminho interno do client League (não é URL pública)
@@ -146,6 +155,58 @@ components:
         uncenteredSplashPath:
           type: string
 
+    StoredSkin:
+      type: object
+      description: |
+        Formato em que uma skin já obtida fica salva (coleção `skinsIdList`)
+        e é retornada por `/expapi/internal/fetchuserskins`. Diferente do
+        `SkinResult` (retornado pelas rotas de roll): aqui `rarity` usa o
+        formato do client League (`kEpic`, `kNoRarity`, etc.) e os campos
+        de identificação são `id`/`name` em vez de `skinId`/`skinName`.
+      properties:
+        id:
+          type: integer
+          example: 201051
+        name:
+          type: string
+          example: Victorious Braum
+        description:
+          type: string
+        championId:
+          type: string
+          example: Braum
+        championName:
+          type: string
+          example: Braum
+        isBase:
+          type: boolean
+        rarity:
+          type: string
+          enum: [kNoRarity, kLegacy, kEpic, kLegendary, kMythic, kUltimate, kTranscendent]
+          example: kNoRarity
+        isLegacy:
+          type: boolean
+        skinLines:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+        splashPath:
+          type: string
+        loadScreenPath:
+          type: string
+        tilePath:
+          type: string
+        uncenteredSplashPath:
+          type: string
+        updatePatch:
+          type: string
+        updateDate:
+          type: string
+          format: date-time
+
     InventoryCounters:
       type: object
       properties:
@@ -156,6 +217,17 @@ components:
           type: integer
           example: 1
         hextechChests:
+          type: integer
+          example: 3
+        dailyRewardAvailable:
+          type: boolean
+          description: Se true, o usuário pode resgatar a recompensa diária agora.
+        nextDailyReward:
+          type: string
+          format: date-time
+          nullable: true
+          description: Quando a próxima recompensa diária fica disponível (null se nunca resgatou).
+        dailyRewardStreak:
           type: integer
           example: 3
 
@@ -940,7 +1012,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/SkinResult'
+                  $ref: '#/components/schemas/StoredSkin'
         "400":
           description: userId ausente ou formato inválido
         "500":
@@ -965,7 +1037,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/SkinResult'
+                  $ref: '#/components/schemas/StoredSkin'
         "400":
           description: userId ausente ou inválido
 
@@ -1311,7 +1383,15 @@ paths:
                   type: integer
       responses:
         "200":
-          description: Skin adicionada
+          description: |
+            Skin adicionada. Retorna o documento de inventário do usuário
+            completo (chaves, baús, lista de skins, etc.) — não apenas a
+            skin adicionada.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Documento de inventário completo (schema `inventory`).
         "400":
           description: Parâmetros ausentes
         "401":

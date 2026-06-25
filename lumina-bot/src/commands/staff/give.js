@@ -17,11 +17,17 @@ module.exports = {
             option.setName('item')
                 .setDescription('The item to give.')
                 .setRequired(true)
+                .addChoices(
+                    { name: 'Hextech Chest', value: 'hextechChest' },
+                    { name: 'Masterwork Chest', value: 'masterWorkChest' },
+                    { name: 'Key', value: 'key' }
+                )
         )
         .addIntegerOption(option =>
             option.setName('amount')
                 .setDescription('The amount of the item to give.')
                 .setRequired(true)
+                .setMinValue(1)
         ),
 
 	execute(interaction) {

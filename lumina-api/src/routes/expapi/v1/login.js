@@ -1,5 +1,8 @@
 const jwt = require('jsonwebtoken');
 const DashboardAccountService = require('../../../database/services/DashboardAccountService.js');
+const { routeError } = require('../../../logger/logger');
+
+const ROUTE = 'POST /expapi/v1/login';
 // Endpointed Checked on V1.2.0
 // ALTERADO: respostas de erro agora são SEMPRE JSON ({ error, code }).
 // Antes usavam res.send('texto'), e como o frontend faz response.json(),
@@ -8,7 +11,7 @@ const DashboardAccountService = require('../../../database/services/DashboardAcc
 
 module.exports = {
     route: '/expapi/v1/login',
-    description: "Dashboard login route",
+    description: 'Dashboard login route',
     apiKeyNeeded: false,
     jwtNeeded: false,
     enabled: true,
@@ -56,8 +59,13 @@ module.exports = {
                 case 'INVALID_CREDENTIALS':
                     return res.status(401).json({ error: 'Email ou senha incorretos.', code: 'INVALID_CREDENTIALS' });
                 default:
-                    console.error('Erro inesperado no login:', error);
-                    return res.status(500).json({ error: 'Erro interno do servidor. Tente novamente.', code: 'SERVER_ERROR' });
+                    return routeError({
+                        res, error,
+                        route: ROUTE,
+                        errorCode: 'LOGIN_SERVER_ERROR',
+                        userMsg: 'Erro interno do servidor. Tente novamente.',
+                        extra: { email },
+                    });
             }
         }
     }

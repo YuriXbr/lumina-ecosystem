@@ -1,4 +1,7 @@
 const DashboardAccountService = require('../../../database/services/DashboardAccountService.js');
+const { routeError } = require('../../../logger/logger');
+
+const ROUTE = 'POST /expapi/v1/user/set-password';
 
 /**
  * Define a senha de uma conta que ainda não tem uma (ex: criada via OAuth2),
@@ -7,14 +10,10 @@ const DashboardAccountService = require('../../../database/services/DashboardAcc
  *
  * - Conta sem senha: envie apenas { newPassword }.
  * - Conta com senha: envie { currentPassword, newPassword }.
- *
- * (A lógica de exigir ou não currentPassword vive em
- * DashboardAccountService.changePassword, então essa rota serve tanto para
- * "definir senha pela primeira vez" quanto para "alterar senha".)
  */
 module.exports = {
     route: '/expapi/v1/user/set-password',
-    description: "Define ou altera a senha do usuário autenticado (suporta contas OAuth2 sem senha)",
+    description: 'Define ou altera a senha do usuário autenticado (suporta contas OAuth2 sem senha)',
     apiKeyNeeded: false,
     jwtNeeded: true,
     enabled: true,
@@ -30,7 +29,6 @@ module.exports = {
             return res.status(400).json({ error: 'Nova senha é obrigatória.', code: 'MISSING_FIELDS' });
         }
 
-        // req.user é populado pelo middleware jwtNeeded em index.js
         const accountId = req.user && req.user.accountId;
         if (!accountId) {
             return res.status(401).json({ error: 'Token inválido.', code: 'INVALID_TOKEN' });
@@ -56,8 +54,13 @@ module.exports = {
                         code: error.code
                     });
                 default:
-                    console.error('Erro ao definir/alterar senha:', error);
-                    return res.status(500).json({ error: 'Erro interno do servidor.', code: 'SERVER_ERROR' });
+                    return routeError({
+                        res, error,
+                        route: ROUTE,
+                        errorCode: 'SET_PASSWORD_ERROR',
+                        userMsg: 'Erro interno do servidor.',
+                        extra: { accountId },
+                    });
             }
         }
     }

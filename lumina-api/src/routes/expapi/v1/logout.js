@@ -2,7 +2,7 @@
 
 module.exports = {
     route: '/expapi/v1/logout',
-    description: "Dashboard logout route",
+    description: 'Dashboard logout route',
     apiKeyNeeded: false,
     jwtNeeded: false,
     enabled: true,

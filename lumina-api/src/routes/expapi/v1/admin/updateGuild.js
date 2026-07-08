@@ -1,125 +1,111 @@
-const jwt = require('jsonwebtoken');
-const DashboardAccountService = require('../../../../database/services/DashboardAccountService');
-const GuildService = require('../../../../database/services/GuildService');
+const jwt                       = require('jsonwebtoken');
+const DashboardAccountService   = require('../../../../database/services/DashboardAccountService');
+const GuildService              = require('../../../../database/services/GuildService');
+const { routeError }            = require('../../../../logger/logger');
+
+const ROUTE = 'PUT /expapi/v1/admin/guilds/:guildId';
+const ACCESS_LEVELS = { 
+    user:0,
+    vipUser:1,
+    enterpriseUser:2,
+    contentCreator:3,
+    tester:4,
+    support:5,
+    moderator:6,
+    admin:7,
+    headadmin:8,
+    developer:9,
+    coowner:10,
+    owner:11 
+};
 
 module.exports = {
     route: '/expapi/v1/admin/guilds/:guildId',
     description: "Atualiza configurações de uma guilda específica",
-    apiKeyNeeded: false,
+    apiKeyNeeded: false, 
     jwtNeeded: false,
-    enabled: true,
-    loginLimiterNeeded: false,
+    enabled: true, 
+    loginLimiterNeeded: false, 
     csrfProtectionNeeded: true,
-    checkAuthNeeded: false,
+    checkAuthNeeded: false, 
     method: 'put',
 
     async execute(req, res) {
         const authHeader = req.headers.authorization;
-        if (!authHeader) {
-            return res.status(401).json({ error: 'Token não fornecido' });
-        }
+        if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.', code: 'MISSING_TOKEN' });
 
-        const token = authHeader.split(' ')[1];
+        let decoded;
+        try { decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET); }
+        catch { return res.status(401).json({ error: 'Token inválido.', code: 'INVALID_TOKEN' }); }
+
         try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            const email = decoded.email;
-            const guildId = req.params.guildId;
-            const updateData = req.body;
+            const { guildId } = req.params;
+            const adminAccount = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
+            if (!adminAccount) return res.status(404).json({ error: 'Conta de administrador não encontrada.', code: 'ACCOUNT_NOT_FOUND' });
 
-            // Busca a conta do administrador
-            const adminAccount = await DashboardAccountService.getDashboardAccountByEmail(email);
-            if (!adminAccount) {
-                return res.status(404).json({ error: 'Conta de administrador não encontrada' });
-            }
+            const adminLevel = ACCESS_LEVELS[adminAccount.accessType] || 0;
+            if (adminLevel < 7) return res.status(403).json({ error: 'Permissão insuficiente.', code: 'INSUFFICIENT_PERMISSION' });
 
-            // Verifica permissões
-            const accessLevels = {
-                user: 0, vipUser: 1, enterpriseUser: 2, contentCreator: 3, tester: 4,
-                support: 5, moderator: 6, admin: 7, headadmin: 8, developer: 9, coowner: 10, owner: 11
-            };
-
-            const adminLevel = accessLevels[adminAccount.accessType] || 0;
-            if (adminLevel < 7) {
-                return res.status(403).json({ error: 'Permissão insuficiente para modificar guildas' });
-            }
-
-            // Busca a guilda
             const guild = await GuildService.getGuildData(guildId);
-            if (!guild) {
-                return res.status(404).json({ error: 'Guilda não encontrada' });
-            }
+            if (!guild) return res.status(404).json({ error: 'Guilda não encontrada.', code: 'GUILD_NOT_FOUND' });
 
-            // Define campos permitidos baseado no nível
             const allowedFields = {};
-
-            // Admins+ podem alterar configurações básicas
-            if (adminLevel >= 7) {
-                Object.assign(allowedFields, {
-                    djEnabled: true,
-                    memberWelcomeToggle: true,
-                    memberDmToggle: true,
-                    persistentMute: true,
-                    persistentWarns: true,
-                    autoWarnPunishment: true,
-                    canPunishStaff: true
-                });
-            }
-
-            // HeadAdmins+ podem alterar configurações avançadas
-            if (adminLevel >= 8) {
-                Object.assign(allowedFields, {
-                    memberJoinChannelId: true,
-                    memberLeaveChannelId: true,
-                    moderationChannelId: true,
-                    botInfoChannelId: true,
-                    eventLogChannelId: true,
-                    djRoleId: true,
-                    muteRoleId: true,
-                    banRoleId: true,
-                    prefix: true,
-                    guildLocale: true,
-                    memberJoinMessage: true,
-                    memberLeaveMessage: true,
-                    memberJoinDmMessage: true
-                });
-            }
-
-            // Developers+ podem alterar qualquer configuração
-            if (adminLevel >= 9) {
-                Object.assign(allowedFields, {
-                    blockedChannels: true,
-                    warnsToMute: true,
-                    warnsToTimeOut: true,
-                    warnsToKick: true,
-                    warnsToBan: true,
-                    warnDuration: true,
-                    gachaMaxRolls: true,
-                    gachaGameMode: true
-                });
-            }
-
-            // Filtra apenas campos permitidos
-            const filteredData = {};
-            Object.keys(updateData).forEach(key => {
-                if (allowedFields[key]) {
-                    filteredData[key] = updateData[key];
-                }
+            if (adminLevel >= 7) Object.assign(allowedFields, { 
+                djEnabled:true,
+                memberWelcomeToggle:true,
+                memberDmToggle:true,
+                persistentMute:true,
+                persistentWarns:true,
+                autoWarnPunishment:true,
+                canPunishStaff:true 
+            });
+            if (adminLevel >= 8) Object.assign(allowedFields, { 
+                memberJoinChannelId:true,
+                memberLeaveChannelId:true,
+                moderationChannelId:true,
+                botInfoChannelId:true,
+                eventLogChannelId:true,
+                djRoleId:true,
+                muteRoleId:true,
+                banRoleId:true,
+                prefix:true,
+                guildLocale:true,
+                memberJoinMessage:true,
+                memberLeaveMessage:true,
+                memberJoinDmMessage:true 
+            });
+            if (adminLevel >= 9) Object.assign(allowedFields, { 
+                blockedChannels:true,
+                warnsToMute:true,
+                warnsToTimeOut:true,
+                warnsToKick:true,
+                warnsToBan:true,
+                warnDuration:true,
+                gachaMaxRolls:true,
+                gachaGameMode:true 
             });
 
-            if (Object.keys(filteredData).length === 0) {
-                return res.status(403).json({ error: 'Nenhum campo permitido para alteração' });
-            }
+            const filteredData = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowedFields[k]));
+            if (!Object.keys(filteredData).length)
+                return res.status(403).json({ error: 'Nenhum campo permitido para alteração.', code: 'NO_ALLOWED_FIELDS' });
 
-            // Atualiza a guilda
             await GuildService.updateGuildData(guildId, filteredData);
-
             return res.status(200).json({ 
-                message: 'Guilda atualizada com sucesso',
-                updatedFields: Object.keys(filteredData)
+                message: 'Guilda atualizada com sucesso.', 
+                updatedFields: Object.keys(filteredData) 
             });
         } catch (error) {
-            console.error('Erro ao atualizar guilda:', error);
-            return res.status(500).json({ error: 'Erro interno do servidor' });
+            return routeError({ 
+                res, 
+                error, 
+                route: ROUTE, 
+                errorCode: 'UPDATE_GUILD_ADMIN_ERROR',
+                userMsg: 'Erro ao atualizar guilda.', 
+                extra: { 
+                    email: decoded?.email, 
+                    guildId: req.params?.guildId 
+                } 
+            });
         }
     }
 };

@@ -314,6 +314,49 @@ const mongoSchema = {
     skinlines,
     universes,
     dashboardAccounts,
+
+    // Logs de todas as requisições/eventos da API (rastreabilidade total)
+    // TTL gerenciado via índice { expiresAt: 1 } no MongoDB (30 dias)
+    apiLogs: {
+        requestId:  { type: String, default: '' },
+        level:      { type: String, default: 'info' }, // debug|info|warn|error|critical
+        type:       { type: String, default: 'API' },  // API|DB|AUTH|OAUTH|GACHA|RATE_LIMIT
+        action:     { type: String, default: '' },
+        message:    { type: String, default: '' },
+        route:      { type: String, default: '' },
+        method:     { type: String, default: '' },
+        statusCode: { type: Number, default: 0 },
+        durationMs: { type: Number, default: 0 },
+        ip:         { type: String, default: '' },
+        userEmail:  { type: String, default: '' },
+        userId:     { type: String, default: '' },
+        userAgent:  { type: String, default: '' },
+        extra:      { type: Object, default: {} },
+        environment:{ type: String, default: process.env.NODE_ENV || 'development' },
+        createdAt:  { type: Date, default: Date.now },
+        expiresAt:  { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
+    },
+
+    // Cache persistente em MongoDB (serverless-safe: sem memória de processo)
+    // TTL gerenciado via índice { expiresAt: 1 } no MongoDB
+    apiCache: {
+        key:       { type: String, required: true, unique: true },
+        value:     { type: Object, default: {} },
+        expiresAt: { type: Date, required: true },
+        createdAt: { type: Date, default: Date.now },
+    },
+
+    // Rate limit por IP por rota, com backoff exponencial entre bloqueios
+    // Chave composta: { ip, route } — índice único no MongoDB
+    ipRateLimits: {
+        ip:           { type: String, required: true },
+        route:        { type: String, required: true },
+        windowStart:  { type: Date, default: Date.now },
+        requestCount: { type: Number, default: 0 },
+        blockCount:   { type: Number, default: 0 },   // total de bloqueios sofridos
+        blockedUntil: { type: Date, default: null },   // null = não bloqueado no momento
+        updatedAt:    { type: Date, default: Date.now },
+    },
 };
 
 module.exports = {

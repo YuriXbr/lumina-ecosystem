@@ -1,15 +1,13 @@
 const path = require('path');
 const fs = require('fs');
-const yaml = require('js-yaml');
-
+const { addLog } = require('../../logger/logger');
 
 module.exports = function registerSwaggerRoute(app) {
     const swaggerUiDist = require('swagger-ui-dist');
     const swaggerUiPath = swaggerUiDist.getAbsoluteFSPath();
 
-    // Servir o swagger.yaml localizado na raiz do projeto
     const specPath = path.join(__dirname, '../../../', 'swagger.yaml');
-    // Endpoint para servir o arquivo swagger.yaml
+
     app.get('/docs/spec', (req, res) => {
         if (!fs.existsSync(specPath)) {
             return res.status(404).json({ error: 'swagger.yaml não encontrado' });
@@ -17,14 +15,9 @@ module.exports = function registerSwaggerRoute(app) {
         res.setHeader('Content-Type', 'application/yaml');
         res.sendFile(specPath);
     });
-    
-    // Servir os assets estáticos do Swagger UI
-    app.use('/docs', require('express').static(swaggerUiPath, {
-        index: false, // Não servir index.html automaticamente
-        
-    }));
 
-    // Página principal com configuração apontando para /docs/spec
+    app.use('/docs', require('express').static(swaggerUiPath, { index: false }));
+
     app.get('/docs', (req, res) => {
         res.setHeader('Content-Type', 'text/html');
         res.send(`<!DOCTYPE html>
@@ -56,5 +49,5 @@ module.exports = function registerSwaggerRoute(app) {
 </html>`);
     });
 
-    console.log('Swagger UI disponível em /docs');
+    addLog('API', 'docs', 'Swagger UI registrado em /docs');
 };

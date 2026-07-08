@@ -2,21 +2,39 @@ const DatabaseService = require('./DataBaseService');
 const UserInventoryService = require('./UserInventoryService');
 const SkinsIdListService = require('./SkinsIdListService');
 const { mongoSchema } = require('../schema');
+const { addLog } = require('../../logger/logger');
+
+// Cache de skins via MongoDB (serverless-safe).
+// O Map em memória anterior era inútil em ambiente serverless (cada invocação
+// é um processo novo, o cache nunca existia quando a função aquecesse) e
+// perigoso em ambientes multi-instância (dados diferentes por instância).
+// CacheService usa o MongoDB como store compartilhado com TTL nativo.
+const SKINS_CACHE_KEY = 'skins:all';
+const SKINS_CACHE_TTL_MS = 60 * 1000; // 60s
 
 class SkinService extends DatabaseService {
     constructor() {
         super('skins', mongoSchema.skins);
     }
 
-    /**
-     * Atualiza ou insere os dados agregados de skins por campeão.
-     * Faz upsert via bulkWrite para eficiência com grandes volumes.
-     * O campo de filtro é `championId` (alias DDragon, ex: "LeeSin").
-     *
-     * @param {object[]} skinsList - Array de objetos com dados por campeão
-     */
+    /** Busca todas as skins usando cache MongoDB de 60s. */
+    async _getAllSkinsCached() {
+        const CacheService = require('./CacheService');
+        const cached = await CacheService.get(SKINS_CACHE_KEY);
+        if (cached) return cached;
+        const skinsData = await this.getAll();
+        await CacheService.set(SKINS_CACHE_KEY, skinsData, SKINS_CACHE_TTL_MS);
+        return skinsData;
+    }
+
+    /** Invalida o cache — chamado após qualquer escrita na coleção de skins. */
+    async _invalidateSkinsCache() {
+        const CacheService = require('./CacheService');
+        await CacheService.invalidate(SKINS_CACHE_KEY);
+    }
+
     async updateSkinsDatabase(skinsList) {
-        await this.connect(); // CORREÇÃO: connect() ausente na versão anterior
+        await this.connect();
 
         const bulkOps = skinsList.map(skinData => ({
             updateOne: {
@@ -28,10 +46,11 @@ class SkinService extends DatabaseService {
 
         try {
             const result = await this.model.bulkWrite(bulkOps);
-            console.log(`[SkinService] bulkWrite: ${result.upsertedCount} inseridos, ${result.modifiedCount} atualizados`);
+            await this._invalidateSkinsCache();
+            addLog('DB', 'skins.update', `bulkWrite: ${result.upsertedCount} inseridos, ${result.modifiedCount} atualizados`);
         } catch (error) {
-            console.error('[SkinService] Erro ao atualizar dados das skins:', error);
-            throw error; // repropagar para o caller decidir o que fazer
+            addLog('DB', 'skins.error', `Erro ao atualizar skins: ${error.message}`);
+            throw error;
         }
     }
 
@@ -45,8 +64,7 @@ class SkinService extends DatabaseService {
 
     async getSkinsQuantity() {
         try {
-            const skinsData = await this.getAll();
-
+            const skinsData = await this._getAllSkinsCached();
             return {
                 totalSkins:        skinsData.reduce((acc, s) => acc + s.quantity,             0),
                 legacySkins:       skinsData.reduce((acc, s) => acc + s.legacyQuantity,       0),
@@ -57,21 +75,14 @@ class SkinService extends DatabaseService {
                 mythicSkins:       skinsData.reduce((acc, s) => acc + s.mythicQuantity,       0),
             };
         } catch (error) {
-            console.error('[SkinService] Erro ao obter quantidade de skins:', error);
+            addLog('DB', 'skins.error', `Erro em getSkinsQuantity: ${error.message}`);
             throw error;
         }
     }
 
     async getSkinsId(rarity) {
         try {
-            const skinsList = await this.getAll();
-
-            // CORREÇÃO: alguns documentos antigos da coleção `skins` ainda têm
-            // os campos de raridade (legacy/epic/.../mythic) como objeto `{}`
-            // (valor default anterior ao schema atual), em vez de array.
-            // `?? []` só cobre null/undefined, não cobre `{}` — então
-            // `.map` quebrava nesses documentos. `asArray` normaliza qualquer
-            // valor que não seja array para `[]`.
+            const skinsList = await this._getAllSkinsCached();
             const asArray = (value) => Array.isArray(value) ? value : [];
 
             const rarityMapping = {
@@ -85,58 +96,47 @@ class SkinService extends DatabaseService {
 
             return rarity ? (rarityMapping[rarity] ?? []) : rarityMapping;
         } catch (error) {
-            console.error('[SkinService] Erro em getSkinsId:', error);
+            addLog('DB', 'skins.error', `Erro em getSkinsId: ${error.message}`);
             return [];
         }
     }
 
     async addSkinToInventory(userId, skinId) {
         const skinIdNumber = parseInt(skinId, 10);
-
         try {
-            let userInventory = await UserInventoryService.getInventory(userId);
-            if (!userInventory) {
-                userInventory = await UserInventoryService.create({ userId });
-            }
-
-            userInventory.skins.push(skinIdNumber);
-            await UserInventoryService.update({ userId }, userInventory);
+            // CORREÇÃO: antes fazia getInventory() -> push() em memória -> update()
+            // com o documento inteiro. Além de sofrer da mesma race condition
+            // (duas escritas concorrentes podiam se sobrepor e uma skin sorteada
+            // "sumir" do inventário), o update() sem $set substituía o documento
+            // inteiro (ver correção em DataBaseService.update). $push é atômico
+            // e cumulativo por natureza — não sofre nenhum desses problemas.
+            await UserInventoryService.connect();
+            const userInventory = await UserInventoryService.model.findOneAndUpdate(
+                { userId },
+                { $push: { skins: skinIdNumber }, $setOnInsert: { userId } },
+                { upsert: true, new: true }
+            );
             return userInventory;
         } catch (error) {
-            console.error('[SkinService] Erro ao adicionar skin ao inventário:', error);
+            addLog('DB', 'skins.error', `Erro em addSkinToInventory (user=${userId}, skin=${skinId}): ${error.message}`);
             return null;
         }
     }
 
     async getSkinInfo(skinId) {
         try {
-            // CORREÇÃO: antes o código fazia `skinId = skinId.toString()`
-            // ANTES de checar `Array.isArray(skinId)` — ou seja, o branch de
-            // array nunca era alcançado (toString() em array vira string).
-            // Além disso, quando alcançado, usava `this.get(...)` (coleção
-            // `skins`, agregados por campeão, sem campo `id`) em vez de
-            // `SkinsIdListService` (coleção `skinsIdList`, que é quem
-            // realmente tem o campo `id`).
             if (Array.isArray(skinId)) {
                 const ids = skinId.map(id => parseInt(id, 10));
                 const skinData = await SkinsIdListService.get({ id: { $in: ids } });
-
-                if (!skinData || skinData.length === 0) {
-                    throw new Error('Skin not found');
-                }
-
+                if (!skinData || skinData.length === 0) throw new Error('Skin not found');
                 return skinData;
             }
 
             const skinData = await SkinsIdListService.getOne({ id: parseInt(skinId, 10) });
-
-            if (!skinData) {
-                throw new Error('Skin not found');
-            }
-
+            if (!skinData) throw new Error('Skin not found');
             return skinData;
         } catch (error) {
-            console.error('[SkinService] Erro em getSkinInfo:', error);
+            addLog('DB', 'skins.error', `Erro em getSkinInfo (id=${skinId}): ${error.message}`);
             return null;
         }
     }
@@ -147,12 +147,11 @@ class SkinService extends DatabaseService {
             if (!userInventory) throw new Error('User inventory not found');
 
             const userSkins = await Promise.all(
-                userInventory.skins.map(skinId => this.getSkinInfo(skinId))
+                userInventory.skins.map(id => this.getSkinInfo(id))
             );
-
-            return userSkins.filter(Boolean); // remove nulls de skins não encontradas
+            return userSkins.filter(Boolean);
         } catch (error) {
-            console.error('[SkinService] Erro em fetchUserSkins:', error);
+            addLog('DB', 'skins.error', `Erro em fetchUserSkins (user=${userId}): ${error.message}`);
             return null;
         }
     }

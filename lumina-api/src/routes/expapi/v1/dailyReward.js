@@ -1,16 +1,19 @@
-const InventoryService = require('../../../database/services/UserInventoryService');
-const { resolveDiscordAccount } = require('../../../utils/resolveDiscordAccount');
+const InventoryService            = require('../../../database/services/UserInventoryService');
+const { resolveDiscordAccount }   = require('../../../utils/resolveDiscordAccount');
+const { routeError }              = require('../../../logger/logger');
+
+const ROUTE = 'POST /expapi/v1/dailyreward';
 
 module.exports = {
     route: '/expapi/v1/dailyreward',
-    description: "Resgata a recompensa diária do usuário logado via Discord (dashboard)",
-    apiKeyNeeded: false,
-    internalKeyNeeded: false,
+    description: "Resgata a recompensa diária do usuário logado via dashboard",
+    apiKeyNeeded: false, 
+    internalKeyNeeded: false, 
     jwtNeeded: true,
-    enabled: true,
-    loginLimiterNeeded: false,
+    enabled: true, 
+    loginLimiterNeeded: false, 
     csrfProtectionNeeded: true,
-    checkAuthNeeded: false,
+    checkAuthNeeded: false, 
     method: 'post',
 
     async execute(req, res) {
@@ -21,26 +24,31 @@ module.exports = {
             const resolved = await resolveDiscordAccount(email);
             discordId = resolved.discordId;
         } catch (err) {
-            const status = err.status || 500;
-            const message = err.message || 'Erro ao resolver conta Discord';
-            return res.status(status).json({ error: message });
+            return routeError({ 
+                res, 
+                error: err,
+                route: ROUTE,
+                errorCode: err.code || 'RESOLVE_DISCORD_ERROR',
+                userMsg: err.message || 'Erro ao resolver conta Discord.',
+                status: err.status || 400, 
+                extra: { email } 
+            });
         }
 
         try {
             const result = await InventoryService.claimDaily(discordId);
-
             if (!result.claimed) {
                 return res.status(429).json({
                     error: 'Você já resgatou sua diária. Tente novamente mais tarde.',
+                    code: 'DAILY_ALREADY_CLAIMED',
                     nextDailyReward: result.nextDailyReward,
                     streak: result.streak,
                 });
             }
-
             return res.status(200).json(result);
         } catch (error) {
-            console.error('Error claiming daily reward:', error);
-            return res.status(500).json({ error: 'Erro ao resgatar a diária' });
+            return routeError({ res, error, route: ROUTE, errorCode: 'CLAIM_DAILY_ERROR',
+                userMsg: 'Erro ao resgatar a diária.', extra: { email, discordId } });
         }
     }
 };

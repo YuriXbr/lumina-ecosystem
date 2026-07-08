@@ -1,5 +1,5 @@
 /**
- * @deprecated This route is deprecated as of configuration migration to .env and database
+ * @deprecated This route is deprecated as of configuration migration to .env and database.
  * Configuration information should be fetched from:
  * - Environment variables (.env) for API keys and secrets
  * - Database for guild/user-specific configurations
@@ -8,7 +8,7 @@
 
 module.exports = {
     route: '/expapi/v1/getconfig',
-    description: "[DEPRECATED] Get info from configuration file - Use environment variables and database endpoints instead",
+    description: '[DEPRECATED] Get info from configuration file — use environment variables and database endpoints instead',
     apiKeyNeeded: false,
     jwtNeeded: false,
     enabled: false,

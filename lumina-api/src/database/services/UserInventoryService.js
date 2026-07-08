@@ -1,16 +1,13 @@
 const DatabaseService = require('./DataBaseService.js');
 const { mongoSchema } = require('../schema.js');
+const { addLog } = require('../../logger/logger');
 
-// Recompensa fixa do resgate diário. Centralizado aqui para que o bot (/daily)
-// e o dashboard (/expapi/v1/dailyreward) usem sempre os mesmos valores.
 const DAILY_REWARD = {
     hextechChests: 3,
     keys: 1,
 };
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
-// Janela de tolerância para manter a sequência (streak): resgatando dentro de
-// até 48h da última vez, a streak continua subindo. Depois disso, zera pra 1.
 const STREAK_WINDOW_MS = 2 * DAY_IN_MS;
 
 class InventoryService extends DatabaseService {
@@ -20,16 +17,20 @@ class InventoryService extends DatabaseService {
 
     async addInventory(userId, item, amount) {
         await this.connect();
-        const query = { userId };
-        const update = { $inc: { [item]: amount } };
-        return this.model.findOneAndUpdate(query, update, { upsert: true, new: true });
+        return this.model.findOneAndUpdate(
+            { userId },
+            { $inc: { [item]: amount } },
+            { upsert: true, new: true }
+        );
     }
 
     async removeInventory(userId, item, amount) {
         await this.connect();
-        const query = { userId };
-        const update = { $inc: { [item]: -amount } };
-        return this.model.findOneAndUpdate(query, update, { upsert: true, new: true });
+        return this.model.findOneAndUpdate(
+            { userId },
+            { $inc: { [item]: -amount } },
+            { upsert: true, new: true }
+        );
     }
 
     async getInventory(userId) {
@@ -44,19 +45,12 @@ class InventoryService extends DatabaseService {
 
     async resetInventory(userId) {
         await this.connect();
-        return this.model.findOneAndDelete({userId });
+        return this.model.findOneAndDelete({ userId });
     }
 
     /**
      * Resgata a recompensa diária do usuário (3 Baús Hextech + 1 Chave).
-     * Cria o inventário se ele ainda não existir. Usado tanto pelo comando
-     * /daily do bot quanto pela rota /expapi/v1/dailyreward do dashboard,
-     * garantindo que os dois caminhos fiquem sempre consistentes.
-     *
-     * @param {string} userId - ID do Discord do usuário
-     * @returns {Promise<object>}
-     *   Sucesso:    { claimed: true, reward, streak, nextDailyReward, inventory }
-     *   Em cooldown: { claimed: false, nextDailyReward, streak }
+     * Cria o inventário se ele ainda não existir.
      */
     async claimDaily(userId) {
         await this.connect();
@@ -69,7 +63,6 @@ class InventoryService extends DatabaseService {
         const now = new Date();
         const nextAvailable = inventory.nextDailyReward ? new Date(inventory.nextDailyReward) : null;
 
-        // Ainda dentro do cooldown de 24h: não libera o resgate.
         if (nextAvailable && now < nextAvailable) {
             return {
                 claimed: false,
@@ -99,6 +92,8 @@ class InventoryService extends DatabaseService {
             { new: true, upsert: true }
         );
 
+        addLog('DB', 'inventory.daily', `Diária resgatada (user=${userId}, streak=${newStreak})`);
+
         return {
             claimed: true,
             reward: DAILY_REWARD,
@@ -109,9 +104,43 @@ class InventoryService extends DatabaseService {
     }
 
     /**
-     * Consulta o status da diária sem resgatar (usado pra exibir o
-     * contador/disponibilidade antes do usuário confirmar o resgate).
+     * Gasta atomicamente 1 chave + 1 baú do tipo informado, SE E SOMENTE SE o
+     * usuário tiver ambos disponíveis no momento exato da operação no banco.
+     *
+     * CORREÇÃO DE SEGURANÇA (race condition / TOCTOU): a implementação anterior
+     * fazia getInventory() -> calculava (quantidade - 1) em memória -> update().
+     * Duas requisições simultâneas (ex: o usuário clicando 2x rápido, ou um
+     * script automatizado) liam o MESMO saldo antes de qualquer uma escrever,
+     * então ambas passavam na checagem "> 0" e ambas debitavam — permitindo
+     * gastar 1 chave real e receber 2 skins (double-spend / duplicação de item).
+     *
+     * A versão abaixo usa um findOneAndUpdate condicional: o filtro exige
+     * `keys >= 1 AND [chest] >= 1` no MESMO comando atômico que decrementa.
+     * O MongoDB garante que apenas uma requisição concorrente pode satisfazer
+     * a condição por vez — a segunda simplesmente não encontra documento e
+     * recebe `null`, sem nunca decrementar abaixo de zero.
+     *
+     * @returns {Promise<object|null>} o inventário já atualizado, ou null se
+     *          o usuário não tinha chave/baú suficiente.
      */
+    async spendKeyAndChest(userId, chest) {
+        await this.connect();
+
+        // Garante que o documento existe antes da tentativa condicional
+        // (upsert aqui poderia criar o doc já "gastando" recurso inexistente).
+        await this.model.findOneAndUpdate(
+            { userId },
+            { $setOnInsert: { userId } },
+            { upsert: true, new: false }
+        );
+
+        return this.model.findOneAndUpdate(
+            { userId, keys: { $gte: 1 }, [chest]: { $gte: 1 } },
+            { $inc: { keys: -1, [chest]: -1 } },
+            { new: true }
+        );
+    }
+
     async getDailyStatus(userId) {
         await this.connect();
         const inventory = await this.model.findOne({ userId });

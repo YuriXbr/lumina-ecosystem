@@ -2,7 +2,7 @@
 
 module.exports = {
     route: '/expapi/v1/',
-    description: "baseExpURL route",
+    description: 'baseExpURL route',
     apiKeyNeeded: false,
     jwtNeeded: false,
     enabled: true,

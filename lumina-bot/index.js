@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const c = require('./src/utils/colorCodes.js');
-const botConfigService = require('./src/utils/services/EncryptionService');
+const botConfigService = require('./src/utils/services/EncryptionService.js');
 
 const client = new Client({
     intents: [

@@ -2,12 +2,13 @@ const jwt = require('jsonwebtoken');
 const { getProvider } = require('../../../oauthProviders');
 const { isAllowedOrigin, verifyState } = require('../../../oauthProviders/state');
 const DashboardAccountService = require('../../../database/services/DashboardAccountService');
+const { addLog, routeError } = require('../../../logger/logger');
 
+const ROUTE = 'GET /expapi/oauth2/:provider/auth/callback';
 const STATE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutos
 
 /**
  * Callback OAuth2. Trata três intents (definidos em authStart):
- *
  *   link     — vincula o Discord à conta do usuário já logado (pelo accountId no state)
  *   register — cria conta nova; se o email já existir redireciona com erro
  *   login    — entra na conta existente ou cria uma nova automaticamente
@@ -55,7 +56,6 @@ module.exports = {
                 throw new Error('Perfil OAuth2 retornado sem ID.');
             }
 
-            // Atualiza os campos legados do Discord (usados pelo bot, inventário, etc.)
             const updateDiscordLegacyFields = async (accountId) => {
                 if (provider.name !== 'discord') return;
                 await DashboardAccountService.update(
@@ -87,8 +87,6 @@ module.exports = {
             );
 
             // ── LINK ────────────────────────────────────────────────────────────────────
-            // Usuário já logado quer vincular o Discord à sua conta atual.
-            // O accountId está assinado no state — não depende de email.
             if (intent === 'link') {
                 if (!state.linkAccountId) {
                     return res.redirect(`${state.origin}/oauth/complete?oauthError=link_no_account`);
@@ -99,7 +97,6 @@ module.exports = {
                     return res.redirect(`${state.origin}/oauth/complete?oauthError=link_account_not_found`);
                 }
 
-                // Bloqueia se esse Discord já estiver vinculado a OUTRA conta
                 const existingByProvider = await DashboardAccountService.getDashboardAccountByProviderId(
                     provider.name, profile.providerId
                 ).catch(() => null);
@@ -113,6 +110,8 @@ module.exports = {
                 });
                 await updateDiscordLegacyFields(account.accountId);
 
+                addLog('API', 'oauth.link', `Conta ${account.accountId} vinculou ${provider.name}`);
+
                 const jwtToken = issueJwt(account);
                 const redirectUrl = new URL(`${state.origin}/oauth/complete`);
                 redirectUrl.hash = `token=${jwtToken}&isNewAccount=false&hasPassword=${!!account.password}&linkedDiscord=true`;
@@ -120,17 +119,12 @@ module.exports = {
             }
 
             // ── REGISTER ────────────────────────────────────────────────────────────────
-            // Diferença em relação ao login:
-            //   - Email já cadastrado em outra conta → erro (não auto-linka)
-            //   - Discord já vinculado → faz login normalmente (conta já existe)
             if (intent === 'register') {
-                // Discord já vinculado a uma conta → login direto
                 let account = await DashboardAccountService.getDashboardAccountByProviderId(
                     provider.name, profile.providerId
                 ).catch(() => null);
 
                 if (!account) {
-                    // Email já existe → erro; usuário deve logar e vincular manualmente
                     if (profile.email) {
                         const existingByEmail = await DashboardAccountService.getDashboardAccountByEmail(profile.email).catch(() => null);
                         if (existingByEmail) {
@@ -138,7 +132,6 @@ module.exports = {
                         }
                     }
 
-                    // Nenhuma conta encontrada → cria
                     const [firstName, ...rest] = (profile.username || 'Usuário').split(' ');
                     account = await DashboardAccountService.createOAuthAccount({
                         email: profile.email || `${provider.name}-${profile.providerId}@no-email.luminasink.com`,
@@ -153,14 +146,16 @@ module.exports = {
                     });
                     await updateDiscordLegacyFields(account.accountId);
 
+                    addLog('API', 'oauth.register', `Nova conta criada via ${provider.name}: ${account.accountId}`);
+
                     const jwtToken = issueJwt(account);
                     const redirectUrl = new URL(`${state.origin}/oauth/complete`);
                     redirectUrl.hash = `token=${jwtToken}&isNewAccount=true&hasPassword=false`;
                     return res.redirect(redirectUrl.toString());
                 }
 
-                // Discord já vinculado → login
                 await updateDiscordLegacyFields(account.accountId);
+                addLog('API', 'oauth.register', `Login via ${provider.name} (conta existente): ${account.accountId}`);
                 const jwtToken = issueJwt(account);
                 const redirectUrl = new URL(`${state.origin}/oauth/complete`);
                 redirectUrl.hash = `token=${jwtToken}&isNewAccount=false&hasPassword=${!!account.password}`;
@@ -168,12 +163,10 @@ module.exports = {
             }
 
             // ── LOGIN (padrão) ──────────────────────────────────────────────────────────
-            // 1) Conta vinculada a esse Discord ID
             let account = await DashboardAccountService.getDashboardAccountByProviderId(
                 provider.name, profile.providerId
             ).catch(() => null);
 
-            // 2) Email igual a uma conta existente → auto-vincula
             if (!account && profile.email && profile.emailVerified) {
                 account = await DashboardAccountService.getDashboardAccountByEmail(profile.email).catch(() => null);
                 if (account) {
@@ -184,7 +177,6 @@ module.exports = {
                 }
             }
 
-            // 3) Cria conta nova
             let isNewAccount = false;
             if (!account) {
                 const [firstName, ...rest] = (profile.username || 'Usuário').split(' ');
@@ -203,6 +195,7 @@ module.exports = {
             }
 
             await updateDiscordLegacyFields(account.accountId);
+            addLog('API', 'oauth.login', `Login via ${provider.name}: ${account.accountId} (nova=${isNewAccount})`);
 
             const jwtToken = issueJwt(account);
             const redirectUrl = new URL(`${state.origin}/oauth/complete`);
@@ -210,8 +203,10 @@ module.exports = {
             return res.redirect(redirectUrl.toString());
 
         } catch (err) {
-            console.error(`Erro no callback OAuth2 (${req.params.provider}):`, err);
-            return res.redirect(`${state.origin}/login?oauthError=server_error`);
+            addLog('API', 'oauth.callback.error', `${req.params.provider}/${intent} → ${err.message}`);
+            // Redireciona ao invés de JSON (fluxo OAuth sempre retorna ao frontend via redirect)
+            const fallbackOrigin = state?.origin || 'https://bot.luminasink.com';
+            return res.redirect(`${fallbackOrigin}/login?oauthError=server_error`);
         }
     }
 };

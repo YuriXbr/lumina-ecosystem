@@ -1,48 +1,40 @@
-const crypto = require('crypto');
-const BotService = require('../../../database/services/BotService');
+const crypto         = require('crypto');
+const BotService     = require('../../../database/services/BotService');
+const { routeError } = require('../../../logger/logger');
 
-// Configuração para criptografia
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY; // Deve ser de 32 bytes para AES-256
-const IV_LENGTH = 16; // Comprimento do vetor de inicialização
+const ROUTE = 'GET /expapi/internal/fetchbot';
 
 function encrypt(text) {
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(process.env.ENCRYPTION_KEY), iv);
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    return iv.toString('hex') + ':' + encrypted; // Combine IV com dados criptografados
+    return iv.toString('hex') + ':' + encrypted;
 }
-
-// Endpointed Checked on V1.2.0
 
 module.exports = {
     route: '/expapi/internal/fetchbot',
-    description: "Fetch bot data",
-    apiKeyNeeded: true,
-    internalKeyNeeded: true,
+    description: "Fetch bot data (encrypted)",
+    apiKeyNeeded: true, 
+    internalKeyNeeded: true, 
     jwtNeeded: false,
-    enabled: true,
-    loginLimiterNeeded: false,
+    enabled: true, 
+    loginLimiterNeeded: false, 
     csrfProtectionNeeded: false,
-    checkAuthNeeded: false,
+    checkAuthNeeded: false, 
     method: 'get',
 
     async execute(req, res) {
-        // Will receive registers from bot table and send to the client
-
-        let bot = await BotService.getBot();
-        
-        if (!bot) {
-            return res.status(500).send('Error fetching bot');
-        }
-
         try {
-            // Criptografar os dados
+            const bot = await BotService.getBot();
+            if (!bot)
+                return res.status(404).json({ error: 'Dados do bot não encontrados.', code: 'BOT_NOT_FOUND' });
+
             const encryptedBot = encrypt(JSON.stringify(bot));
             return res.status(200).send(encryptedBot);
         } catch (error) {
-            console.error('Encryption error:', error);
-            return res.status(500).send('Error encrypting bot data');
+            return routeError({ res, error, route: ROUTE, errorCode: 'FETCH_BOT_ERROR',
+                userMsg: 'Erro ao buscar/criptografar dados do bot.' });
         }
     }
 };

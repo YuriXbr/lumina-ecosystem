@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const jwt = require('jsonwebtoken');
 const { getProvider } = require('../../../oauthProviders');
 const { isAllowedOrigin, signState } = require('../../../oauthProviders/state');
+const { addLog } = require('../../../logger/logger');
 
 /**
  * Inicia o fluxo OAuth2. Suporta três intents:
@@ -50,6 +51,7 @@ module.exports = {
                 }
             }
             if (!linkAccountId) {
+                addLog('API', 'oauth.start.error', `Intent link sem accountId válido (${req.params.provider})`);
                 return res.redirect(`${origin}/oauth/complete?oauthError=link_no_account`);
             }
         }
@@ -62,6 +64,7 @@ module.exports = {
             ...(linkAccountId ? { linkAccountId } : {})
         });
 
+        addLog('API', 'oauth.start', `Iniciando ${intent} via ${req.params.provider}`);
         return res.redirect(provider.getAuthorizationUrl(state));
     }
 };

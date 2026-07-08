@@ -62,7 +62,17 @@ class DatabaseService {
 
   async update(query, updateData, options = { new: true }) {
     await this.connect();
-    return this.model.findOneAndUpdate(query, updateData, options);
+    // CORREÇÃO CRÍTICA: o MongoDB trata um documento de update SEM operadores
+    // ($set, $inc, etc.) como um documento de SUBSTITUIÇÃO em findOneAndUpdate —
+    // ou seja, qualquer campo do documento original que não estivesse presente
+    // em `updateData` era APAGADO silenciosamente. Isso afetava, entre outros,
+    // GuildService.updateGuildData, BanListService.updateBan, MuteListService.updateMute
+    // e WarnListService.update, que passavam objetos "crus" para cá.
+    // Se o chamador já usa operadores ($set, $inc, $unset, $push...), respeitamos;
+    // caso contrário, envolvemos automaticamente em $set para fazer um update parcial seguro.
+    const hasOperators = updateData && Object.keys(updateData).some(key => key.startsWith('$'));
+    const safeUpdate = hasOperators ? updateData : { $set: updateData };
+    return this.model.findOneAndUpdate(query, safeUpdate, options);
   }
 
   async delete(query) {

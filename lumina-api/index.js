@@ -7,12 +7,14 @@ if (process.env.NODE_ENV === 'production') {
 }
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const express = require('express');
 const cors = require('cors');
 const csrf = require('csurf');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
-const { addLog, forceSendLogs } = require('./src/logger/logger.js');
+const { addLog, forceSendLogs, routeError, sendErrorEmbed, requestLogger } = require('./src/logger/logger.js');
+const metrics = require('./src/logger/metrics.js');
 const { checkAuth, loginLimiter, registerLimiter, internalKeyCheck } = require('./auth.js');
 
 const app = express();
@@ -30,31 +32,74 @@ const csrfProtection = csrf({
 
 app.set('trust proxy', 1);
 
-// Headers de segurança
-app.use((req, res, next) => {
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-    
-    // CSP mais restritivo para páginas HTML
-    if (req.path === '/' || req.path.endsWith('.html')) {
-        res.setHeader('Content-Security-Policy', 
-            "default-src 'self'; " +
-            "style-src 'unsafe-inline'; " +
-            "script-src 'none'; " +
-            "object-src 'none'; " +
-            "base-uri 'self'; " +
-            "form-action 'self';"
-        );
-    }
-    
-    next();
-});
+// ─── Helmet: proteção via HTTP headers (análise completa na seção de segurança)
+// Helmet é adequado para esta API pois:
+//   1. Remove X-Powered-By (fingerprinting do Express)
+//   2. HSTS (força HTTPS em produção)
+//   3. noSniff, frameguard, referrer já configurados — helmet unifica e torna declarativo
+//   4. crossOriginResourcePolicy: 'cross-origin' necessário pois a API serve recursos
+//      públicos (inventário, skins) acessados por frontends de domínios diferentes
+//   5. contentSecurityPolicy: desabilitado globalmente (API REST — sem HTML/scripts),
+//      exceto na rota GET / que renderiza HTML (tratado inline abaixo)
+//   6. originAgentCluster: separa origens no browser-level, reduz side-channel attacks
+//
+// Não incluído: expectCt (deprecated), hidePoweredBy (já em helmet), xssFilter (legacy).
+try {
+    const helmet = require('helmet');
+    app.use(helmet({
+        contentSecurityPolicy: false,  // API REST; CSP aplicado só no HTML da rota /
+        crossOriginEmbedderPolicy: false,  // assets públicos precisam ser incorporáveis
+        crossOriginResourcePolicy: { policy: 'cross-origin' },
+        crossOriginOpenerPolicy: { policy: 'same-origin' },
+        referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+        hsts: process.env.NODE_ENV === 'production'
+            ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+            : false,
+        frameguard: { action: 'deny' },
+    }));
+    app.use((req, res, next) => {
+        res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+        // CSP restritivo apenas no HTML da rota de listagem de endpoints
+        if (req.path === '/' || req.path.endsWith('.html')) {
+            res.setHeader('Content-Security-Policy',
+                "default-src 'self'; style-src 'unsafe-inline'; " +
+                "script-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';"
+            );
+        }
+        next();
+    });
+} catch {
+    // Helmet não instalado ainda — fallback para headers manuais (funcional, apenas
+    // menos declarativo). Instalar: npm install helmet
+    app.use((req, res, next) => {
+        res.setHeader('X-Frame-Options', 'DENY');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+        res.removeHeader('X-Powered-By');
+        if (req.path === '/' || req.path.endsWith('.html')) {
+            res.setHeader('Content-Security-Policy',
+                "default-src 'self'; style-src 'unsafe-inline'; " +
+                "script-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';"
+            );
+        }
+        next();
+    });
+}
 
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json({ limit: '512kb' })); // Limite explícito de payload (evita body bomb)
+
+// ─── Request-ID + requestLogger (rastreabilidade total) ───────────────────────
+app.use((req, res, next) => {
+    req.id = crypto.randomUUID();
+    res.setHeader('X-Request-Id', req.id);
+    next();
+});
+// requestLogger pode ser undefined se o logger for mocked nos testes
+if (typeof requestLogger === 'function') {
+    app.use(requestLogger());
+}
 
 const allowedOrigins = [
   'https://luminasink.me',
@@ -98,8 +143,16 @@ const loadRoutes = (dir) => {
             if (route.apiKeyNeeded) {
                 console.log(`Rota ${route.route} precisa de apiKey`);
                 middlewares.push((req, res, next) => {
-                    const apiKey = req.query.apiKey;
-                    if (!apiKey || apiKey !== encodeURIComponent(process.env.LUMINA_API_KEY)) {
+                    const apiKey = req.query.apiKey || '';
+                    const expectedKey = encodeURIComponent(process.env.LUMINA_API_KEY || '');
+                    // CORREÇÃO: comparação com !== vaza o tamanho/posição do primeiro
+                    // byte divergente através do tempo de execução (timing attack).
+                    // Usamos o mesmo padrão de crypto.timingSafeEqual já usado em
+                    // auth.js (internalKeyCheck) para as demais chaves da API.
+                    const a = Buffer.from(String(apiKey));
+                    const b = Buffer.from(String(expectedKey));
+                    const valid = expectedKey.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b);
+                    if (!valid) {
                         return res.status(401).send('Invalid or missing API key.');
                     }
                     next();
@@ -151,6 +204,15 @@ const loadRoutes = (dir) => {
                 middlewares.push(internalKeyCheck);
             }
 
+            // ── Rate limiter por IP, opcional, com backoff exponencial ──────
+            // Cada rota pode definir:
+            //   rateLimiter: ipRateLimiter({ max: 60, windowMs: 60_000 })
+            // O middleware é serverless-safe (estado no MongoDB) e nunca
+            // bloqueia em NODE_ENV=test.
+            if (typeof route.rateLimiter === 'function') {
+                middlewares.push(route.rateLimiter);
+            }
+
             if (route.enabled) {
                 console.log(`Rota ${route.route} carregada com ${middlewares.length} middlewares.`);
                 if (typeof route.execute !== 'function') {
@@ -159,11 +221,12 @@ const loadRoutes = (dir) => {
                     if(route.method === 'both') {
                         app.get(route.route, ...middlewares, route.execute);
                         app.post(route.route, ...middlewares, route.execute);
-                        routes.push({
-                            method: 'get/post',
-                            route: route.route,
-                            description: route.description || 'No description provided'
-                        });
+                        routes.push({ method: 'get/post', route: route.route, description: route.description || 'No description provided' });
+                    } else if (route.method === 'both_delete') {
+                        // POST e DELETE na mesma rota (ex: deleteGuild que aceita ambos)
+                        app.post(route.route, ...middlewares, route.execute);
+                        app.delete(route.route, ...middlewares, route.execute);
+                        routes.push({ method: 'post/delete', route: route.route, description: route.description || 'No description provided' });
                     } else {
                         app[route.method || 'get'](route.route, ...middlewares, route.execute);
                         routes.push({
@@ -173,6 +236,18 @@ const loadRoutes = (dir) => {
                         });
                     }
                 }
+            } else {
+                // Rota desativada: registra um handler 501 para feedback claro
+                // em vez de deixar o Express retornar 404 (que é confuso)
+                const disabledHandler = (req, res) => res.status(501).json({
+                    error: 'Esta rota está desativada.',
+                    code: 'ROUTE_DISABLED',
+                    route: route.route,
+                });
+                const method = route.method === 'both' ? ['get', 'post']
+                             : route.method === 'both_delete' ? ['post', 'delete']
+                             : [route.method || 'get'];
+                method.forEach(m => app[m](route.route, disabledHandler));
             }
         }
     });
@@ -318,31 +393,46 @@ app.all('*', (req, res) => {
 app.use((err, req, res, next) => {
     // Erro específico do csurf quando o token CSRF é inválido/ausente
     if (err.code === 'EBADCSRFTOKEN') {
-        console.warn(`CSRF inválido em ${req.method} ${req.originalUrl}`);
-        return res.status(403).json({ error: 'Sessão expirada, tente novamente.' });
+        console.warn(`[${new Date().toLocaleString('pt-BR')}] CSRF inválido em ${req.method} ${req.originalUrl}`);
+        return res.status(403).json({ error: 'Sessão expirada, tente novamente.', code: 'CSRF_INVALID' });
     }
- 
-    // Qualquer outro erro não tratado: logar e retornar 500
-    console.error(`Erro não tratado em ${req.method} ${req.originalUrl}:`, err);
+
+    // Qualquer outro erro não tratado
+    const { routeError } = require('./src/logger/logger.js');
     const status = err.status || err.statusCode || 500;
-    return res.status(status).json({ error: 'Erro interno do servidor.' });
+    return routeError({
+        res, error: err,
+        route: `${req.method} ${req.originalUrl}`,
+        errorCode: err.code || 'UNHANDLED_ERROR',
+        userMsg: 'Erro interno do servidor.',
+        status,
+        extra: {
+            '🌐 Método': req.method,
+            '🛣️ Rota': req.originalUrl,
+            '🔑 IP': req.ip || 'desconhecido',
+        },
+    });
 });
 
 
-axios = require('axios');
-(async () => {
-    try {
-
-        app.listen(port, async () => {
-            addLog('API', 'start', `API iniciada em ${ip}`);
-            console.log(`API iniciada em ${ip}`);
-        });
-    } catch (error) {
+// Só inicia o servidor quando este arquivo é executado diretamente
+// (node index.js), nunca quando é importado como módulo pelos testes
+// (require('../index')). Sem isso, cada arquivo de teste tentava abrir
+// a porta 3000 e o segundo encontrava EADDRINUSE.
+if (require.main === module) {
+    (async () => {
+        try {
+            app.listen(port, async () => {
+                addLog('API', 'start', `API iniciada em ${ip}`);
+                console.log(`API iniciada em ${ip}`);
+            });
+        } catch (error) {
             addLog('API', 'start', `Erro ao iniciar API: ${error}`);
             console.error('Error starting API:', error);
             forceSendLogs();
             process.exit(1);
         }
-})();
+    })();
+}
 
 module.exports = app;

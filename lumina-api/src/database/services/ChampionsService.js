@@ -1,5 +1,6 @@
 const DataBaseService = require('./DataBaseService');
 const { mongoSchema } = require('../schema');
+const { addLog } = require('../../logger/logger');
 
 class ChampionsService extends DataBaseService {
     constructor() {
@@ -18,8 +19,7 @@ class ChampionsService extends DataBaseService {
         try {
             await this.connect();
 
-            // Filter out invalid entries
-            const validChampionsList = championsList.filter(champion => champion.championId && champion.championName);
+            const validChampionsList = championsList.filter(c => c.championId && c.championName);
 
             const bulkOps = validChampionsList.map(championData => ({
                 updateOne: {
@@ -29,13 +29,13 @@ class ChampionsService extends DataBaseService {
                 }
             }));
 
-            await this.model.bulkWrite(bulkOps);
-            console.log('Champions data updated successfully');
+            const result = await this.model.bulkWrite(bulkOps);
+            addLog('DB', 'champions.update', `bulkWrite: ${result.upsertedCount} inseridos, ${result.modifiedCount} atualizados`);
         } catch (error) {
-            console.error('Erro ao atualizar dados dos campeões:', error);
+            addLog('DB', 'champions.error', `Erro ao atualizar campeões: ${error.message}`);
+            throw error;
         }
     }
-
 }
 
 module.exports = new ChampionsService();

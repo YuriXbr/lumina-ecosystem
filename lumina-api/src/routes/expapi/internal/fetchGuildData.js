@@ -1,34 +1,33 @@
-const GuildService = require('../../../database/services/GuildService');
+const GuildService   = require('../../../database/services/GuildService');
+const { routeError } = require('../../../logger/logger');
 
-// Rota para puxar os dados de uma guilda
+const ROUTE = 'POST /expapi/internal/fetchguilddata';
 
 module.exports = {
     route: '/expapi/internal/fetchguilddata',
     description: "Retrieve guild data",
-    apiKeyNeeded: false,
-    internalKeyNeeded: true,
+    apiKeyNeeded: false, 
+    internalKeyNeeded: true, 
     jwtNeeded: false,
-    enabled: true,
-    loginLimiterNeeded: false,
+    enabled: true, 
+    loginLimiterNeeded: false, 
     csrfProtectionNeeded: false,
-    checkAuthNeeded: false,
+    checkAuthNeeded: false, 
     method: 'post',
 
     async execute(req, res) {
-        try {
-            const { guildId } = req.body;
-            if (!guildId) {
-                return res.status(400).json({ error: 'Parâmetro ausente: guildId é obrigatório.' });
-            }
+        const { guildId } = req.body;
+        if (!guildId)
+            return res.status(400).json({ error: 'Parámetro guildId é obrigatório.', code: 'MISSING_GUILD_ID' });
 
+        try {
             const guildData = await GuildService.getGuildData(guildId);
-            if (!guildData) {
-                return res.status(404).json({ error: 'Dados da guilda não encontrados.' });
-            }
-            
+            if (!guildData)
+                return res.status(404).json({ error: 'Dados da guilda não encontrados.', code: 'GUILD_NOT_FOUND' });
             return res.status(200).json(guildData);
         } catch (error) {
-            return res.status(500).json({ error: error.message });
+            return routeError({ res, error, route: ROUTE, errorCode: 'FETCH_GUILD_ERROR',
+                userMsg: 'Erro ao buscar dados da guilda.', extra: { guildId } });
         }
     }
 };

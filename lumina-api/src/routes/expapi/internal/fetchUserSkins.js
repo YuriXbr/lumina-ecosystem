@@ -1,10 +1,14 @@
-const SkinsService = require('../../../database/services/SkinService');
-// Endpointed Checked on V1.2.0
+const SkinsService   = require('../../../database/services/SkinService');
+const { routeError } = require('../../../logger/logger');
+const { ipRateLimiter } = require('../../../utils/ipRateLimiter');
+
+const ROUTE = 'GET|POST /expapi/internal/fetchuserskins';
 
 module.exports = {
     route: '/expapi/internal/fetchuserskins',
-    description: "Fetch user inventory",
+    description: "Fetch user skins",
     apiKeyNeeded: false,
+    // Rota INTENCIONALMENTE pública (skins dos usuários são consultáveis publicamente)
     internalKeyNeeded: false,
     jwtNeeded: false,
     enabled: true,
@@ -12,27 +16,24 @@ module.exports = {
     csrfProtectionNeeded: false,
     checkAuthNeeded: false,
     method: 'both',
+    // Rate limit: 120 req/min por IP — pública mas protegida contra scraping
+    rateLimiter: ipRateLimiter({ max: 120, windowMs: 60_000 }),
 
     async execute(req, res) {
         let userId = req.query.userId || req.body.userId;
+        if (!userId)
+            return res.status(400).json({ error: 'Parámetro userId é obrigatório.', code: 'MISSING_USER_ID' });
 
-        if (!userId) {
-            return res.status(400).json({ error: 'Missing parameters' });
-        }
-
-        // Sanitização básica do userId para prevenir injection
         userId = userId.toString().replace(/[^0-9]/g, '');
-        
-        if (!userId || userId.length === 0) {
-            return res.status(400).json({ error: 'Invalid userId format' });
-        }
+        if (!userId)
+            return res.status(400).json({ error: 'Formato de userId inválido.', code: 'INVALID_USER_ID' });
 
         try {
-            const inventory = await SkinsService.fetchUserSkins(userId);
-            return res.status(200).json(inventory || []);
+            const skins = await SkinsService.fetchUserSkins(userId);
+            return res.status(200).json(skins || []);
         } catch (error) {
-            console.error('Error fetching inventory:', error);
-            return res.status(500).json({ error: 'Error fetching inventory' });
+            return routeError({ res, error, route: ROUTE, errorCode: 'FETCH_USER_SKINS_ERROR',
+                userMsg: 'Erro ao buscar skins do usuário.', extra: { userId } });
         }
     }
 };

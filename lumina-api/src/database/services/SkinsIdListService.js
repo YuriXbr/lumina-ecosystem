@@ -1,21 +1,12 @@
 const DatabaseService = require('./DataBaseService');
 const { mongoSchema } = require('../schema');
+const { addLog } = require('../../logger/logger');
 
 class SkinIdListService extends DatabaseService {
     constructor() {
         super('skinsIdList', mongoSchema.skinsIdList);
     }
 
-    /**
-     * Atualiza ou insere registros individuais de skins.
-     * O campo de filtro é `id` (ID numérico da skin, ex: 64001).
-     *
-     * CORREÇÃO: versão anterior tinha `var bulkOps` declarado dentro de um
-     * try-catch e usado em um segundo try-catch separado. Se o primeiro bloco
-     * falhasse, `bulkOps` ficava undefined e o segundo lançava outro erro.
-     *
-     * @param {object[]} skinsIdList
-     */
     async updateSkinIdList(skinsIdList) {
         try {
             await this.connect();
@@ -29,9 +20,9 @@ class SkinIdListService extends DatabaseService {
             }));
 
             const result = await this.model.bulkWrite(bulkOps);
-            console.log(`[SkinIdListService] bulkWrite: ${result.upsertedCount} inseridos, ${result.modifiedCount} atualizados`);
+            addLog('DB', 'skinsIdList.update', `bulkWrite: ${result.upsertedCount} inseridos, ${result.modifiedCount} atualizados`);
         } catch (error) {
-            console.error('[SkinIdListService] Erro ao atualizar a lista de IDs das skins:', error);
+            addLog('DB', 'skinsIdList.error', `Erro ao atualizar lista de IDs de skins: ${error.message}`);
             throw error;
         }
     }

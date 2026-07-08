@@ -1,10 +1,9 @@
 const axios = require('axios');
 const DashboardAccountService = require('../database/services/DashboardAccountService');
+const { addLog } = require('../logger/logger');
 
 /**
  * Resolve a conta do dashboard + discordId a partir do email presente no JWT (req.user.email).
- * Reaproveita a mesma lógica de refresh de token usada em /expapi/v1/discordinfo,
- * para manter os dois fluxos (info do Discord e roll de baú) sempre consistentes.
  *
  * @param {string} email - email decodificado do JWT (req.user.email)
  * @returns {Promise<{ account: object, discordId: string }>}
@@ -55,13 +54,14 @@ async function resolveDiscordAccount(email) {
                     }
                 },
             );
+
+            addLog('API', 'discord.tokenRefresh', `Token Discord atualizado para ${email}`);
         } catch (refreshError) {
-            console.error('Erro ao atualizar o token OAuth2:', refreshError);
+            addLog('API', 'discord.tokenRefresh.error', `Erro ao atualizar token OAuth2 para ${email}: ${refreshError.message}`);
             throw { status: 500, message: 'Erro durante refresh do token' };
         }
     }
 
-    // Busca o ID atual do Discord (garante que está sincronizado, igual ao /discordinfo)
     let discordId;
     try {
         const discordResponse = await axios.get('https://discord.com/api/users/@me', {
@@ -69,7 +69,7 @@ async function resolveDiscordAccount(email) {
         });
         discordId = discordResponse.data.id;
     } catch (discordError) {
-        console.error('Erro ao buscar informações do Discord:', discordError);
+        addLog('API', 'discord.resolve.error', `Erro ao buscar info do Discord para ${email}: ${discordError.message}`);
         throw { status: 500, message: 'Erro interno ao obter informações do Discord' };
     }
 

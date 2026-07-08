@@ -1,43 +1,82 @@
 const axios = require('axios');
 
+/**
+ * LuminaApiService — cliente HTTP para a Lumina API.
+ *
+ * Cada chamada bem-sucedida retorna `response.data` diretamente.
+ * Em caso de erro, lança um objeto enriquecido com contexto para que o
+ * chamador possa repassar ao `commandErrorWarning` via `apiContext`.
+ */
 module.exports = class LuminaApiService {
     constructor(headers = {}) {
         if (!process.env.API_BASE_URL || !process.env.INTERNAL_API_KEY || !process.env.LUMINA_API_KEY) {
-            throw new Error('Configuração incompleta: verifique as variáveis de ambiente (API_BASE_URL, INTERNAL_API_KEY, LUMINA_API_KEY).');
+            throw new Error('Configuração incompleta: verifique API_BASE_URL, INTERNAL_API_KEY e LUMINA_API_KEY.');
         }
 
-        const baseURL = process.env.API_BASE_URL;
-        const internalKey = process.env.INTERNAL_API_KEY;
-        const apikey = `?apiKey=${encodeURIComponent(process.env.LUMINA_API_KEY)}`;
-
-        this.baseApiKey = apikey;
+        this.baseApiKey = `?apiKey=${encodeURIComponent(process.env.LUMINA_API_KEY)}`;
         this.api = axios.create({
-            baseURL: baseURL,
+            baseURL: process.env.API_BASE_URL,
             headers: {
                 'Content-Type': 'application/json',
-                'internal-key': internalKey,
+                'internal-key': process.env.INTERNAL_API_KEY,
                 ...headers,
             },
         });
     }
 
-    async get(endpoint, apiKey = true, params = {}) {
+    /**
+     * Executa uma requisição e normaliza o erro com contexto de rastreabilidade.
+     * @param {string} method     - 'get' | 'post' | 'put' | 'delete'
+     * @param {string} endpoint   - Caminho da rota (ex: '/expapi/internal/claimdaily')
+     * @param {object} [data]     - Payload para POST/PUT
+     * @param {object} [params]   - Query params para GET
+     * @param {boolean} [apiKey]  - Se deve anexar a apiKey (padrão: true)
+     */
+    async _request(method, endpoint, { data, params, apiKey = true } = {}) {
+        const calledAt = new Date().toISOString();
+        const url = endpoint + (apiKey ? this.baseApiKey : '');
+
         try {
-            const response = await this.api.get(endpoint + (apiKey ? this.baseApiKey : ''), { params });
+            const response = await this.api[method](url, method === 'get' ? { params } : data, method === 'get' ? undefined : { params });
             return response.data;
         } catch (error) {
-            console.error('[LuminaApiService GET Error]', error, error.message);
+            // Enriquece o erro com contexto de rastreabilidade entre Bot ↔ API
+            const apiError = {
+                endpoint,
+                method: method.toUpperCase(),
+                status: error.response?.status ?? null,
+                calledAt,
+                params: data ?? params ?? {},
+                apiError: error.response?.data?.error ?? (typeof error.response?.data === 'string' ? error.response.data : null),
+                apiCode:  error.response?.data?.code  ?? null,
+            };
+
+            // Loga o erro no console imediatamente com o contexto completo
+            const ts = new Date().toLocaleString('pt-BR').replace(',', '');
+            console.error(`[LuminaApiService] ${ts} | ${method.toUpperCase()} ${endpoint} → HTTP ${apiError.status ?? 'ERR'}`);
+            console.error(`  Params: ${JSON.stringify(apiError.params)}`);
+            console.error(`  API Error: ${apiError.apiError} [${apiError.apiCode ?? 'N/A'}]`);
+            if (error.stack) console.error(`  Stack: ${error.stack.split('\n').slice(0,4).join('\n')}`);
+
+            // Anexa o contexto ao erro para que o catch do comando passe ao commandErrorWarning
+            error.apiContext = apiError;
             throw error;
         }
     }
 
+    async get(endpoint, apiKey = true, params = {}) {
+        return this._request('get', endpoint, { params, apiKey });
+    }
+
     async post(endpoint, data, apiKey = true) {
-        try {
-            const response = await this.api.post(endpoint + (apiKey ? this.baseApiKey : ''), data);
-            return response.data;
-        } catch (error) {
-            console.error('[LuminaApiService POST Error]', error.message);
-            throw error;
-        }
+        return this._request('post', endpoint, { data, apiKey });
+    }
+
+    async put(endpoint, data, apiKey = true) {
+        return this._request('put', endpoint, { data, apiKey });
+    }
+
+    async delete(endpoint, apiKey = true) {
+        return this._request('delete', endpoint, { apiKey });
     }
 };

@@ -138,6 +138,9 @@ const loadRoutes = (dir) => {
             loadRoutes(filePath);
         } else if (file.endsWith('.js')) {
             const route = require(filePath);
+            if (!route || typeof route !== 'object' || typeof route.route !== 'string') {
+                return;
+            }
             const middlewares = [];
 
             if (route.apiKeyNeeded) {

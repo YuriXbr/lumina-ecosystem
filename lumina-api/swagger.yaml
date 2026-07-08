@@ -24,6 +24,16 @@ info:
     Contas criadas dessa forma nascem **sem senha** e podem definir uma depois em
     `POST /expapi/v1/user/set-password`.
 
+     ## Observabilidade e rotas legadas
+     Toda requisicao recebe `X-Request-Id` e passa pelo middleware global de logs.
+     As protecoes efetivas da API combinam middlewares registrados no bootstrap
+     (`jwtNeeded`, `apiKeyNeeded`, `loginLimiterNeeded`, `csrfProtectionNeeded`,
+     `checkAuthNeeded`, `internalKeyNeeded`, `rateLimiter`) com verificacoes
+     inline em alguns handlers. Rotas legadas em `/login`, `/register`,
+     `/logout`, `/validateAuth`, `/validate-token`, `/getConfigs`,
+     `/configsUpdate`, `/csrf-token`, `/index` e `/api/v1` continuam ativas por
+     compatibilidade e agora estao documentadas explicitamente.
+
     ## Níveis de acesso
     | Tipo | Nível |
     |------|-------|
@@ -39,7 +49,7 @@ info:
     | developer | 9 |
     | coowner | 10 |
     | owner | 11 |
-  version: 1.4.0
+  version: 2.0.0
   contact:
     name: Lumina Dev Team
 
@@ -72,6 +82,18 @@ tags:
     description: Endpoints internos usados pelo bot (requer internal-key)
   - name: System
     description: Status do sistema e banco de dados
+  - name: Observability
+    description: Logs, request IDs e telemetria de erros
+
+x-route-audit:
+  source: src/routes
+  logging:
+    global: requestLogger() + routeError() + X-Request-Id
+    routeSpecific: addLog() only in docs/OAuth/deleteGuild flows
+  protections:
+    bootstrap: apiKeyNeeded, jwtNeeded, loginLimiterNeeded, csrfProtectionNeeded, checkAuthNeeded, internalKeyNeeded, rateLimiter
+    handler: inline JWT and role checks in several admin/user routes
+  note: Swagger synchronized from the current codebase; legacy root routes are documented below.
 
 components:
   securitySchemes:
@@ -359,6 +381,153 @@ components:
 paths:
 
   # ─────────────────────────────────────────────
+  # LEGACY ROOT ROUTES
+  # ─────────────────────────────────────────────
+
+  /api/v1:
+    get:
+      tags: [System]
+      summary: Base legacy da API
+      responses:
+        "200":
+          description: BaseURL legado
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: api/v1 route
+
+  /expapi/v1/getconfig:
+    get:
+      tags: [System]
+      summary: Endpoint legado de configuração (desativado)
+      description: Rota desativada que responde 410 Gone; mantida apenas para compatibilidade histórica.
+      responses:
+        "410":
+          description: Endpoint removido da operação normal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /index:
+    get:
+      tags: [System]
+      summary: Rota legada de indice
+      responses:
+        "200":
+          description: Resposta textual simples
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: index route
+
+  /login:
+    get:
+      tags: [Auth]
+      summary: Rota legada de login
+      responses:
+        "200":
+          description: Resposta textual simples
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: login route
+
+  /register:
+    get:
+      tags: [Auth]
+      summary: Rota legada de registro
+      responses:
+        "200":
+          description: Resposta textual simples
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: register route
+
+  /logout:
+    get:
+      tags: [Auth]
+      summary: Rota legada de logout
+      responses:
+        "200":
+          description: Resposta textual simples
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: logout route
+
+  /validateAuth:
+    get:
+      tags: [Auth]
+      summary: Rota legada de validacao de autenticacao
+      responses:
+        "200":
+          description: Resposta textual simples
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: validateAuth route
+
+  /validate-token:
+    get:
+      tags: [Auth]
+      summary: Rota legada de validacao de token
+      responses:
+        "200":
+          description: Resposta textual simples
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: validate-token route
+
+  /getConfigs:
+    get:
+      tags: [System]
+      summary: Rota legada de configuracao
+      responses:
+        "200":
+          description: Resposta textual simples
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: getConfigs route
+
+  /configsUpdate:
+    get:
+      tags: [System]
+      summary: Rota legada de atualizacao de configuracao
+      responses:
+        "200":
+          description: Resposta textual simples
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: configsUpdate route
+
+  /csrf-token:
+    get:
+      tags: [Auth]
+      summary: Rota legada de CSRF token
+      responses:
+        "200":
+          description: Resposta textual simples
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: csrf-token route
+
+  # ─────────────────────────────────────────────
   # AUTH
   # ─────────────────────────────────────────────
 
@@ -487,19 +656,6 @@ paths:
       responses:
         "302":
           description: Redirecionamento para /
-
-  /expapi/v1/validate-token:
-    post:
-      tags: [Auth]
-      summary: Validar token JWT
-      description: Verifica se o JWT no header Authorization é válido.
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Token válido
-        "401":
-          description: Token inválido ou ausente
 
   # ─────────────────────────────────────────────
   # OAUTH2 LOGIN/CADASTRO (genérico, modular)
@@ -987,6 +1143,28 @@ paths:
           description: CSRF inválido (produção)
         "500":
           description: Erro ao sortear skin
+
+  /expapi/v1/dailyreward:
+    post:
+      tags: [Inventory]
+      summary: Resgatar recompensa diaria
+      description: |
+        Resgata a recompensa diaria da conta vinculada ao JWT.
+        A rota usa JWT no header Authorization e CSRF em producao.
+      security:
+        - BearerAuth: []
+        - CsrfToken: []
+      responses:
+        "200":
+          description: Recompensa resgatada com sucesso
+        "401":
+          description: Token ausente ou invalido
+        "403":
+          description: CSRF invalido (producao)
+        "429":
+          description: Recompensa ja foi resgatada e ainda esta em cooldown
+        "500":
+          description: Erro ao resgatar a diaria
 
   /expapi/internal/fetchuserskins:
     get:

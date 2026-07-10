@@ -9,7 +9,8 @@ import {
   CommandLineIcon,
   ServerIcon,
   ArrowRightOnRectangleIcon,
-  HomeIcon
+  HomeIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 
 // Componentes das abas
@@ -19,6 +20,7 @@ import UserManagementTab from './tabs/UserManagementTab';
 import MetricsTab from './tabs/MetricsTab';
 import GuildConfigTab from './tabs/GuildConfigTab';
 import ConsoleTab from './tabs/ConsoleTab';
+import LogsTab from './tabs/LogsTab';
 
 export default function DashboardTabs() {
   const { user, loading, error, hasPermission, isStaff, getUserLevel, logout } = useUser();
@@ -41,21 +43,16 @@ export default function DashboardTabs() {
   }, []);
 
   const getDiscordAvatarUrl = () => {
-    console.log('getDiscordAvatarUrl chamado', { user });
-    
     // Primeiro tenta campos diretos (usado no inventory page)
     if (user && user.avatar && user.id) {
-      console.log('Avatar encontrado (campos diretos):', `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`);
       return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
     }
-    
+
     // Depois tenta campos do UserContext (discordOauth2Id + discordAvatar)
     if (user && user.discordAvatar && user.discordOauth2Id) {
-      console.log('Avatar encontrado (campos discord):', `https://cdn.discordapp.com/avatars/${user.discordOauth2Id}/${user.discordAvatar}.png`);
       return `https://cdn.discordapp.com/avatars/${user.discordOauth2Id}/${user.discordAvatar}.png`;
     }
-    
-    console.log('Usando avatar padrão - user:', user);
+
     return 'https://static.vecteezy.com/system/resources/thumbnails/003/337/584/small/default-avatar-photo-placeholder-profile-icon-vector.jpg';
   };
 
@@ -153,6 +150,16 @@ export default function DashboardTabs() {
         permission: 'user-management'
       }
     ] : []),
+    // Aba de Logs — apenas admins (level 7+) têm permissão 'console'
+    // Reutilizamos a permissão 'console' que já existe no ACCESS_LEVELS para admin+
+    ...(hasPermission('console') ? [
+      {
+        id: 'logs',
+        name: 'Logs',
+        icon: DocumentTextIcon,
+        permission: 'console'
+      }
+    ] : []),
     // Abas para admins
     ...(hasPermission('guild-config') ? [
       {
@@ -178,11 +185,11 @@ export default function DashboardTabs() {
         return <ProfileTab />;
       case 'settings':
         return (
-		<SettingsTab
-		  openSetupPasswordModal={openSetupPasswordModal}
-		  setOpenSetupPasswordModal={setOpenSetupPasswordModal}
-		/>
-	  );
+                <SettingsTab
+                  openSetupPasswordModal={openSetupPasswordModal}
+                  setOpenSetupPasswordModal={setOpenSetupPasswordModal}
+                />
+          );
       case 'metrics':
         return <MetricsTab />;
       case 'users':
@@ -191,6 +198,8 @@ export default function DashboardTabs() {
         return <GuildConfigTab />;
       case 'console':
         return <ConsoleTab />;
+      case 'logs':
+        return <LogsTab />;
       default:
         return <ProfileTab />;
     }

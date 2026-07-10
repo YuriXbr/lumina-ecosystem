@@ -4,6 +4,8 @@ import { useUser } from "../../contexts/UserContext";
 
 const OAUTH_ERROR_MESSAGES = {
     discord_already_linked: "Esta conta do Discord já está vinculada a outro usuário.",
+    account_banned:        "Esta conta foi banida.",
+    account_blocked:       "Esta conta está bloqueada.",
     link_account_not_found: "Não foi possível encontrar sua conta para vincular. Tente fazer login novamente.",
     link_no_account:        "Você precisa estar logado para vincular o Discord.",
     email_exists:           "Este email já possui uma conta. Faça login e conecte o Discord no painel.",
@@ -13,15 +15,16 @@ const OAUTH_ERROR_MESSAGES = {
 
 /**
  * Página de destino do fluxo OAuth2.
- * O backend redireciona para `${origin}/oauth/complete#token=...&...`.
  *
- * Parâmetros lidos do fragmento (#):
- *   token         — JWT da sessão
- *   isNewAccount  — "true" se a conta foi criada agora
- *   hasPassword   — "false" se a conta ainda não tem senha
- *   linkedDiscord — "true" se veio do fluxo de vinculação (usuário já logado)
+ * APÓS A MIGRAÇÃO PARA COOKIE httpOnly:
+ *   O backend seta o cookie `lumina_token` (httpOnly) no redirect,
+ *   e o fragmento da URL só carrega FLAGS booleanas (isNewAccount,
+ *   hasPassword, linkedDiscord) — não mais o JWT.
  *
- * Erros chegam como query param (?oauthError=...) para não vazar no fragmento.
+ *   O frontend não precisa mais ler token da URL nem salvar no localStorage.
+ *   Apenas chama onLoginSuccess() que vai buscar /session (que usa o cookie).
+ *
+ * Erros chegam como query param (?oauthError=...).
  */
 export default function OAuthCompletePage() {
     const navigate = useNavigate();
@@ -29,22 +32,6 @@ export default function OAuthCompletePage() {
     const [error, setError] = useState("");
     const [isLinkError, setIsLinkError] = useState(false);
 
-    // CORRIGIDO: guarda contra o efeito rodar mais de uma vez.
-    //
-    // Causa do bug "token não encontrado" mesmo com o OAuth2 tendo funcionado:
-    // este efeito tinha `onLoginSuccess` nas dependências. Como essa função
-    // normalmente não é memoizada (useCallback) no UserContext, chamar
-    // `await onLoginSuccess()` dispara um setState lá dentro → o Provider
-    // re-renderiza → `onLoginSuccess` ganha uma NOVA referência → o array de
-    // dependências muda → o efeito RODA DE NOVO, antes do primeiro `navigate()`
-    // ter sido chamado. Na 2ª execução o hash já tinha sido limpo pela 1ª
-    // (window.history.replaceState), então `token` vinha `null` e a tela
-    // mostrava "Token de autenticação não encontrado" — mesmo o login tendo
-    // sido bem-sucedido por baixo dos panos.
-    //
-    // A correção: processar o hash só na PRIMEIRA execução, e não depender de
-    // `onLoginSuccess`/`navigate` no array de dependências (ambos só são
-    // usados dentro da função assíncrona, uma única vez).
     const hasProcessedRef = useRef(false);
 
     useEffect(() => {
@@ -54,56 +41,41 @@ export default function OAuthCompletePage() {
         const hashParams  = new URLSearchParams(window.location.hash.replace(/^#/, ""));
         const queryParams = new URLSearchParams(window.location.search);
 
-        const token         = hashParams.get("token");
         const isNewAccount  = hashParams.get("isNewAccount")  === "true";
         const hasPassword   = hashParams.get("hasPassword")   === "true";
         const linkedDiscord = hashParams.get("linkedDiscord") === "true";
         const oauthError    = queryParams.get("oauthError");
 
-        // Remove token/erro da URL antes de qualquer outra coisa
+        // Limpa a URL (remove fragment/query)
         window.history.replaceState(null, "", window.location.pathname);
 
         if (oauthError) {
             const message = OAUTH_ERROR_MESSAGES[oauthError]
                 ?? "Não foi possível completar a autenticação. Tente novamente.";
             setError(message);
-            // Erros de vinculação têm origem no dashboard, não na tela de login
             const linkErrors = ["discord_already_linked", "link_account_not_found", "link_no_account"];
             setIsLinkError(linkErrors.includes(oauthError));
             return;
         }
 
-        if (!token) {
-            setError("Token de autenticação não encontrado. Tente fazer login novamente.");
-            return;
-        }
-
+        // Sucesso: o cookie httpOnly já foi setado pelo backend no redirect.
+        // Apenas carrega o user no contexto (via /session).
         (async () => {
-            localStorage.setItem("token", token);
             try {
                 await onLoginSuccess();
             } catch (err) {
-                // Mesmo que falhe ao popular o contexto do usuário, o token já
-                // foi salvo e é válido — não vale travar a navegação por isso,
-                // a próxima tela vai buscar o perfil de novo.
                 console.error("Erro ao carregar dados do usuário após OAuth2:", err);
             }
 
             if (linkedDiscord) {
-                // Vinculação concluída — volta ao painel
-                navigate("/dashboard", { replace: true });
+                navigate("/settings", { replace: true });
             } else if (isNewAccount || !hasPassword) {
-                // Conta nova ou sem senha — leva ao fluxo de definir senha
-                navigate("/dashboard?setupPassword=1", { replace: true });
+                navigate("/settings?setupPassword=1", { replace: true });
             } else {
-                navigate("/dashboard", { replace: true });
+                navigate("/members", { replace: true });
             }
         })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        // Intencional: roda só no mount. `navigate` (react-router) é estável
-        // por contrato; `onLoginSuccess` é capturado pela closure e chamado
-        // uma única vez, protegido por hasProcessedRef — não precisamos
-        // reagir a mudanças de referência dele.
     }, []);
 
     if (error) {
@@ -112,8 +84,8 @@ export default function OAuthCompletePage() {
                 <div className="bg-gray-100 shadow-lg rounded-lg p-8 max-w-md text-center space-y-4">
                     <p className="text-gray-800">{error}</p>
                     {isLinkError ? (
-                        <a href="/dashboard" className="font-medium text-indigo-600 hover:text-indigo-500">
-                            Voltar para o painel
+                        <a href="/members" className="font-medium text-indigo-600 hover:text-indigo-500">
+                            Voltar para a Área de Membros
                         </a>
                     ) : (
                         <a href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">

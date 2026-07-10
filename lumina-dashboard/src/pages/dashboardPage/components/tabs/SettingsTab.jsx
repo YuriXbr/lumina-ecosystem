@@ -7,12 +7,47 @@ import {
   BellIcon,
   GlobeAltIcon,
   ClipboardDocumentIcon,
-  CheckIcon
+  CheckIcon,
+  ExclamationTriangleIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import SetPasswordModal from '../SetPasswordModal.jsx';
+import ErrorBanner from '../../../../components/ui/ErrorBanner';
+
+function SettingsSkeleton() {
+  return (
+    <div className="space-y-6 sm:space-y-8 max-w-4xl">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="bg-white shadow-lg rounded-lg border border-gray-100">
+          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+            <div className="flex items-center">
+              <div className="h-5 w-5 bg-gray-200 rounded animate-pulse mr-3" />
+              <div className="h-5 w-32 bg-gray-200 rounded animate-pulse" />
+            </div>
+            <div className="mt-2 h-3 w-56 bg-gray-100 rounded animate-pulse" />
+          </div>
+          <div className="px-4 sm:px-6 py-4 sm:py-6 space-y-4">
+            {[1, 2].map((j) => (
+              <div
+                key={j}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200"
+              >
+                <div className="space-y-2 flex-1">
+                  <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-2 w-48 bg-gray-100 rounded animate-pulse" />
+                </div>
+                <div className="h-6 w-11 bg-gray-200 rounded-full animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function SettingsTab() {
-  const { user, refreshUser } = useUser();
+  const { user, refreshUser, loading: userLoading, error: userError } = useUser();
   const [settings, setSettings] = useState({
     emailNotifications: true,
     discordNotifications: true,
@@ -24,6 +59,7 @@ export default function SettingsTab() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -31,26 +67,26 @@ export default function SettingsTab() {
   });
   const [showSetPassword, setShowSetPassword] = useState(false);
       useEffect(() => {
-	  if (!user) return;
+          if (!user) return;
 
-	  const params = new URLSearchParams(window.location.search);
-	  const shouldSetupPassword =
-		!user.hasPassword ||
-		params.get('setupPassword') === '1';
+          const params = new URLSearchParams(window.location.search);
+          const shouldSetupPassword =
+                !user.hasPassword ||
+                params.get('setupPassword') === '1';
 
-	  if (shouldSetupPassword) {
-		setShowSetPassword(true);
+          if (shouldSetupPassword) {
+                setShowSetPassword(true);
 
-		// remove ?setupPassword=1 da URL
-		if (params.get('setupPassword') === '1') {
-		  window.history.replaceState(
-			{},
-			'',
-			window.location.pathname
-		  );
-		}
-	  }
-	}, [user]);
+                // remove ?setupPassword=1 da URL
+                if (params.get('setupPassword') === '1') {
+                  window.history.replaceState(
+                        {},
+                        '',
+                        window.location.pathname
+                  );
+                }
+          }
+        }, [user]);
 
   const [showPasswords, setShowPasswords] = useState({
     current: false,
@@ -86,23 +122,13 @@ export default function SettingsTab() {
 
   const handleSaveSettings = async () => {
     setSaving(true);
+    setError(null);
     try {
       // Buscar token CSRF
-      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, {
-        credentials: 'include'
-      });
+      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, { credentials: 'include' })
       const { csrfToken } = await csrfResponse.json();
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/profile`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        },
-        credentials: 'include',
-        body: JSON.stringify(settings)
-      });
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/profile`, { credentials: 'include' })
 
       if (response.ok) {
         alert('Configurações salvas com sucesso!');
@@ -110,11 +136,11 @@ export default function SettingsTab() {
         await refreshUser();
       } else {
         const error = await response.json();
-        alert(`Erro ao salvar configurações: ${error.error}`);
+        setError(`Erro ao salvar configurações: ${error.error}`);
       }
     } catch (error) {
       console.error('Erro ao salvar configurações:', error);
-      alert('Erro ao salvar configurações');
+      setError('Erro ao salvar configurações');
     } finally {
       setSaving(false);
     }
@@ -122,37 +148,24 @@ export default function SettingsTab() {
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
+    setError(null);
     
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('As senhas não coincidem');
+      setError('As senhas não coincidem');
       return;
     }
 
     if (passwordData.newPassword.length < 8) {
-      alert('A nova senha deve ter pelo menos 8 caracteres');
+      setError('A nova senha deve ter pelo menos 8 caracteres');
       return;
     }
 
     try {
       // Buscar token CSRF
-      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, {
-        credentials: 'include'
-      });
+      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, { credentials: 'include' })
       const { csrfToken } = await csrfResponse.json();
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/set-password`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword
-        })
-      });
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/set-password`, { credentials: 'include' })
 
       if (response.ok) {
         alert('Senha alterada com sucesso!');
@@ -163,11 +176,11 @@ export default function SettingsTab() {
         });
       } else {
         const error = await response.json();
-        alert(`Erro ao alterar senha: ${error.error}`);
+        setError(`Erro ao alterar senha: ${error.error}`);
       }
     } catch (error) {
       console.error('Erro ao alterar senha:', error);
-      alert('Erro ao alterar senha');
+      setError('Erro ao alterar senha');
     }
   };
 
@@ -188,17 +201,43 @@ export default function SettingsTab() {
     }
   };
 
-  if (loading) {
+  if (loading || userLoading) {
+    return <SettingsSkeleton />;
+  }
+
+  if (userError || !user) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-        <span className="ml-2 text-gray-600">Carregando configurações...</span>
+      <div className="max-w-4xl">
+        <div className="bg-white border border-gray-200 rounded-lg p-8 sm:p-12 text-center">
+          <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+            <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+          </div>
+          <h3 className="mt-4 text-base font-semibold text-gray-900">
+            Erro ao carregar configurações
+          </h3>
+          <p className="mt-1 text-sm text-gray-600">
+            {userError || 'Não foi possível carregar os dados do usuário.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => refreshUser()}
+            className="mt-5 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+          >
+            <ArrowPathIcon className="h-4 w-4" />
+            Tentar novamente
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 sm:space-y-8 max-w-4xl">
+      {/* Erro de mutação (salvar configs / alterar senha) */}
+      {error && (
+        <ErrorBanner error={error} />
+      )}
+
       {/* Configurações de Notificação */}
       <div className="bg-white shadow-lg rounded-lg border border-gray-100">
         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 bg-gray-50 rounded-t-lg">

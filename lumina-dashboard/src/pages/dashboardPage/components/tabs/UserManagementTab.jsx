@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../../../../contexts/UserContext';
 import { 
   UsersIcon,
@@ -9,13 +9,19 @@ import {
   ShieldExclamationIcon,
   NoSymbolIcon,
   EyeIcon,
-  XMarkIcon
+  XMarkIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
+import ErrorState from '../../../../components/ui/ErrorState';
+import ErrorBanner from '../../../../components/ui/ErrorBanner';
+import { SkeletonRow } from '../../../../components/ui/Skeleton';
 
 export default function UserManagementTab() {
   const { user: currentUser, hasPermission, getUserLevel } = useUser();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [updateError, setUpdateError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -39,67 +45,43 @@ export default function UserManagementTab() {
     owner: { level: 11, name: 'Owner' }
   };
 
-  useEffect(() => {
-    loadUsers();
-  }, [currentPage, searchTerm]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/admin/users?page=${currentPage}&limit=${usersPerPage}&search=${encodeURIComponent(searchTerm)}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include',
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        // Adicionar campo discordLinked baseado em discordOauth2Id
-        const usersWithDiscordStatus = (data.users || []).map(user => ({
-          ...user,
-          discordLinked: !!(user.discordOauth2Id && user.discordOauth2Id.trim() !== '')
-        }));
-        setUsers(usersWithDiscordStatus);
-      } else {
-        console.error('Erro ao carregar usuários:', response.status);
-        // Fallback para dados mock em caso de erro
-        setUsers([
-          {
-            accountId: 'user001',
-            firstName: 'João',
-            lastName: 'Silva',
-            email: 'joao@email.com',
-            accessType: 'user',
-            emailVerified: true,
-            blocked: false,
-            banned: false,
-            registrationDate: new Date('2024-01-15'),
-            lastLogin: new Date('2025-01-10'),
-            discordLinked: true
-          },
-          {
-            accountId: 'user002',
-            firstName: 'Maria',
-            lastName: 'Santos',
-            email: 'maria@email.com',
-            accessType: 'vipUser',
-            emailVerified: true,
-            blocked: false,
-            banned: false,
-            registrationDate: new Date('2024-03-20'),
-            lastLogin: new Date('2025-01-09'),
-            discordLinked: false
-          }
-        ]);
+      if (!response.ok) {
+        let detail = `HTTP ${response.status}`;
+        try {
+          const body = await response.json();
+          if (body?.error) detail = body.error;
+        } catch { /* corpo não-JSON */ }
+        throw new Error(detail);
       }
-    } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
+
+      const data = await response.json();
+      const usersWithDiscordStatus = (data.users || []).map(user => ({
+        ...user,
+        discordLinked: !!(user.discordOauth2Id && user.discordOauth2Id.trim() !== '')
+      }));
+      setUsers(usersWithDiscordStatus);
+    } catch (err) {
+      console.error('Erro ao carregar usuários:', err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, searchTerm]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const updateUser = async (userId, updateData) => {
+    setUpdateError(null);
     try {
       console.log('Iniciando atualização do usuário:', userId, updateData);
       
@@ -109,11 +91,12 @@ export default function UserManagementTab() {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/admin/users/${userId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          
           'Content-Type': 'application/json',
           'X-CSRF-Token': csrfToken
         },
-        body: JSON.stringify(updateData)
+        body: JSON.stringify(updateData),
+        credentials: 'include',
       });
 
       console.log('Response status:', response.status);
@@ -138,17 +121,14 @@ export default function UserManagementTab() {
       }
     } catch (error) {
       console.error('Erro ao atualizar usuário:', error);
-      alert('Erro ao atualizar usuário: ' + error.message);
+      setUpdateError('Erro ao atualizar usuário: ' + error.message);
       return false;
     }
   };
 
   const getCsrfToken = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, {
-        method: 'GET',
-        credentials: 'include'
-      });
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, { credentials: 'include' })
       if (response.ok) {
         const data = await response.json();
         return data.csrfToken;
@@ -395,19 +375,63 @@ export default function UserManagementTab() {
     );
   };
 
-  if (loading) {
+  if (loading && users.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando usuários...</p>
+      <div className="space-y-6">
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <UsersIcon className="h-5 w-5 text-gray-400 mr-2" />
+                <div className="h-5 w-48 bg-gray-200 rounded animate-pulse" />
+              </div>
+              <div className="h-9 w-48 bg-gray-200 rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuário</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nível de Acesso</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Último Login</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} columns={5} />)}
+            </tbody>
+          </table>
         </div>
       </div>
     );
   }
 
+  if (error && users.length === 0) {
+    return (
+      <ErrorState
+        title="Erro ao carregar usuários"
+        message="Não foi possível carregar a lista de usuários do servidor."
+        detail={error}
+        onRetry={loadUsers}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Erro em refresh subsequente (mantém os dados antigos visíveis) */}
+      {error && users.length > 0 && (
+        <ErrorBanner error={`Falha ao atualizar: ${error}`} onRetry={loadUsers} />
+      )}
+
+      {/* Erro em mutações (update/promote/block/ban) */}
+      {updateError && (
+        <ErrorBanner error={updateError} />
+      )}
+
       {/* Cabeçalho e Busca */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
@@ -415,6 +439,9 @@ export default function UserManagementTab() {
             <div className="flex items-center">
               <UsersIcon className="h-5 w-5 text-gray-400 mr-2" />
               <h3 className="text-lg font-medium text-gray-900">Gerenciamento de Usuários</h3>
+              {loading && users.length > 0 && (
+                <ArrowPathIcon className="ml-3 h-4 w-4 text-purple-600 animate-spin" />
+              )}
             </div>
             <div className="flex items-center space-x-4">
               <div className="relative">
@@ -425,7 +452,10 @@ export default function UserManagementTab() {
                   type="text"
                   placeholder="Buscar usuários..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
                 />
               </div>

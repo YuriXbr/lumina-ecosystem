@@ -180,10 +180,9 @@ export default function OpenChestModal({
     const fetchInventory = useCallback(async () => {
         setInventoryLoading(true);
         setInventoryError(null);
-        const token = localStorage.getItem('token');
         try {
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/myinventory`, {
-                headers: { Authorization: `Bearer ${token}` },
+                credentials: 'include',
             });
             if (!response.ok) {
                 const message = await readErrorMessage(response, 'Não foi possível carregar seu inventário');
@@ -214,7 +213,6 @@ export default function OpenChestModal({
         setOpenPhase('shaking');
         setRollError(null);
 
-        const token = localStorage.getItem('token');
         const baseUrl = import.meta.env.VITE_API_BASE_URL;
         const animStart = Date.now();
         const MIN_SHAKE_MS = 1500;
@@ -225,16 +223,7 @@ export default function OpenChestModal({
 
         try {
             const csrfToken = await fetchCsrfToken(baseUrl);
-            const response = await fetch(`${baseUrl}expapi/v1/rollskin`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                    'X-CSRF-Token': csrfToken,
-                },
-                body: JSON.stringify({ chestType: selectedChest }),
-            });
+            const response = await fetch(`${baseUrl}expapi/v1/rollskin`, { credentials: 'include' })
 
             if (!response.ok) {
                 const message = await readErrorMessage(

@@ -264,16 +264,16 @@ export default function CommandsPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <a
-                  href={`https://discord.com/oauth2/authorize?client_id=${import.meta.env.VITE_DISCORD_CLIENT_ID}`}
+                  href={`https://discord.com/oauth2/authorize?client_id=${import.meta.env.VITE_DISCORD_CLIENT_ID}&permissions=8&scope=bot+applications.commands`}
                   className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-6 py-3 text-lg font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
                 >
                   🔗 Adicionar ao Discord
                 </a>
                 <a
-                  href="/dashboard"
+                  href="/members"
                   className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-6 py-3 text-lg font-semibold text-gray-900 shadow-sm hover:bg-gray-50 transition-colors"
                 >
-                  📊 Acessar Dashboard
+                  📊 Área de Membros
                 </a>
               </div>
             </div>

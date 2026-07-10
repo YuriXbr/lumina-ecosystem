@@ -71,13 +71,13 @@ export default function HomePage() {
               
               <div className="mt-10 flex items-center justify-center gap-x-6">
                 <a
-                  href={`https://discord.com/oauth2/authorize?client_id=${import.meta.env.VITE_DISCORD_CLIENT_ID}`}
+                  href={`https://discord.com/oauth2/authorize?client_id=${import.meta.env.VITE_DISCORD_CLIENT_ID}&permissions=8&scope=bot+applications.commands`}
                   className="rounded-md bg-indigo-600 px-6 py-3 text-lg font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-all duration-200"
                 >
                   🔗 Adicionar ao Discord
                 </a>
-                <a href="/login" className="text-lg font-semibold leading-6 text-gray-900 hover:text-indigo-600 transition-colors">
-                  Dashboard <span aria-hidden="true">→</span>
+                <a href="/members" className="text-lg font-semibold leading-6 text-gray-900 hover:text-indigo-600 transition-colors">
+                  Área de Membros <span aria-hidden="true">→</span>
                 </a>
               </div>
             </div>
@@ -163,13 +163,13 @@ export default function HomePage() {
               </p>
               <div className="mt-10 flex items-center justify-center gap-x-6">
                 <a
-                  href={`https://discord.com/oauth2/authorize?client_id=${import.meta.env.VITE_DISCORD_CLIENT_ID}`}
+                  href={`https://discord.com/oauth2/authorize?client_id=${import.meta.env.VITE_DISCORD_CLIENT_ID}&permissions=8&scope=bot+applications.commands`}
                   className="rounded-md bg-white px-6 py-3 text-lg font-semibold text-indigo-600 shadow-sm hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-all duration-200"
                 >
                   Adicionar Bot
                 </a>
-                <a href="/dashboard" className="text-lg font-semibold leading-6 text-white hover:text-indigo-200 transition-colors">
-                  Acessar Dashboard <span aria-hidden="true">→</span>
+                <a href="/members" className="text-lg font-semibold leading-6 text-white hover:text-indigo-200 transition-colors">
+                  Área de Membros <span aria-hidden="true">→</span>
                 </a>
               </div>
             </div>

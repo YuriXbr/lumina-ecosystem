@@ -11,7 +11,6 @@ const DashboardSettingsPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
     if (!token) {
       navigate('/login');
       return;
@@ -24,7 +23,8 @@ const DashboardSettingsPage = () => {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
-          }
+          },
+          credentials: 'include',
         });
 
         if (!response.ok) {

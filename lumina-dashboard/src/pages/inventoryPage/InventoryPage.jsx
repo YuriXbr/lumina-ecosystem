@@ -64,7 +64,7 @@ export function InventoryPage() {
     // Estado do drawer de filtros no mobile/tablet
     const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
-    // Carrega usuário e valida token
+    // Carrega usuário e valida sessão (cookie httpOnly)
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const userParam = urlParams.get('user');
@@ -73,50 +73,45 @@ export function InventoryPage() {
             setUser(userData);
             handleGetInventory(userData.id);
         }
-        
-        const token = localStorage.getItem('token');
-        if (token) {
-            fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/validate-token`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
+
+        // Verifica sessão via cookie httpOnly (não mais localStorage)
+        fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/session`, {
+            credentials: 'include',
+        })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (data?.authenticated) {
+                    setIsLoggedIn(true);
+                }
             })
-                .then(response => response.ok)
-                .then(isValid => setIsLoggedIn(isValid))
-                .catch(() => setIsLoggedIn(false));
-        }
+            .catch(() => setIsLoggedIn(false));
     }, []);
 
     // Solicita informações do Discord
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/discordinfo`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+        fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/discordinfo`, {
+            credentials: 'include',
+        })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Conta Discord não vinculada');
+                }
+                return res.json();
             })
-                .then(res => {
-                    if (!res.ok) {
-                        throw new Error('Conta Discord não vinculada');
-                    }
-                    return res.json();
-                })
-                .then(data => {
-                    setDiscordInfo(data);
-                    setDiscordError(false);
-                    setUser(prev => ({
-                        ...prev,
-                        id: data.id,
-                        username: data.username,
-                        avatar: data.avatar
-                    }));
-                })
-                .catch(err => {
-                    setDiscordError(true);
-                    setDiscordInfo(null);
-                });
-        }
+            .then(data => {
+                setDiscordInfo(data);
+                setDiscordError(false);
+                setUser(prev => ({
+                    ...prev,
+                    id: data.id,
+                    username: data.username,
+                    avatar: data.avatar
+                }));
+            })
+            .catch(err => {
+                setDiscordError(true);
+                setDiscordInfo(null);
+            });
     }, []);
 
     // Busca automaticamente as skins do próprio usuário assim que o Discord
@@ -164,15 +159,14 @@ export function InventoryPage() {
 
     const loginWithDiscord = async () => {
         const origin = window.location.href;
-        const token = localStorage.getItem('token');
         try {
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/oauth2/discord/prepare`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ origin })
+                credentials: 'include',
+                body: JSON.stringify({ origin }),
             });
             const data = await response.json();
             if (data.redirectUrl) {
@@ -391,9 +385,9 @@ export function InventoryPage() {
                                 <div className="flex items-center space-x-4">
                                     {isLoggedIn ? (
                                         <a
-                                            href="/dashboard"
+                                            href="/members"
                                             className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-lg transition-colors font-medium backdrop-blur-sm border border-white/20"
-                                            title={discordInfo?.username ? `Ir para o dashboard — ${discordInfo.username}` : 'Ir para o dashboard'}
+                                            title={discordInfo?.username ? `Ir para a Área de Membros — ${discordInfo.username}` : 'Ir para a Área de Membros'}
                                         >
                                             {discordInfo?.avatar && discordInfo?.id ? (
                                                 <img

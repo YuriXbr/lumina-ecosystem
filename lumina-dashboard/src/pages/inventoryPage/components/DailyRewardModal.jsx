@@ -27,9 +27,7 @@ async function readErrorMessage(response, fallback) {
  * header X-CSRF-Token nas próximas requisições que mudam estado.
  */
 async function fetchCsrfToken(baseUrl) {
-    const response = await fetch(`${baseUrl}expapi/v1/csrf-token`, {
-        credentials: 'include',
-    });
+    const response = await fetch(`${baseUrl}expapi/v1/csrf-token`, { credentials: 'include' })
     if (!response.ok) {
         throw new Error('Não foi possível iniciar a sessão de segurança. Tente novamente.');
     }
@@ -83,10 +81,9 @@ export default function DailyRewardModal({
     const fetchStatus = useCallback(async () => {
         setStatusLoading(true);
         setStatusError(null);
-        const token = localStorage.getItem('token');
         try {
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/myinventory`, {
-                headers: { Authorization: `Bearer ${token}` },
+                credentials: 'include',
             });
             if (!response.ok) {
                 const message = await readErrorMessage(response, 'Não foi possível carregar sua diária');
@@ -125,21 +122,11 @@ export default function DailyRewardModal({
     const handleClaim = async () => {
         setClaiming(true);
         setClaimError(null);
-        const token = localStorage.getItem('token');
         const baseUrl = import.meta.env.VITE_API_BASE_URL;
         try {
             const csrfToken = await fetchCsrfToken(baseUrl);
 
-            const response = await fetch(`${baseUrl}expapi/v1/dailyreward`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                    'X-CSRF-Token': csrfToken,
-                },
-                body: JSON.stringify({}),
-            });
+            const response = await fetch(`${baseUrl}expapi/v1/dailyreward`, { credentials: 'include' })
 
             if (!response.ok) {
                 const message = await readErrorMessage(

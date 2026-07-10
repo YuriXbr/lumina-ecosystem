@@ -3,61 +3,23 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "../../../contexts/UserContext";
 import WarningAlert from "./WarningAlert";
 import { parseApiError, statusFallbackMessage, isNetworkError } from "../../../utils/apiError";
+import { apiFetch, getCsrfToken } from "../../../utils/apiFetch";
 
 export default function LoginModal() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showWarning, setShowWarning] = useState(false); // Estado para controlar a visibilidade do alerta
-  const [errorMessage, setErrorMessage] = useState(""); // Estado para mensagem de erro específica
-  const [isLoading, setIsLoading] = useState(false); // Estado de carregamento
-  const [csrfToken, setCsrfToken] = useState(""); // Estado para armazenar o CSRF token
-  const { onLoginSuccess } = useUser();
+  const [showWarning, setShowWarning] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { onLoginSuccess, user, loading } = useUser();
   const navigate = useNavigate();
 
+  // Se já está logado (sessão válida via cookie), redireciona para /members
   useEffect(() => {
-    const fetchCsrfToken = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, {
-          method: "GET",
-          credentials: "include", // Importante para incluir cookies
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setCsrfToken(data.csrfToken);
-        }
-      } catch (error) {
-        console.error("Erro ao obter CSRF token:", error);
-      }
-    };
-
-    const checkToken = async () => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        try {
-          const response = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}expapi/v1/validate-token`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (response.ok) {
-            navigate("/dashboard");
-          }
-        } catch (error) {
-          console.error("Error:", error);
-        }
-      }
-    };
-
-    fetchCsrfToken();
-    checkToken();
-  }, [navigate]);
+    if (!loading && user) {
+      navigate("/members", { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,41 +28,28 @@ export default function LoginModal() {
     setErrorMessage("");
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}expapi/v1/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": csrfToken, // Incluir o CSRF token no header
-          },
-          credentials: "include", // Importante para incluir cookies
-          body: JSON.stringify({ email, password }),
-        }
-      );
+      const csrfToken = await getCsrfToken();
+
+      // O backend seta o cookie httpOnly na resposta — não precisamos mais
+      // salvar o token no localStorage (vulnerabilidade XSS eliminada).
+      const response = await apiFetch("expapi/v1/login", {
+        method: "POST",
+        headers: { "X-CSRF-Token": csrfToken },
+        body: { email, password },
+      });
 
       if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem("token", data.token);
-
-        // Trigger user data loading in context
+        // Cookie já foi setado pelo backend. Apenas carrega o user no contexto.
         await onLoginSuccess();
-
-        navigate("/dashboard");
+        navigate("/members");
         return;
       }
 
-      // CORRIGIDO: antes fazia response.json() direto; se o backend respondesse
-      // texto puro o parse falhava e caía no catch genérico ("erro de conexão").
-      // parseApiError lida com JSON ou texto e nunca lança.
       const { message } = await parseApiError(response, statusFallbackMessage(response.status));
       setErrorMessage(message);
       setShowWarning(true);
     } catch (error) {
       console.error("Error:", error);
-      // CORRIGIDO: só mostra "erro de conexão" se for de fato uma falha de rede
-      // (TypeError do fetch). Qualquer outro erro mostra uma mensagem genérica,
-      // mas honesta, em vez de culpar a internet do usuário.
       setErrorMessage(
         isNetworkError(error)
           ? "Erro de conexão. Verifique sua internet e tente novamente."
@@ -120,7 +69,6 @@ export default function LoginModal() {
   return (
     <div className="pt-6">
       <div className="flex min-h-full flex-1 flex-col justify-center pt-16 py-12 lg:px-8">
-
         <div className="bg-gray-100 shadow-lg rounded-lg p-8">
           <a href="/#" className="block w-fit text-gray-500 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition ease-in-out duration-150">
             <svg className="w-6 h-6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
@@ -131,10 +79,9 @@ export default function LoginModal() {
           <div className="sm:mx-auto px-3 sm:w-full sm:max-w-sm">
             <img src="/new-purple.svg" className="mx-auto h-20 w-auto" alt="Logo" />
             <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-              Entre no <span className="text-indigo-500 underline underline-offset-4">painel de controle</span>!
+              Entre na <span className="text-indigo-500 underline underline-offset-4">Área de Membros</span>!
             </h2>
 
-            {/* NOVO: login/cadastro automático via Discord OAuth2 */}
             <button
               type="button"
               onClick={handleDiscordLogin}
@@ -155,9 +102,7 @@ export default function LoginModal() {
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-6">
               <div>
-                <label htmlFor="email" className="sr-only">
-                  Email address
-                </label>
+                <label htmlFor="email" className="sr-only">Email address</label>
                 <input
                   id="email"
                   name="email"
@@ -166,15 +111,13 @@ export default function LoginModal() {
                   required
                   disabled={isLoading}
                   className="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                  placeholder="Email address"
+                  placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div>
-                <label htmlFor="password" className="sr-only">
-                  Password
-                </label>
+                <label htmlFor="password" className="sr-only">Password</label>
                 <input
                   id="password"
                   name="password"
@@ -183,18 +126,10 @@ export default function LoginModal() {
                   required
                   disabled={isLoading}
                   className="relative block w-full appearance-none rounded-none rounded-b-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                  placeholder="Password"
+                  placeholder="Senha"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
-                <h3 className="mt-1 text-right text-sm text-gray-500">
-                  <a
-                    href="/"
-                    className="font-medium text-indigo-600 hover:text-indigo-500"
-                  >
-                    Esqueceu sua senha?
-                  </a>
-                </h3>
               </div>
               <div>
                 <button
@@ -210,25 +145,17 @@ export default function LoginModal() {
                       </svg>
                       Entrando...
                     </>
-                  ) : (
-                    'Entrar'
-                  )}
+                  ) : 'Entrar'}
                 </button>
                 <h3 className="mt-4 text-center text-sm text-gray-500">
-                  <a
-                    className="font-medium text-indigo-600 hover:text-indigo-500"
-                    href="/register"
-                  >
-                    Não tem uma conta? <span className="underline" href="/register">Registre-se</span>
+                  <a className="font-medium text-indigo-600 hover:text-indigo-500" href="/register">
+                    Não tem uma conta? <span className="underline">Registre-se</span>
                   </a>
                 </h3>
               </div>
             </form>
             {showWarning && (
-              <WarningAlert
-                message={errorMessage}
-                onClose={() => setShowWarning(false)}
-              />
+              <WarningAlert message={errorMessage} onClose={() => setShowWarning(false)} />
             )}
           </div>
         </div>

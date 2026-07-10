@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
+import { checkSession, apiLogout, API_BASE } from '../utils/apiFetch';
 
 const UserContext = createContext();
 
@@ -84,91 +85,41 @@ export const UserProvider = ({ children }) => {
     try {
       setError(null);
       setLoading(true);
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+      const data = await checkSession();
 
-      // Buscar dados reais do usuário via API
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/profile`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      if (data.authenticated && data.user) {
+        setUser(data.user);
 
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-        
-        // Buscar informações do Discord após carregar o perfil do usuário
-        try {
-          const discordResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/discordinfo`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
+        // Se tiver Discord vinculado, busca info adicional (avatar/username)
+        // já que o perfil do banco pode não ter avatar atualizado
+        if (data.user.discordOauth2Id) {
+          try {
+            const discordRes = await fetch(`${API_BASE}expapi/v1/discordinfo`, {
+              credentials: 'include',
+            });
+            if (discordRes.ok) {
+              const discordData = await discordRes.json();
+              setUser(prevUser => prevUser ? ({
+                ...prevUser,
+                id: discordData.id,
+                username: prevUser.username || discordData.username,
+                avatar: discordData.avatar,
+              }) : prevUser);
             }
-          });
-          
-          if (discordResponse.ok) {
-            const discordData = await discordResponse.json();
-            // Atualizar usuário com dados do Discord
-            setUser(prevUser => ({
-              ...prevUser,
-              id: discordData.id,
-              username: discordData.username,
-              avatar: discordData.avatar
-            }));
-          } else {
-            console.warn('Informações do Discord não disponíveis');
+          } catch (discordError) {
+            console.warn('Erro ao buscar informações do Discord:', discordError);
           }
-        } catch (discordError) {
-          console.warn('Erro ao buscar informações do Discord:', discordError);
         }
-      } else if (response.status === 401) {
-        // Token inválido, remover e redirecionar para login
-        localStorage.removeItem('token');
-        setUser(null);
-        setError('Token inválido. Faça login novamente.');
       } else {
-        console.error('Erro ao buscar dados do usuário:', response.status);
-        setError('Erro ao carregar dados do usuário');
-      }
-    } catch (error) {
-      console.error('Erro ao carregar usuário:', error);
-      // Em caso de erro de rede, usar dados mockados temporariamente para desenvolvimento
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Usando dados mockados devido a erro de rede');
-        setUser({
-          accountId: "dev-mock-id",
-          firstName: "Usuário",
-          lastName: "Teste",
-          email: "teste@test.com",
-          accessType: "admin",
-          emailVerified: true,
-          discordOauth2Id: "123456789",
-          discordAvatar: "a1b2c3d4e5f6g7h8i9j0",
-          // Campos para compatibilidade com inventory page
-          id: "123456789",
-          avatar: "a1b2c3d4e5f6g7h8i9j0",
-          registrationDate: new Date(),
-          lastLogin: new Date(),
-          blocked: false,
-          banned: false,
-          emailNotifications: true,
-          discordNotifications: true,
-          botActivityAlerts: false,
-          publicProfile: false,
-          showOnlineStatus: true,
-          language: 'pt-BR',
-          timezone: 'America/Sao_Paulo'
-        });
-      } else {
-        localStorage.removeItem('token');
         setUser(null);
-        setError('Erro de conexão. Tente novamente.');
+        if (data.reason) {
+          setError(data.reason === 'ACCOUNT_BANNED' ? 'Conta banida.' : 'Conta bloqueada.');
+        }
       }
+    } catch (err) {
+      console.error('Erro ao carregar usuário:', err);
+      setUser(null);
+      setError('Erro de conexão. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -176,47 +127,36 @@ export const UserProvider = ({ children }) => {
 
   useEffect(() => {
     loadUser();
-    
-    // Listen for storage changes (when token is set in another tab/component)
-    const handleStorageChange = (e) => {
-      if (e.key === 'token') {
-        if (e.newValue) {
-          // Token was added, reload user
-          loadUser();
-        } else {
-          // Token was removed, clear user
-          setUser(null);
-          setLoading(false);
-        }
-      }
-    };
 
-    window.addEventListener('storage', handleStorageChange);
+    // Escuta evento de 401 disparado pelo apiFetch
+    const handleUnauthorized = () => {
+      setUser(null);
+      setError(null);
+    };
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
     };
   }, []);
 
   const hasPermission = (permission) => {
     if (!user) return false;
-    
     const userLevel = ACCESS_LEVELS[user.accessType];
     if (!userLevel) return false;
-    
     return userLevel.permissions.includes('all') || userLevel.permissions.includes(permission);
   };
 
   const isStaff = () => {
     if (!user) return false;
     const userLevel = ACCESS_LEVELS[user.accessType];
-    return userLevel && userLevel.level >= 5; // support e acima
+    return userLevel && userLevel.level >= 5;
   };
 
   const isAdmin = () => {
     if (!user) return false;
     const userLevel = ACCESS_LEVELS[user.accessType];
-    return userLevel && userLevel.level >= 7; // admin e acima
+    return userLevel && userLevel.level >= 7;
   };
 
   const getUserLevel = () => {
@@ -228,19 +168,17 @@ export const UserProvider = ({ children }) => {
     await loadUser();
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
+  const logout = async () => {
+    await apiLogout();
     setUser(null);
   };
 
-  // Função para ser chamada após login bem-sucedido
   const onLoginSuccess = async () => {
     await loadUser();
   };
 
   const value = {
     user,
-    setUser,
     loading,
     error,
     hasPermission,

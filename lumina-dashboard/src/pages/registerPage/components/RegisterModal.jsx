@@ -17,10 +17,7 @@ export default function RegisterModal() {
     useEffect(() => {
         const fetchCsrfToken = async () => {
             try {
-                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, {
-                    method: "GET",
-                    credentials: "include",
-                });
+                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, { credentials: 'include' })
 
                 if (response.ok) {
                     const data = await response.json();
@@ -100,14 +97,6 @@ export default function RegisterModal() {
 
         try {
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/register`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-Token": csrfToken, // Incluir o CSRF token no header
-                },
-                credentials: "include", // Importante para incluir cookies
-                body: JSON.stringify(formData),
-            });
 
             clearTimeout(timeoutId);
             setIsLoading(false);

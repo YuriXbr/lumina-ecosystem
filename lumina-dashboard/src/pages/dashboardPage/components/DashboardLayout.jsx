@@ -32,7 +32,7 @@ export default function DashboardLayout({ children }) {
 
 
   function handleLogout() {
-    localStorage.removeItem('token');
+    
     navigate('/login');
   }
   

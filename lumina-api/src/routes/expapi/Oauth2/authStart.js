@@ -2,7 +2,7 @@ const crypto = require('node:crypto');
 const jwt = require('jsonwebtoken');
 const { getProvider } = require('../../../oauthProviders');
 const { isAllowedOrigin, signState } = require('../../../oauthProviders/state');
-const { addLog } = require('../../../logger/logger');
+const { addLog, routeError } = require('../../../logger/logger');
 
 /**
  * Inicia o fluxo OAuth2. Suporta três intents:
@@ -38,16 +38,25 @@ module.exports = {
             return res.status(404).json({ error: 'Provedor OAuth2 não suportado.', code: 'UNKNOWN_PROVIDER' });
         }
 
-        // Fluxo de vinculação: precisa de um JWT válido para saber a qual conta vincular
+        // Fluxo de vinculação: precisa de um JWT válido para saber a qual conta vincular.
+        // Aceita token do cookie httpOnly (preferencial) OU do query param (legado).
         let linkAccountId = null;
         if (intent === 'link') {
-            const linkToken = req.query.linkToken;
-            if (linkToken) {
-                try {
-                    const decoded = jwt.verify(linkToken, process.env.JWT_SECRET);
-                    linkAccountId = decoded.accountId || null;
-                } catch {
-                    // Token inválido ou expirado — rejeita
+            const { verifyRequestAuth } = require('../../../utils/authHelpers');
+            const { user } = verifyRequestAuth(req);
+            if (user) {
+                linkAccountId = user.accountId || null;
+            }
+            // Fallback: linkToken via query (legado, para clients nao-browser)
+            if (!linkAccountId) {
+                const linkToken = req.query.linkToken;
+                if (linkToken) {
+                    try {
+                        const decoded = jwt.verify(linkToken, process.env.JWT_SECRET);
+                        linkAccountId = decoded.accountId || null;
+                    } catch (tokenErr) {
+                        addLog('API', 'oauth.linktoken.invalid', 'Token de vinculação rejeitado: ' + tokenErr.message);
+                    }
                 }
             }
             if (!linkAccountId) {
@@ -65,6 +74,11 @@ module.exports = {
         });
 
         addLog('API', 'oauth.start', `Iniciando ${intent} via ${req.params.provider}`);
-        return res.redirect(provider.getAuthorizationUrl(state));
+        try {
+            return res.redirect(provider.getAuthorizationUrl(state));
+        } catch (redirectErr) {
+            addLog('API', 'oauth.start.redirectfail', 'Falha ao redirecionar: ' + redirectErr.message);
+            return res.status(500).json({ error: 'Erro ao iniciar autenticação.', code: 'OAUTH_REDIRECT_ERROR' });
+        }
     }
 };

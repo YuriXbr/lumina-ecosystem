@@ -1,4 +1,3 @@
-const jwt                       = require('jsonwebtoken');
 const DashboardAccountService   = require('../../../../database/services/DashboardAccountService');
 const { routeError }            = require('../../../../logger/logger');
 
@@ -18,12 +17,9 @@ module.exports = {
     method: 'get',
 
     async execute(req, res) {
-        const authHeader = req.headers.authorization;
-        if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.', code: 'MISSING_TOKEN' });
-
-        let decoded;
-        try { decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET); }
-        catch { return res.status(401).json({ error: 'Token inválido.', code: 'INVALID_TOKEN' }); }
+        const { verifyRequestAuth } = require('../../../../utils/authHelpers');
+        const { user: decoded, error: authError } = verifyRequestAuth(req);
+        if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         try {
             const adminAccount = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
@@ -33,10 +29,14 @@ module.exports = {
             if (userLevel < 5)
                 return res.status(403).json({ error: 'Permissão insuficiente.', code: 'INSUFFICIENT_PERMISSION' });
 
+            // Limites seguros: page mínimo 1, limit entre 1 e 100
+            const safePage  = Math.max(parseInt(req.query.page)  || 1, 1);
+            const safeLimit = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 100);
+
             const users = await DashboardAccountService.getAllAccounts({
-                page: parseInt(req.query.page) || 1,
-                limit: parseInt(req.query.limit) || 50,
-                search: req.query.search || '',
+                page:       safePage,
+                limit:      safeLimit,
+                search:     req.query.search     || '',
                 accessType: req.query.accessType || '',
             });
 

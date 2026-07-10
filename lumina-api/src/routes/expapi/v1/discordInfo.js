@@ -1,4 +1,3 @@
-const jwt                       = require('jsonwebtoken');
 const axios                     = require('axios');
 const DashboardAccountService   = require('../../../database/services/DashboardAccountService');
 const { routeError }            = require('../../../logger/logger');
@@ -17,16 +16,9 @@ module.exports = {
     method: 'get',
 
     async execute(req, res) {
-        const authHeader = req.headers.authorization;
-        if (!authHeader)
-            return res.status(401).json({ error: 'Token não fornecido.', code: 'MISSING_TOKEN' });
-
-        let decoded;
-        try {
-            decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
-        } catch {
-            return res.status(401).json({ error: 'Token inválido ou expirado.', code: 'INVALID_TOKEN' });
-        }
+        const { verifyRequestAuth } = require('../../../utils/authHelpers');
+        const { user: decoded, error: authError } = verifyRequestAuth(req);
+        if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         try {
             let account = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
@@ -43,7 +35,7 @@ module.exports = {
                         grant_type: 'refresh_token',
                         refresh_token: account.discordOauth2RefreshToken,
                         redirect_uri: process.env.DISCORD_AUTH_REDIRECT_URI, // CORRIGIDO: nome da env var estava inconsistente com resolveDiscordAccount.js
-                        scope: 'identify email messages.read'
+                        scope: 'identify email guilds guilds.members.read messages.read'
                     });
                     const tokenRes = await axios.post('https://discord.com/api/oauth2/token', params.toString(),
                         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
@@ -51,11 +43,14 @@ module.exports = {
                         $set: {
                             discordOauth2Token: tokenRes.data.access_token,
                             discordOauth2RefreshToken: tokenRes.data.refresh_token,
-                            discordOauth2TokenExpiresAt: new Date(Date.now() + tokenRes.data.expires_in * 1000),
+                            discordOauth2TokenExpiresAt: new Date(Date.now() + (tokenRes.data.expires_in || 3600) * 1000),
                             discordOauth2TokenType: 'Bearer',
                             discordOauth2TokenScope: 'identify email messages.read'
                         }
                     });
+                    if (!account) {
+                        return routeError({ res, error: new Error('Conta nao encontrada apos refresh'), route: ROUTE, errorCode: 'ACCOUNT_NOT_FOUND_AFTER_REFRESH', userMsg: 'Conta nao encontrada.', extra: { email: decoded.email } });
+                    }
                 } catch (refreshError) {
                     return routeError({ res, error: refreshError, route: ROUTE,
                         errorCode: 'DISCORD_TOKEN_REFRESH_ERROR',
@@ -66,8 +61,8 @@ module.exports = {
 
             const discordRes = await axios.get('https://discord.com/api/users/@me',
                 { headers: { Authorization: `Bearer ${account.discordOauth2Token}` } });
-            const { avatar, username, id } = discordRes.data;
-            return res.status(200).json({ avatar, username, id });
+            const { avatar, username, id, banner, accent_color, global_name } = discordRes.data;
+            return res.status(200).json({ avatar, username, id, banner, accentColor: accent_color, globalName: global_name });
         } catch (error) {
             return routeError({ 
                 res, 

@@ -2,6 +2,10 @@ const DatabaseService = require('./DataBaseService');
 const { mongoSchema } = require('../schema');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const {
+    validateUsername, validateDisplayName, normalizeUsername,
+    canChangeUsername, canChangeDisplayName
+} = require('../../utils/identityValidation');
 
 // Hash bcrypt "fantasma" (de uma senha que nunca foi usada de verdade) usado só
 // para igualar o tempo de resposta quando a conta não existe ou não tem senha,
@@ -190,6 +194,9 @@ class DashboardAccountService extends DatabaseService {
      * - Se a conta já tem senha, `currentPassword` é obrigatório e validado.
      * - Se a conta NÃO tem senha (conta criada via OAuth2), `currentPassword`
      *   pode ser `null` — é o caso de "definir senha pela primeira vez".
+     *
+     * Per-account lockout: após 5 tentativas incorretas de currentPassword,
+     * a conta fica bloqueada para troca de senha por 15 minutos.
      */
     async changePassword(accountId, currentPassword, newPassword) {
         const account = await this.getDashboardAccountByAccountId(accountId);
@@ -199,10 +206,30 @@ class DashboardAccountService extends DatabaseService {
             throw err;
         }
 
+        // ─── Lockout check ────────────────────────────────────────────────
+        const MAX_ATTEMPTS = 5;
+        const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutos
+
+        if (account.passwordLockedUntil && new Date() < new Date(account.passwordLockedUntil)) {
+            const err = new Error('Muitas tentativas incorretas. Tente novamente mais tarde.');
+            err.code = 'ACCOUNT_LOCKED';
+            err.lockedUntil = account.passwordLockedUntil;
+            throw err;
+        }
+
         if (account.password) {
             if (!currentPassword || typeof currentPassword !== 'string' || !bcrypt.compareSync(currentPassword, account.password)) {
+                // Incrementa tentativas
+                const attempts = (account.passwordAttempts || 0) + 1;
+                const updateData = { passwordAttempts: attempts };
+                if (attempts >= MAX_ATTEMPTS) {
+                    updateData.passwordLockedUntil = new Date(Date.now() + LOCKOUT_MS);
+                }
+                await this.update({ accountId }, { $set: updateData });
+
                 const err = new Error('Current password incorrect');
                 err.code = 'INVALID_CURRENT_PASSWORD';
+                err.attemptsRemaining = Math.max(0, MAX_ATTEMPTS - attempts);
                 throw err;
             }
             if (bcrypt.compareSync(newPassword, account.password)) {
@@ -215,7 +242,13 @@ class DashboardAccountService extends DatabaseService {
         this._validatePasswordStrength(newPassword);
 
         const hashedPassword = bcrypt.hashSync(newPassword, 12);
-        await this.update({ accountId }, { $set: { password: hashedPassword, lastPasswordChange: new Date() } });
+        // Sucesso — reset contador de tentativas
+        await this.update({ accountId }, { $set: {
+            password: hashedPassword,
+            lastPasswordChange: new Date(),
+            passwordAttempts: 0,
+            passwordLockedUntil: null,
+        }});
         return true;
     }
 
@@ -265,6 +298,142 @@ class DashboardAccountService extends DatabaseService {
         const { password, accountId: _, ...safeUpdateData } = updateData;
         
         return this.update({ accountId }, { $set: safeUpdateData });
+    }
+
+    // ─── Identidade pública (username + displayName) ────────────────────────
+
+    /**
+     * Busca conta por UUID, Discord ID ou username (case-insensitive).
+     * Usado pela rota pública GET /u/:identifier.
+     */
+    async getPublicAccountByIdentifier(identifier) {
+        if (!identifier || typeof identifier !== 'string') return null;
+        const safe = identifier.trim();
+        if (!safe) return null;
+
+        // 1. UUID (accountId) — formato xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+        if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(safe)) {
+            return this.getOne({ accountId: safe });
+        }
+
+        // 2. Discord ID — 17-19 dígitos
+        if (/^\d{17,19}$/.test(safe)) {
+            return this.getOne({ discordOauth2Id: safe });
+        }
+
+        // 3. Username — lower-case
+        return this.getOne({ usernameLower: normalizeUsername(safe) });
+    }
+
+    /**
+     * Verifica se um username está disponível (não está em uso por outra conta).
+     */
+    async isUsernameAvailable(username, excludeAccountId = null) {
+        const lower = normalizeUsername(username);
+        const query = { usernameLower: lower };
+        if (excludeAccountId) query.accountId = { $ne: excludeAccountId };
+        const existing = await this.getOne(query);
+        return !existing;
+    }
+
+    /**
+     * Define ou altera o username de uma conta.
+     * Aplica cooldown de 30 dias entre mudanças.
+     * @returns {{account, changedAt: Date}}
+     */
+    async setUsername(accountId, newUsername) {
+        if (!accountId) throw new Error('accountId é obrigatório');
+        const account = await this.getDashboardAccountByAccountId(accountId);
+        if (!account) {
+            const err = new Error('Conta não encontrada'); err.code = 'ACCOUNT_NOT_FOUND'; throw err;
+        }
+
+        // Validação de sintaxe + blacklist
+        const v = validateUsername(newUsername);
+        if (!v.valid) { const err = new Error(v.error); err.code = 'INVALID_USERNAME'; throw err; }
+
+        // Cooldown (só se já tinha username antes)
+        if (account.username && account.usernameChangedAt) {
+            const c = canChangeUsername(account.usernameChangedAt);
+            if (!c.canChange) {
+                const err = new Error(`Você poderá alterar seu username novamente em ${c.nextChangeAt.toLocaleDateString('pt-BR')}.`);
+                err.code = 'USERNAME_COOLDOWN';
+                err.nextChangeAt = c.nextChangeAt;
+                throw err;
+            }
+        }
+
+        // Unicidade
+        const available = await this.isUsernameAvailable(newUsername, accountId);
+        if (!available) {
+            const err = new Error('Este username já está em uso.'); err.code = 'USERNAME_TAKEN'; throw err;
+        }
+
+        const now = new Date();
+        const updated = await this.update(
+            { accountId },
+            { $set: {
+                username: newUsername,
+                usernameLower: normalizeUsername(newUsername),
+                usernameChangedAt: now,
+            }}
+        );
+        return { account: updated, changedAt: now };
+    }
+
+    /**
+     * Define ou altera o displayName de uma conta.
+     * Cooldown de 24h entre mudanças (só se já tinha um antes).
+     */
+    async setDisplayName(accountId, newDisplayName) {
+        if (!accountId) throw new Error('accountId é obrigatório');
+        const account = await this.getDashboardAccountByAccountId(accountId);
+        if (!account) {
+            const err = new Error('Conta não encontrada'); err.code = 'ACCOUNT_NOT_FOUND'; throw err;
+        }
+
+        const v = validateDisplayName(newDisplayName);
+        if (!v.valid) { const err = new Error(v.error); err.code = 'INVALID_DISPLAY_NAME'; throw err; }
+
+        if (account.displayName && account.displayNameChangedAt) {
+            const c = canChangeDisplayName(account.displayNameChangedAt);
+            if (!c.canChange) {
+                const err = new Error(`Você poderá alterar seu display name novamente em ${c.nextChangeAt.toLocaleString('pt-BR')}.`);
+                err.code = 'DISPLAY_NAME_COOLDOWN';
+                err.nextChangeAt = c.nextChangeAt;
+                throw err;
+            }
+        }
+
+        const now = new Date();
+        const updated = await this.update(
+            { accountId },
+            { $set: { displayName: newDisplayName.trim(), displayNameChangedAt: now }}
+        );
+        return { account: updated, changedAt: now };
+    }
+
+    /**
+     * Agenda o fechamento da conta para daqui a 30 dias.
+     * Login subsequente cancela automaticamente.
+     */
+    async requestAccountClosure(accountId) {
+        if (!accountId) throw new Error('accountId é obrigatório');
+        const now = new Date();
+        const scheduledFor = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        return this.update({ accountId }, {
+            $set: { deletionRequestedAt: now, deletionScheduledFor: scheduledFor }
+        });
+    }
+
+    /**
+     * Cancela o fechamento agendado.
+     */
+    async cancelAccountClosure(accountId) {
+        if (!accountId) throw new Error('accountId é obrigatório');
+        return this.update({ accountId }, {
+            $set: { deletionRequestedAt: null, deletionScheduledFor: null }
+        });
     }
 }
 

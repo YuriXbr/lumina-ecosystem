@@ -16,6 +16,7 @@
 
 'use strict';
 
+const jwt   = require('jsonwebtoken');
 const axios   = require('axios');
 const metrics = require('./metrics');
 
@@ -81,8 +82,24 @@ const sendErrorEmbed = async ({
     if (!webhookUrl) return;
 
     const ts    = timestamp();
-    const stack = error?.stack || String(error || '');
-    const truncatedStack = stack.length > 900 ? stack.slice(0, 897) + '...' : stack;
+
+    // Sanitiza stack trace antes de enviar ao Discord:
+    // - Limita a 500 chars e 5 linhas
+    // - Redact emails, IPs e tokens longos que aparecam na stack
+    const rawStack = error?.stack || String(error || '');
+    const stackLines = rawStack.split('\n').slice(0, 5);
+    let truncatedStack = stackLines.join('\n');
+    truncatedStack = truncatedStack.replace(/[\w.-]+@[\w.-]+\.\w+/g, '[email]');
+    truncatedStack = truncatedStack.replace(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, '[ip]');
+    truncatedStack = truncatedStack.replace(/[A-Za-z0-9+/=]{40,}/g, '[token]');
+    if (truncatedStack.length > 500) truncatedStack = truncatedStack.slice(0, 497) + '...';
+
+    // Mensagem de erro tambem e sanitizada
+    const rawMessage = error?.message ? String(error.message) : '';
+    const safeMessage = rawMessage
+        .replace(/[\w.-]+@[\w.-]+\.\w+/g, '[email]')
+        .replace(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, '[ip]')
+        .slice(0, 500);
 
     const fields = [
         { name: '📁 Arquivo / Rota', value: `\`${file || route || 'desconhecido'}\``, inline: true },
@@ -98,7 +115,7 @@ const sendErrorEmbed = async ({
     if (durationMs) fields.push({ name: '⏱️ Duração',   value: `${durationMs.toFixed(1)}ms`, inline: true });
 
     if (error?.message) {
-        fields.push({ name: '💬 Mensagem', value: `\`${String(error.message).slice(0, 1024)}\``, inline: false });
+        fields.push({ name: '💬 Mensagem', value: `\`${safeMessage}\``, inline: false });
     }
     if (truncatedStack) {
         fields.push({ name: '📋 Stack Trace', value: `\`\`\`\n${truncatedStack}\n\`\`\``, inline: false });
@@ -117,9 +134,9 @@ const sendErrorEmbed = async ({
     };
 
     try {
-        await axios.post(webhookUrl, { embeds: [embed] }, { timeout: 5000 });
+        await axios.post(webhookUrl, { embeds: [embed] }, { timeout: 3000 });
     } catch (err) {
-        console.error(`[logger] Falha ao enviar embed de erro: ${err.message}`);
+        // Silencioso — não loga erro de webhook para não criar spam
     }
 };
 
@@ -196,6 +213,18 @@ const routeError = async ({
  * Deve ser registrado uma vez no index.js como app.use(requestLogger()).
  * Logging de nível 'info' para respostas normais, 'warn' para 4xx, 'error' para 5xx.
  */
+
+function extractEmailFromRequest(req) {
+    try {
+        const token = (req.cookies && req.cookies.lumina_token) ||
+            (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')
+                ? req.headers.authorization.split(' ')[1] : null);
+        if (!token) return '';
+        const decoded = jwt.decode(token);
+        return decoded?.email || '';
+    } catch { return ''; }
+}
+
 function requestLogger() {
     return function requestLoggerMiddleware(req, res, next) {
         const startedAt = process.hrtime.bigint();
@@ -226,7 +255,7 @@ function requestLogger() {
                     statusCode: status,
                     durationMs,
                     ip:         req.ip         || '',
-                    userEmail:  req.user?.email || '',
+                    userEmail:  req.user?.email || extractEmailFromRequest(req),
                     userId:     req.user?.id    || '',
                     userAgent:  req.headers?.['user-agent'] || '',
                 }).catch(() => {});

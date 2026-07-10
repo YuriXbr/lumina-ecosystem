@@ -9,7 +9,7 @@ const bot= {
     activityStatus: { type: String, default: 'online' },
     activityType: { type: String, default: 'PLAYING' },
     activityName: { type: String, default: "" },
-    activityUrl: { type: String, default: `${process.env.DASHOBAORD_PROTOCOL}://${process.env.DASHBOARD_DOMAIN}` },
+    activityUrl: { type: String, default: `${process.env.DASHBOARD_PROTOCOL}://${process.env.DASHBOARD_DOMAIN}` },
     clientSecret: { type: String, required: false, unique: true },
     redirectUri: { type: String, required: false, unique: true },
     owners: { type: Array, default: [] },
@@ -66,6 +66,12 @@ const guilds= {
     gachaRolls: { type: Object, default: {} },
     gachaMaxRolls: { type: Number, default: 8 },
     gachaGameMode: { type: String, default: 'personal' },
+    gachaEnabled: { type: Boolean, default: true },
+    gachaChestsEnabled: { type: Boolean, default: true },
+    commandsEnabled: { type: Object, default: {} },
+    autoMessages: { type: Array, default: [] },
+    blockedUsers: { type: Array, default: [] },
+    blockedRoles: { type: Array, default: [] },
     guildOwnerId: { type: String, required: true },
     prefix: { type: String, default: 'l!' },
     blockedChannels: { type: Object, default: [] },
@@ -300,6 +306,41 @@ const dashboardAccounts= {
     language: { type: String, default: 'pt-BR' },
     timezone: { type: String, default: 'America/Sao_Paulo' },
     lastPasswordChange: { type: Date, default: Date.now },
+
+    // Per-account lockout para tentativas de troca de senha
+    passwordAttempts: { type: Number, default: 0 },
+    passwordLockedUntil: { type: Date, default: null },
+
+    // --- Identidade publica (redesign) ---
+    // username: handle unico case-insensitive (4-16 chars, A-Z 0-9 _).
+    // Exibido sempre com a capitalizacao original escolhida pelo usuario.
+    // Resolvido em /u/:identifier (identifier = UUID, Discord ID ou username).
+    username: { type: String, required: false, default: '', unique: true, sparse: true },
+    usernameLower: { type: String, required: false, default: '', unique: true, sparse: true },
+    usernameChangedAt: { type: Date, default: null },
+
+    // displayName: nome de exibicao livre (1-32 chars), nao unico.
+    displayName: { type: String, required: false, default: '' },
+    displayNameChangedAt: { type: Date, default: null },
+
+    // Account closure (TTL 30 dias). Login cancela a exclusao.
+    deletionRequestedAt: { type: Date, default: null },
+    deletionScheduledFor: { type: Date, default: null },
+}
+
+// Feed de novidades postado por administradores -- exibido na Area de Membros
+// (publico, nao exige login para visualizar).
+const newsPosts = {
+    title:       { type: String, required: true },
+    body:        { type: String, required: true },
+    excerpt:     { type: String, default: '' },         // resumo opcional para sidebar
+    imageUrl:    { type: String, default: '' },         // imagem opcional
+    tag:         { type: String, default: 'novidade' }, // novidade | atualizacao | evento | aviso
+    pinned:      { type: Boolean, default: false },     // fixar no topo do feed
+    publishedAt: { type: Date, default: Date.now },
+    updatedAt:   { type: Date, default: Date.now },
+    authorEmail: { type: String, default: '' },         // auditoria
+    authorName:  { type: String, default: '' },
 }
 
 const mongoSchema = {
@@ -314,6 +355,7 @@ const mongoSchema = {
     skinlines,
     universes,
     dashboardAccounts,
+    newsPosts,
 
     // Logs de todas as requisições/eventos da API (rastreabilidade total)
     // TTL gerenciado via índice { expiresAt: 1 } no MongoDB (30 dias)

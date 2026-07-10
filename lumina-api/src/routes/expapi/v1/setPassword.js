@@ -41,10 +41,19 @@ module.exports = {
             switch (error.code) {
                 case 'ACCOUNT_NOT_FOUND':
                     return res.status(404).json({ error: 'Conta não encontrada.', code: error.code });
+                case 'ACCOUNT_LOCKED':
+                    return res.status(429).json({
+                        error: 'Muitas tentativas incorretas. Tente novamente em 15 minutos.',
+                        code: 'ACCOUNT_LOCKED',
+                        lockedUntil: error.lockedUntil,
+                    });
                 case 'INVALID_CURRENT_PASSWORD':
                     return res.status(400).json({
-                        error: 'Senha atual incorreta ou não informada.',
-                        code: 'INVALID_CURRENT_PASSWORD'
+                        error: error.attemptsRemaining > 0
+                            ? `Senha atual incorreta. ${error.attemptsRemaining} tentativa(s) restante(s).`
+                            : 'Senha atual incorreta. Conta temporariamente bloqueada.',
+                        code: 'INVALID_CURRENT_PASSWORD',
+                        attemptsRemaining: error.attemptsRemaining,
                     });
                 case 'SAME_PASSWORD':
                     return res.status(400).json({ error: 'A nova senha deve ser diferente da atual.', code: error.code });

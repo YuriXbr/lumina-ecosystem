@@ -10,7 +10,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const express = require('express');
 const cors = require('cors');
-const csrf = require('csurf');
+const { csrfProtection } = require('./src/utils/csrfMiddleware');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const { addLog, forceSendLogs, routeError, sendErrorEmbed, requestLogger } = require('./src/logger/logger.js');
@@ -21,14 +21,8 @@ const app = express();
 const port = process.env.PORT || process.env.DASHBOARD_PORT;
 const ip = process.env.IP || process.env.API_BASE_URL || 'localhost';
 
-const csrfProtection = csrf({ 
-    cookie: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', // true em produção HTTPS
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' para cross-origin HTTPS
-        maxAge: 60 * 60 * 1000 // 1 hora
-    }
-});
+// csrfProtection agora vem de src/utils/csrfMiddleware.js (double-submit cookie pattern)
+// Substitui o pacote deprecated csurf
 
 app.set('trust proxy', 1);
 
@@ -101,25 +95,11 @@ if (typeof requestLogger === 'function') {
     app.use(requestLogger());
 }
 
-const allowedOrigins = [
-  'https://luminasink.me',
-  'https://www.luminasink.me',
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'http://127.0.0.1:3000',
-  'http://127.0.0.1:5173',
-  'https://lumina-api-tau.vercel.app',
-  'https://bot.luminasink.com'
-];
-
-const isVercelTestEnv = (origin) => {
-  const vercelRegex = /^https:\/\/[a-zA-Z0-9-]+-yurixbrs-projects\.vercel\.app$/;
-  return vercelRegex.test(origin);
-};
+const { isAllowedOrigin } = require('./src/config/allowedOrigins');
 
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1 || isVercelTestEnv(origin)) {
+    if (!origin || isAllowedOrigin(origin)) {
       return callback(null, true);
     } else {
       return callback(new Error('Origin não permitida por CORS: ' + origin), false);
@@ -131,20 +111,30 @@ app.use(cors({
 
 const routes = [];
 
+const _isDev = process.env.NODE_ENV !== 'production';
 const loadRoutes = (dir) => {
     fs.readdirSync(dir).forEach(file => {
         const filePath = path.join(dir, file);
         if (fs.lstatSync(filePath).isDirectory()) {
             loadRoutes(filePath);
         } else if (file.endsWith('.js')) {
-            const route = require(filePath);
+            let route;
+            try {
+                route = require(filePath);
+            } catch (requireErr) {
+                // Um require falho (módulo não encontrado, erro de sintaxe, etc.)
+                // NÃO deve crashar todo o servidor — loga e pula esta rota.
+                console.error(`[FATAL] Falha ao carregar rota ${filePath}: ${requireErr.message}`);
+                addLog('API', 'route.load.fail', `Falha ao carregar ${filePath}: ${requireErr.message}`);
+                return;
+            }
             if (!route || typeof route !== 'object' || typeof route.route !== 'string') {
                 return;
             }
             const middlewares = [];
 
             if (route.apiKeyNeeded) {
-                console.log(`Rota ${route.route} precisa de apiKey`);
+                if (_isDev) console.log(`Rota ${route.route} precisa de apiKey`);
                 middlewares.push((req, res, next) => {
                     const apiKey = req.query.apiKey || '';
                     const expectedKey = encodeURIComponent(process.env.LUMINA_API_KEY || '');
@@ -162,27 +152,19 @@ const loadRoutes = (dir) => {
                 });
             }
             if (route.jwtNeeded) {
-                console.log(`Rota ${route.route} precisa de JWT`);
+                if (_isDev) console.log(`Rota ${route.route} precisa de JWT`);
                 middlewares.push((req, res, next) => {
-                    const authHeader = req.headers.authorization;
-                    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-                        return res.status(401).json({ error: 'Token não fornecido.' });
+                    const { verifyRequestAuth } = require('./src/utils/authHelpers');
+                    const { user, error } = verifyRequestAuth(req);
+                    if (error) {
+                        return res.status(error.status).json({ error: error.message, code: error.code });
                     }
-                    const token = authHeader.split(' ')[1];
-                    if (!token) {
-                        return res.status(401).send('Invalid token.');
-                    }
-                    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-                        if (err) {
-                            return res.status(401).send('Invalid token.');
-                        }
-                        req.user = decoded;
-                        next();
-                    });
+                    req.user = user;
+                    next();
                 });
             }
             if (route.loginLimiterNeeded) {
-                console.log(`Rota ${route.route} precisa de loginLimiter`);
+                if (_isDev) console.log(`Rota ${route.route} precisa de loginLimiter`);
                 // Usar registerLimiter para rotas de registro, loginLimiter para as demais
                 if (route.route.includes('/register')) {
                     middlewares.push(registerLimiter);
@@ -191,19 +173,19 @@ const loadRoutes = (dir) => {
                 }
             }
             if (route.checkAuthNeeded) {
-                console.log(`Rota ${route.route} precisa de checkAuth`);
+                if (_isDev) console.log(`Rota ${route.route} precisa de checkAuth`);
                 middlewares.push(checkAuth);
             }
             if (route.csrfProtectionNeeded) {
-                if(process.env.NODE_ENV === 'production') {
-                    console.log(`Rota ${route.route} precisa de csrfProtection`);
+                if (process.env.NODE_ENV !== 'test') {
+                    if (_isDev) console.log(`Rota ${route.route} precisa de csrfProtection`);
                     middlewares.push(csrfProtection);
-                } else { 
-                    console.log(`Rota ${route.route} não tem csrfProtection por estar em desenvolvimento`);
+                } else {
+                    if (_isDev) console.log(`Rota ${route.route} sem csrfProtection (test env)`);
                 }
             }
             if(route.internalKeyNeeded) {
-                console.log(`Rota ${route.route} precisa de internalKey`);
+                if (_isDev) console.log(`Rota ${route.route} precisa de internalKey`);
                 middlewares.push(internalKeyCheck);
             }
 
@@ -217,7 +199,7 @@ const loadRoutes = (dir) => {
             }
 
             if (route.enabled) {
-                console.log(`Rota ${route.route} carregada com ${middlewares.length} middlewares.`);
+                if (_isDev) if (_isDev) console.log(`Rota ${route.route} carregada com ${middlewares.length} middlewares.`);
                 if (typeof route.execute !== 'function') {
                     console.error(`Error: Route ${route.route} with method ${route.method} does not have a valid execute function.`);
                 } else {
@@ -262,30 +244,16 @@ const swaggerRoute = require('./src/routes/docs/swagger-route.js');
 swaggerRoute(app);
 
 app.get('/expapi/v1/csrf-token', csrfProtection, (req, res) => {
-    console.log('CSRF token solicitado, cookies:', req.headers.cookie);
     res.json({ csrfToken: req.csrfToken() });
 });
 
 app.post('/expapi/v1/validate-token', (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        return res.status(401).send('You need an authorization token to access this.');
+    const { verifyRequestAuth } = require('./src/utils/authHelpers');
+    const { user, error } = verifyRequestAuth(req);
+    if (error) {
+        return res.status(401).json({ error: 'Token invalido ou nao fornecido.', code: error.code });
     }
-    
-    const headerParts = authHeader.split(' ');
-    if (headerParts.length !== 2 || headerParts[0] !== 'Bearer') {
-        return res.status(401).send('Invalid authorization header format. Use: Bearer <token>');
-    }
-    
-    const token = headerParts[1];
-    if (!token) {
-        return res.status(401).send('Token not provided.');
-    }
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-        if (err) return res.status(401).send('Invalid token.');
-        res.status(200).send('Valid token.');
-    });
+    res.status(200).json({ valid: true, email: user.email });
 });
 
 app.get('/expapi/v1/validateAuth', loginLimiter, checkAuth, csrfProtection, (req, res) => {
@@ -437,5 +405,31 @@ if (require.main === module) {
         }
     })();
 }
+
+// ─── Handlers globais de processo (graceful degradation) ─────────────────────
+// Estes handlers impedem que um erro não tratado (uncaughtException) ou uma
+// Promise rejeitada não capturada (unhandledRejection) crashe o processo.
+// Em vez disso, loga o erro e continua rodando — o Express error handler
+// já cuida de responder 500 para o cliente.
+
+process.on('uncaughtException', (err) => {
+    console.error('[UNCAUGHT EXCEPTION]', err.message);
+    if (err.stack) console.error(err.stack);
+    try {
+        addLog('API', 'uncaught.exception', `${err.message}\n${err.stack || ''}`);
+    } catch { /* logger pode não estar disponível */ }
+    // NÃO chama process.exit — continua rodando para que o erro seja
+    // corrigido sem downtime. O Express error handler cuida das respostas.
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    const msg = reason instanceof Error ? reason.message : String(reason);
+    console.error('[UNHANDLED REJECTION]', msg);
+    if (reason instanceof Error && reason.stack) console.error(reason.stack);
+    try {
+        addLog('API', 'unhandled.rejection', `${msg}\n${reason instanceof Error ? reason.stack : ''}`);
+    } catch { /* logger pode não estar disponível */ }
+    // NÃO chama process.exit — mesma lógica do uncaughtException.
+});
 
 module.exports = app;

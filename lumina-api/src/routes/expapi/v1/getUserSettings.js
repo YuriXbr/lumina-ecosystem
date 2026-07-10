@@ -1,4 +1,3 @@
-const jwt                       = require('jsonwebtoken');
 const DashboardAccountService   = require('../../../database/services/DashboardAccountService');
 const { routeError }            = require('../../../logger/logger');
 
@@ -16,16 +15,9 @@ module.exports = {
     method: 'get',
 
     async execute(req, res) {
-        const authHeader = req.headers.authorization;
-        if (!authHeader)
-            return res.status(401).json({ error: 'Token não fornecido.', code: 'MISSING_TOKEN' });
-
-        let decoded;
-        try {
-            decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
-        } catch {
-            return res.status(401).json({ error: 'Token inválido ou expirado.', code: 'INVALID_TOKEN' });
-        }
+        const { verifyRequestAuth } = require('../../../utils/authHelpers');
+        const { user: decoded, error: authError } = verifyRequestAuth(req);
+        if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         try {
             const account = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);

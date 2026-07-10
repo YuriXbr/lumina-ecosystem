@@ -1,4 +1,3 @@
-const jwt                       = require('jsonwebtoken');
 const DashboardAccountService   = require('../../../../database/services/DashboardAccountService');
 const GuildService              = require('../../../../database/services/GuildService');
 const { routeError }            = require('../../../../logger/logger');
@@ -31,12 +30,9 @@ module.exports = {
     method: 'put',
 
     async execute(req, res) {
-        const authHeader = req.headers.authorization;
-        if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.', code: 'MISSING_TOKEN' });
-
-        let decoded;
-        try { decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET); }
-        catch { return res.status(401).json({ error: 'Token inválido.', code: 'INVALID_TOKEN' }); }
+        const { verifyRequestAuth } = require('../../../../utils/authHelpers');
+        const { user: decoded, error: authError } = verifyRequestAuth(req);
+        if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         try {
             const { guildId } = req.params;
@@ -82,7 +78,14 @@ module.exports = {
                 warnsToBan:true,
                 warnDuration:true,
                 gachaMaxRolls:true,
-                gachaGameMode:true 
+                gachaGameMode:true,
+                gachaEnabled:true,
+                gachaChestsEnabled:true,
+                gachaRollsRefreshInterval:true,
+                commandsEnabled:true,
+                autoMessages:true,
+                blockedUsers:true,
+                blockedRoles:true 
             });
 
             const filteredData = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowedFields[k]));

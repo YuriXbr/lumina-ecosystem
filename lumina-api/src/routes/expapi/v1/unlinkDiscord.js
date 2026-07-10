@@ -1,4 +1,3 @@
-const jwt                       = require('jsonwebtoken');
 const DashboardAccountService   = require('../../../database/services/DashboardAccountService');
 const { routeError }            = require('../../../logger/logger');
 
@@ -16,16 +15,9 @@ module.exports = {
     method: 'post',
 
     async execute(req, res) {
-        const authHeader = req.headers.authorization;
-        if (!authHeader)
-            return res.status(401).json({ error: 'Token não fornecido.', code: 'MISSING_TOKEN' });
-
-        let decoded;
-        try {
-            decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
-        } catch {
-            return res.status(401).json({ error: 'Token inválido ou expirado.', code: 'INVALID_TOKEN' });
-        }
+        const { verifyRequestAuth } = require('../../../utils/authHelpers');
+        const { user: decoded, error: authError } = verifyRequestAuth(req);
+        if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         try {
             const account = await DashboardAccountService.getDashboardAccountByAccountId(decoded.accountId);
@@ -35,6 +27,11 @@ module.exports = {
             const isLinked = account.discordOauth2Id || account.authProviders?.discord?.providerId;
             if (!isLinked)
                 return res.status(400).json({ error: 'Discord não está vinculado a esta conta.', code: 'DISCORD_NOT_LINKED' });
+
+            // Previne self-lockout: se a conta não tem senha, desvincular Discord
+            // significa perder o único método de login
+            if (!account.password)
+                return res.status(400).json({ error: 'Defina uma senha antes de desvincular o Discord, ou você perderá acesso à conta.', code: 'SET_PASSWORD_FIRST' });
 
             await DashboardAccountService.update({ accountId: decoded.accountId }, {
                 $set: {

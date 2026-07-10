@@ -1,4 +1,5 @@
-// Endpointed Checked on V1.2.0
+const { clearAuthCookie } = require('../../../utils/authHelpers');
+const { addLog } = require('../../../logger/logger');
 
 module.exports = {
     route: '/expapi/v1/logout',
@@ -7,11 +8,15 @@ module.exports = {
     jwtNeeded: false,
     enabled: true,
     loginLimiterNeeded: false,
-    csrfProtectionNeeded: false,
-    method: 'get',
+    csrfProtectionNeeded: true,
+    method: 'post',
 
     async execute(req, res) {
-        res.clearCookie('jwt');
-        res.redirect('/');
+        // Limpa o cookie httpOnly que carrega o JWT
+        clearAuthCookie(res);
+        addLog('API', 'logout', 'Usuário deslogou');
+        // Redireciona para a home (ou deixa o frontend decidir)
+        // Retorna JSON para o frontend poder tratar sem redirect
+        return res.status(200).json({ ok: true });
     }
 };

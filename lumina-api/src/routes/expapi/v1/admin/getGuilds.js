@@ -1,4 +1,3 @@
-const jwt                       = require('jsonwebtoken');
 const DashboardAccountService   = require('../../../../database/services/DashboardAccountService');
 const GuildService              = require('../../../../database/services/GuildService');
 const { routeError }            = require('../../../../logger/logger');
@@ -19,12 +18,9 @@ module.exports = {
     method: 'get',
 
     async execute(req, res) {
-        const authHeader = req.headers.authorization;
-        if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.', code: 'MISSING_TOKEN' });
-
-        let decoded;
-        try { decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET); }
-        catch { return res.status(401).json({ error: 'Token inválido.', code: 'INVALID_TOKEN' }); }
+        const { verifyRequestAuth } = require('../../../../utils/authHelpers');
+        const { user: decoded, error: authError } = verifyRequestAuth(req);
+        if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         try {
             const adminAccount = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
@@ -40,7 +36,7 @@ module.exports = {
             const limit = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 100);
             const search = req.query.search || '';
 
-            let allGuilds = await GuildService.getAll();
+            let allGuilds = (await GuildService.getAll()) || [];
             if (search) allGuilds = allGuilds.filter(g =>
                 g.guildReferenceName?.toLowerCase().includes(search.toLowerCase()) || g.guildId?.includes(search));
 
@@ -56,6 +52,20 @@ module.exports = {
                 djEnabled: guild.djEnabled || false, memberDmToggle: guild.memberDmToggle || false,
                 persistentMute: guild.persistentMute || false,
                 autoWarnPunishment: guild.autoWarnPunishment || false,
+                warnsToMute: guild.warnsToMute || 3,
+                warnsToTimeOut: guild.warnsToTimeOut || 5,
+                warnsToKick: guild.warnsToKick || 6,
+                warnsToBan: guild.warnsToBan || 7,
+                persistentWarns: guild.persistentWarns || true,
+                gachaEnabled: guild.gachaEnabled ?? true,
+                gachaChestsEnabled: guild.gachaChestsEnabled ?? true,
+                gachaMaxRolls: guild.gachaMaxRolls || 8,
+                gachaRefreshInterval: guild.gachaRollsRefreshInterval || 10800000,
+                commandsEnabled: guild.commandsEnabled || {},
+                autoMessages: guild.autoMessages || [],
+                blockedUsers: guild.blockedUsers || [],
+                blockedRoles: guild.blockedRoles || [],
+                blockedChannels: guild.blockedChannels || [],
             }));
 
             return res.status(200).json({ guilds, pagination: { page, limit, total: allGuilds.length, hasMore: startIndex + limit < allGuilds.length } });

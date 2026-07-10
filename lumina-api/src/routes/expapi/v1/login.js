@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const DashboardAccountService = require('../../../database/services/DashboardAccountService.js');
-const { routeError } = require('../../../logger/logger');
+const { routeError, addLog } = require('../../../logger/logger');
+const { setAuthCookie } = require('../../../utils/authHelpers');
 
 const ROUTE = 'POST /expapi/v1/login';
 // Endpointed Checked on V1.2.0
@@ -27,6 +28,32 @@ module.exports = {
 
         try {
             const account = await DashboardAccountService.checkCredentials(email, password);
+            if (!account) {
+                return res.status(401).json({ error: 'Email ou senha incorretos.', code: 'INVALID_CREDENTIALS' });
+            }
+
+            // Login cancela exclusao agendada
+            if (account.deletionRequestedAt) {
+                try {
+                    await DashboardAccountService.cancelAccountClosure(account.accountId);
+                    addLog('API', 'account.close.cancelled', 'Exclusao cancelada por login: ' + account.email, { userEmail: account.email });
+                } catch (closeErr) {
+                    addLog('DB', 'login.cancelclose.fail', 'Falha ao cancelar exclusao: ' + closeErr.message);
+                }
+            }
+
+            // Atualiza lastLogin (nao falha o login se isso falhar)
+            try {
+                await DashboardAccountService.update({ accountId: account.accountId }, {
+                    $set: {
+                        lastLogin: new Date(),
+                        lastLoginIp: req.ip || '',
+                        lastLoginUserAgent: req.headers['user-agent'] || '',
+                    }
+                });
+            } catch (updateErr) {
+                addLog('DB', 'login.update.fail', 'Falha ao atualizar lastLogin: ' + updateErr.message);
+            }
 
             const token = jwt.sign(
                 {
@@ -40,6 +67,9 @@ module.exports = {
                 { expiresIn: '1h' }
             );
 
+            // Seta cookie httpOnly (imune a XSS) para o dashboard SPA.
+            // O token tambem e retornado no JSON para clients nao-browser (CLI, scripts).
+            setAuthCookie(res, token);
             return res.status(200).json({ token, hasPassword: !!account.password });
         } catch (error) {
             switch (error.code) {

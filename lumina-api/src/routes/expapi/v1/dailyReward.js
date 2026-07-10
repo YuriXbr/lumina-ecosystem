@@ -17,7 +17,10 @@ module.exports = {
     method: 'post',
 
     async execute(req, res) {
-        const email = req.user.email;
+        const email = req.user?.email;
+        if (!email) {
+            return res.status(401).json({ error: 'Token não fornece email válido.', code: 'INVALID_TOKEN' });
+        }
 
         let discordId;
         try {

@@ -31,6 +31,30 @@ const LEVEL_META = {
     ratelimit:{ color: 0xe67e22, emoji: '🚫',  minDiscord: true  },
 };
 
+// ─── Rate limiting simples para o webhook Discord ────────────────────────────
+// O Discord limita webhooks a ~30 req/min por URL. Quando a API gera muitos
+// erros em sequência (ex: bug em loop), cada erro tenta enviar um embed,
+// causando uma cascata de 429 que piora o problema.
+//
+// Solução: janela deslizante simples em memória.
+// Em serverless, cada invocação começa com o contador zerado — isso é aceitável
+// porque cada invocação já processa poucas requisições por definição.
+const DISCORD_RATE_LIMIT_WINDOW_MS = 60_000; // 1 minuto
+const DISCORD_RATE_LIMIT_MAX       = 20;      // máx 20 embeds por minuto (margem de segurança)
+let _discordSendCount = 0;
+let _discordWindowStart = Date.now();
+
+function _canSendDiscord() {
+    const now = Date.now();
+    if (now - _discordWindowStart > DISCORD_RATE_LIMIT_WINDOW_MS) {
+        _discordSendCount = 0;
+        _discordWindowStart = now;
+    }
+    if (_discordSendCount >= DISCORD_RATE_LIMIT_MAX) return false;
+    _discordSendCount++;
+    return true;
+}
+
 class LogService extends DatabaseService {
     constructor() {
         super('apilogs', mongoSchema.apiLogs);
@@ -96,10 +120,13 @@ class LogService extends DatabaseService {
         // Escrita no DB de forma não-bloqueante — não propaga exceção para a rota
         this._writeToDb(entry);
 
-        // Discord webhook para níveis relevantes
+        // Discord webhook para níveis relevantes, com rate limiting interno
         const meta = LEVEL_META[level] || LEVEL_META.info;
-        if (meta.minDiscord && this._webhookUrl) {
+        if (meta.minDiscord && this._webhookUrl && _canSendDiscord()) {
             this._sendDiscordEmbed(entry, meta);
+        } else if (meta.minDiscord && this._webhookUrl) {
+            // Rate limit atingido — apenas loga no console, não perde o evento
+            console.warn(`[LogService] Discord rate limit atingido, embed suprimido: ${level} ${action}`);
         }
     }
 
@@ -158,7 +185,11 @@ class LogService extends DatabaseService {
         const filter = {};
         if (level)     filter.level     = level;
         if (type)      filter.type      = type;
-        if (route)     filter.route     = { $regex: route, $options: 'i' };
+        if (route) {
+            // Escapa regex para evitar ReDoS
+            const escaped = String(route).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            filter.route = { $regex: escaped, $options: 'i' };
+        }
         if (requestId) filter.requestId = requestId;
         if (startDate || endDate) {
             filter.createdAt = {};

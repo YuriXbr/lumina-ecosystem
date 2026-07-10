@@ -2,12 +2,21 @@ const axios = require('axios');
 
 /**
  * Provider OAuth2 para Discord.
- * Implementa o contrato comum usado por src/oauthProviders/index.js e pelas
- * rotas em src/routes/oauth/: getAuthorizationUrl(state), exchangeCode(code),
- * getProfile(accessToken).
  *
- * Para adicionar um novo provedor (Google, GitHub, etc.), crie um arquivo
- * com a mesma forma e registre em src/oauthProviders/index.js.
+ * Scopes solicitados:
+ *   identify              → username, avatar, id
+ *   email                 → email (verified)
+ *   guilds                → lista de servidores do usuário (GET /users/@me/guilds)
+ *   guilds.members.read   → dados de membro em guilda específica (GET /users/@me/guilds/{guildId}/member)
+ *
+ * Com esses 4 scopes, o dashboard consegue TUDO sem precisar do bot token:
+ *   - Listar servidores do usuário (my-guilds)
+ *   - Verificar permissões (MANAGE_GUILD / ADMINISTRATOR)
+ *   - Buscar info básica da guilda (nome, ícone, features)
+ *   - Buscar roles do usuário na guilda
+ *
+ * O bot token só é necessário para operações administrativas no bot
+ * (ex: atualizar config do bot, que é feita via rotas internas).
  */
 module.exports = {
     name: 'discord',
@@ -15,14 +24,9 @@ module.exports = {
     getAuthorizationUrl(state) {
         const params = new URLSearchParams({
             client_id: process.env.DISCORD_CLIENT_ID,
-            // IMPORTANTE: redirect_uri dedicado para o fluxo de login/cadastro,
-            // diferente do usado para "vincular Discord a uma conta já logada"
-            // (DISCORD_REDIRECT_URI). Configure DISCORD_AUTH_REDIRECT_URI no .env
-            // apontando para /expapi/oauth2/discord/auth/callback e registre essa
-            // URL no painel de developer do Discord.
             redirect_uri: process.env.DISCORD_AUTH_REDIRECT_URI,
             response_type: 'code',
-            scope: 'identify email',
+            scope: 'identify email guilds guilds.members.read',
             state
         });
         return `https://discord.com/oauth2/authorize?${params.toString()}`;
@@ -35,7 +39,7 @@ module.exports = {
             grant_type: 'authorization_code',
             code,
             redirect_uri: process.env.DISCORD_AUTH_REDIRECT_URI,
-            scope: 'identify email'
+            scope: 'identify email guilds guilds.members.read'
         });
 
         const { data } = await axios.post(

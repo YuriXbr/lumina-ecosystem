@@ -11,7 +11,7 @@ import { useUser } from '../../contexts/UserContext';
 import AppShell from '../../components/AppShell';
 import SetPasswordModal from '../dashboardPage/components/SetPasswordModal';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
 
 const TABS = [
   { id: 'profile',       label: 'Perfil',         icon: UserIcon },

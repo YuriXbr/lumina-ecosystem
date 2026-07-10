@@ -10,7 +10,7 @@ import AppShell from '../../components/AppShell';
 import ErrorState from '../../components/ui/ErrorState';
 import { SkeletonLine } from '../../components/ui/Skeleton';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Static configuration
@@ -386,10 +386,22 @@ export default function ServerSettingsPage() {
       if (!guildRes.ok) {
         let detail = `HTTP ${guildRes.status}`;
         try {
-          const body = await guildRes.json();
-          if (body?.error) detail = body.error;
+          const contentType = guildRes.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const body = await guildRes.json();
+            if (body?.error) detail = body.error;
+          } else {
+            // Resposta não-JSON (provavelmente HTML do dev server ou 404)
+            detail = `Não foi possível conectar à API. Verifique se a API está rodando. (HTTP ${guildRes.status})`;
+          }
         } catch {}
         throw new Error(detail);
+      }
+
+      // Verifica que é JSON antes de fazer parse
+      const ct = guildRes.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        throw new Error('Não foi possível carregar as configurações do servidor.');
       }
       const guildData = await guildRes.json();
 

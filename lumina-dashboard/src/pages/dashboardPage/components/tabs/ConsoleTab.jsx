@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import ErrorBanner from '../../../../components/ui/ErrorBanner';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
 
 export default function ConsoleTab() {
   const [logs, setLogs] = useState([]);

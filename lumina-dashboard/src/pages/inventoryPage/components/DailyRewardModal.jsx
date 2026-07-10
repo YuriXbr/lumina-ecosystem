@@ -82,7 +82,7 @@ export default function DailyRewardModal({
         setStatusLoading(true);
         setStatusError(null);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/myinventory`, {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/myinventory`, {
                 credentials: 'include',
             });
             if (!response.ok) {
@@ -122,7 +122,7 @@ export default function DailyRewardModal({
     const handleClaim = async () => {
         setClaiming(true);
         setClaimError(null);
-        const baseUrl = import.meta.env.VITE_API_BASE_URL;
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || '/';
         try {
             const csrfToken = await fetchCsrfToken(baseUrl);
 

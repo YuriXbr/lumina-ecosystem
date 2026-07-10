@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 // ─── CSS Keyframes ────────────────────────────────────────────────────────────
 function AnimationStyles() {
@@ -37,6 +37,10 @@ function AnimationStyles() {
                 0%, 100% { box-shadow: 0 0 12px var(--glow-color), 0 8px 32px rgba(0,0,0,0.25); }
                 50%       { box-shadow: 0 0 44px var(--glow-color), 0 0 90px var(--glow-color), 0 8px 32px rgba(0,0,0,0.25); }
             }
+            @keyframes sustainedGlow {
+                0%, 100% { box-shadow: 0 0 28px var(--glow-color), 0 0 70px var(--glow-color), 0 8px 32px rgba(0,0,0,0.25); }
+                50%       { box-shadow: 0 0 70px var(--glow-color), 0 0 140px var(--glow-color), 0 0 220px var(--glow-color), 0 8px 32px rgba(0,0,0,0.25); }
+            }
             @keyframes badgePop {
                 0%   { opacity: 0; transform: scale(0.35) translateY(10px); }
                 70%  { transform: scale(1.12); }
@@ -53,6 +57,37 @@ function AnimationStyles() {
             @keyframes chestGlow {
                 0%, 100% { filter: drop-shadow(0 0 6px rgba(99,102,241,0.4)); }
                 50%       { filter: drop-shadow(0 0 20px rgba(99,102,241,0.9)); }
+            }
+            @keyframes chestBuildup {
+                0%   { filter: drop-shadow(0 0 4px rgba(99,102,241,0.3)) brightness(1); }
+                100% { filter: drop-shadow(0 0 36px rgba(168,85,247,1)) brightness(1.45); }
+            }
+            @keyframes screenFlash {
+                0%   { opacity: 0; }
+                12%  { opacity: 0.92; }
+                100% { opacity: 0; }
+            }
+            @keyframes screenShake {
+                0%, 100% { transform: translate(0,0); }
+                8%  { transform: translate(-8px, -5px); }
+                16% { transform: translate(8px, 5px); }
+                24% { transform: translate(-6px, 7px); }
+                32% { transform: translate(6px, -7px); }
+                40% { transform: translate(-8px, -3px); }
+                48% { transform: translate(8px, 3px); }
+                56% { transform: translate(-4px, 5px); }
+                64% { transform: translate(4px, -5px); }
+                72% { transform: translate(-3px, 2px); }
+                80% { transform: translate(3px, -2px); }
+                88% { transform: translate(-1px, 1px); }
+            }
+            @keyframes confettiFall {
+                0%   { transform: translateY(-30px) rotate(0deg); opacity: 1; }
+                100% { transform: translateY(110vh) rotate(720deg); opacity: 0.3; }
+            }
+            @keyframes muteBtnPulse {
+                0%,100% { transform: scale(1); }
+                50%     { transform: scale(1.12); }
             }
         `}</style>
     );
@@ -115,8 +150,44 @@ const RARITY_PARTICLE_COLORS = {
     transcendent:  ['#e879f9', '#f0abfc', '#f9a8d4', '#c026d3'],
 };
 
+// Tier rank used for triggering tiered visual effects (mythic+, ultimate+, etc.)
+const RARITY_TIER = {
+    kNoRarity: 0, kLegacy: 0, legacy: 0,
+    kEpic: 1, epic: 1,
+    kLegendary: 2, legendary: 2,
+    kMythic: 3, mythic: 3,
+    kUltimate: 4, ultimate: 4,
+    kTranscendent: 5, transcendent: 5,
+};
+
+// Screen-flash color per rarity tier
+// common = white, epic = gold, legendary = purple, mythic+ = rainbow
+const RARITY_FLASH = {
+    kNoRarity:      { type: 'solid', color: 'rgba(255,255,255,0.92)' },
+    kLegacy:        { type: 'solid', color: 'rgba(255,243,199,0.92)' },
+    legacy:         { type: 'solid', color: 'rgba(255,243,199,0.92)' },
+    kEpic:          { type: 'solid', color: 'rgba(255,215,0,0.9)' },
+    epic:           { type: 'solid', color: 'rgba(255,215,0,0.9)' },
+    kLegendary:     { type: 'solid', color: 'rgba(168,85,247,0.9)' },
+    legendary:      { type: 'solid', color: 'rgba(168,85,247,0.9)' },
+    kMythic:        { type: 'rainbow' },
+    mythic:         { type: 'rainbow' },
+    kUltimate:      { type: 'rainbow' },
+    ultimate:       { type: 'rainbow' },
+    kTranscendent:  { type: 'rainbow' },
+    transcendent:   { type: 'rainbow' },
+};
+
 function getRarityStyle(rarity) {
     return RARITY_STYLES[rarity] || RARITY_STYLES.kNoRarity;
+}
+
+function getRarityTier(rarity) {
+    return RARITY_TIER[rarity] || 0;
+}
+
+function getRarityFlash(rarity) {
+    return RARITY_FLASH[rarity] || RARITY_FLASH.kNoRarity;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -157,6 +228,319 @@ async function fetchCsrfToken(baseUrl) {
     return data.csrfToken;
 }
 
+// ─── Sound Effects (Web Audio API, no external files) ────────────────────────
+// A small self-contained Web Audio synth. All sound is generated procedurally.
+function useSoundEffects() {
+    const audioCtxRef = useRef(null);
+    const rumbleNodesRef = useRef(null);
+    const [muted, setMuted] = useState(() => {
+        try {
+            return typeof localStorage !== 'undefined' && localStorage.getItem('lumina_chest_muted') === '1';
+        } catch { return false; }
+    });
+    const mutedRef = useRef(muted);
+    useEffect(() => { mutedRef.current = muted; }, [muted]);
+
+    const toggleMute = useCallback(() => {
+        setMuted((prev) => {
+            const next = !prev;
+            try { localStorage.setItem('lumina_chest_muted', next ? '1' : '0'); } catch { /* noop */ }
+            return next;
+        });
+    }, []);
+
+    // Lazily create / resume the AudioContext. Must be called from a user gesture.
+    const getCtx = useCallback(() => {
+        if (typeof window === 'undefined') return null;
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return null;
+        if (!audioCtxRef.current) {
+            try { audioCtxRef.current = new Ctx(); }
+            catch { return null; }
+        }
+        const ctx = audioCtxRef.current;
+        if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => { /* autoplay blocked */ });
+        }
+        return ctx;
+    }, []);
+
+    // Generic envelope-driven tone
+    const playTone = useCallback((freq, duration, type = 'sine', startTime = 0, volume = 0.08) => {
+        if (mutedRef.current) return;
+        const ctx = getCtx();
+        if (!ctx) return;
+        const t0 = ctx.currentTime + startTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, t0);
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), t0 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + duration + 0.05);
+    }, [getCtx]);
+
+    // Low rumble during the shake phase
+    const startRumble = useCallback(() => {
+        if (mutedRef.current) return;
+        const ctx = getCtx();
+        if (!ctx) return;
+        // stop any existing rumble first
+        if (rumbleNodesRef.current) {
+            try {
+                rumbleNodesRef.current.osc1.stop();
+                rumbleNodesRef.current.osc2.stop();
+            } catch { /* noop */ }
+            rumbleNodesRef.current = null;
+        }
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+        osc1.type = 'sawtooth';
+        osc1.frequency.value = 55;
+        osc2.type = 'sine';
+        osc2.frequency.value = 32;
+        lfo.type = 'sine';
+        lfo.frequency.value = 6;
+        lfoGain.gain.value = 12; // vibrato depth
+        lfo.connect(lfoGain).connect(osc1.frequency);
+        filter.type = 'lowpass';
+        filter.frequency.value = 240;
+        filter.Q.value = 0.7;
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.06, ctx.currentTime + 0.15);
+        osc1.connect(filter);
+        osc2.connect(filter);
+        filter.connect(gain).connect(ctx.destination);
+        osc1.start();
+        osc2.start();
+        lfo.start();
+        rumbleNodesRef.current = { osc1, osc2, lfo, gain };
+    }, [getCtx]);
+
+    const stopRumble = useCallback(() => {
+        const nodes = rumbleNodesRef.current;
+        const ctx = audioCtxRef.current;
+        if (!nodes) return;
+        try {
+            if (ctx) {
+                nodes.gain.gain.cancelScheduledValues(ctx.currentTime);
+                nodes.gain.gain.setValueAtTime(Math.max(0.0001, nodes.gain.gain.value), ctx.currentTime);
+                nodes.gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.08);
+                nodes.osc1.stop(ctx.currentTime + 0.1);
+                nodes.osc2.stop(ctx.currentTime + 0.1);
+                nodes.lfo.stop(ctx.currentTime + 0.1);
+            }
+        } catch { /* noop */ }
+        rumbleNodesRef.current = null;
+    }, []);
+
+    // Whoosh (filtered noise) + impact (low boom) when chest opens
+    const playWhooshImpact = useCallback(() => {
+        if (mutedRef.current) return;
+        const ctx = getCtx();
+        if (!ctx) return;
+        // --- Whoosh: filtered white noise swept down ---
+        const bufferSize = Math.floor(ctx.sampleRate * 0.32);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            // fade-out envelope so noise doesn't click
+            const env = 1 - i / bufferSize;
+            data[i] = (Math.random() * 2 - 1) * env;
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const noiseFilter = ctx.createBiquadFilter();
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.setValueAtTime(1800, ctx.currentTime);
+        noiseFilter.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.3);
+        noiseFilter.Q.value = 1.8;
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.10, ctx.currentTime);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+        noise.connect(noiseFilter).connect(noiseGain).connect(ctx.destination);
+        noise.start();
+
+        // --- Impact: low boom ---
+        const t0 = ctx.currentTime + 0.08;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(140, t0);
+        osc.frequency.exponentialRampToValueAtTime(42, t0 + 0.22);
+        gain.gain.setValueAtTime(0.15, t0);
+        gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 0.35);
+    }, [getCtx]);
+
+    // Simple "ding" for common / legacy / no-rarity
+    const playDing = useCallback(() => {
+        if (mutedRef.current) return;
+        playTone(880, 0.45, 'sine', 0, 0.25);
+        playTone(1318.5, 0.35, 'sine', 0.02, 0.14);
+        playTone(1760, 0.25, 'sine', 0.04, 0.07);
+    }, [playTone]);
+
+    // Ascending arpeggio
+    const playArpeggio = useCallback((freqs, noteDuration = 0.12, type = 'triangle', vol = 0.22) => {
+        if (mutedRef.current) return;
+        freqs.forEach((f, i) => {
+            playTone(f, noteDuration * 1.6, type, i * noteDuration, vol);
+        });
+    }, [playTone]);
+
+    // Epic fanfare — melody + chord (extended adds more notes / longer tail)
+    const playFanfare = useCallback((extended = false) => {
+        if (mutedRef.current) return;
+        const melody = extended
+            ? [
+                { f: 392.00, t: 0.00, d: 0.22 }, // G4
+                { f: 523.25, t: 0.16, d: 0.22 }, // C5
+                { f: 659.25, t: 0.32, d: 0.22 }, // E5
+                { f: 783.99, t: 0.48, d: 0.28 }, // G5
+                { f: 1046.50, t: 0.70, d: 0.55 }, // C6
+                { f: 1318.51, t: 1.05, d: 0.45 }, // E6
+              ]
+            : [
+                { f: 523.25, t: 0.00, d: 0.22 }, // C5
+                { f: 659.25, t: 0.12, d: 0.22 }, // E5
+                { f: 783.99, t: 0.24, d: 0.32 }, // G5
+                { f: 1046.50, t: 0.42, d: 0.45 }, // C6
+              ];
+        melody.forEach((n) => playTone(n.f, n.d, 'triangle', n.t, 0.22));
+        // Sustained chord under the melody
+        const chordT = extended ? 0.6 : 0.4;
+        const chordD = extended ? 1.1 : 0.8;
+        playTone(261.63, chordD, 'sawtooth', chordT, 0.08); // C4
+        playTone(329.63, chordD, 'sawtooth', chordT, 0.08); // E4
+        playTone(392.00, chordD, 'sawtooth', chordT, 0.08); // G4
+        // Cymbal-like noise splash on the climax
+        if (extended) {
+            const ctx = getCtx();
+            if (!ctx) return;
+            const t0 = ctx.currentTime + 0.7;
+            const bufferSize = Math.floor(ctx.sampleRate * 0.4);
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const d = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+            const noise = ctx.createBufferSource();
+            noise.buffer = buffer;
+            const hp = ctx.createBiquadFilter();
+            hp.type = 'highpass';
+            hp.frequency.value = 5000;
+            const g = ctx.createGain();
+            g.gain.setValueAtTime(0.05, t0);
+            g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.4);
+            noise.connect(hp).connect(g).connect(ctx.destination);
+            noise.start(t0);
+        }
+    }, [getCtx, playTone]);
+
+    // Full orchestral hit for transcendent — layered sawtooth chord + low boom + cymbal + fanfare
+    const playOrchestralHit = useCallback(() => {
+        if (mutedRef.current) return;
+        const ctx = getCtx();
+        if (!ctx) return;
+        // Low brass-like sustained chord
+        [110.00, 130.81, 164.81, 220.00].forEach((f) => {
+            playTone(f, 1.4, 'sawtooth', 0, 0.14);
+        });
+        // High shimmer (adds sparkle)
+        playTone(1046.50, 1.6, 'sine', 0.08, 0.1);
+        playTone(1567.98, 1.4, 'sine', 0.14, 0.07);
+        playTone(2093.00, 1.0, 'sine', 0.2, 0.05);
+        // Sub-boom drum hit
+        const t0 = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(90, t0);
+        osc.frequency.exponentialRampToValueAtTime(30, t0 + 0.5);
+        gain.gain.setValueAtTime(0.18, t0);
+        gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.6);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 0.65);
+        // Cymbal crash
+        const bufferSize = Math.floor(ctx.sampleRate * 0.6);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const d = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 4000;
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.07, t0);
+        ng.gain.exponentialRampToValueAtTime(0.001, t0 + 0.6);
+        noise.connect(hp).connect(ng).connect(ctx.destination);
+        noise.start(t0);
+        // Then the extended fanfare on top, slightly delayed for impact
+        setTimeout(() => playFanfare(true), 220);
+    }, [getCtx, playFanfare, playTone]);
+
+    // Dispatch the rarity-appropriate sound
+    const playRaritySound = useCallback((rarity) => {
+        if (mutedRef.current) return;
+        const tier = getRarityTier(rarity);
+        if (tier >= 5) {
+            // kTranscendent
+            playOrchestralHit();
+        } else if (tier >= 4) {
+            // kUltimate
+            playFanfare(true);
+        } else if (tier >= 3) {
+            // kMythic
+            playFanfare(false);
+        } else if (tier >= 2) {
+            // kLegendary — 5-note ascending arpeggio
+            playArpeggio([523.25, 659.25, 783.99, 1046.50, 1318.51], 0.1, 'triangle', 0.22);
+        } else if (tier >= 1) {
+            // kEpic — 3-note ascending arpeggio
+            playArpeggio([523.25, 659.25, 783.99], 0.13, 'triangle', 0.22);
+        } else {
+            // kLegacy / kNoRarity — soft ding
+            playDing();
+        }
+    }, [playArpeggio, playDing, playFanfare, playOrchestralHit]);
+
+    // Cleanup audio on unmount
+    useEffect(() => {
+        return () => {
+            stopRumble();
+            const ctx = audioCtxRef.current;
+            if (ctx) {
+                try { ctx.close(); } catch { /* noop */ }
+                audioCtxRef.current = null;
+            }
+        };
+    }, [stopRumble]);
+
+    return {
+        muted,
+        toggleMute,
+        getCtx,
+        startRumble,
+        stopRumble,
+        playWhooshImpact,
+        playDing,
+        playArpeggio,
+        playFanfare,
+        playOrchestralHit,
+        playRaritySound,
+    };
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function OpenChestModal({
     isOpen,
@@ -166,6 +550,8 @@ export default function OpenChestModal({
     loginWithDiscord,
     onSkinObtained,
 }) {
+    const sound = useSoundEffects();
+
     const [inventory, setInventory] = useState(null);
     const [inventoryLoading, setInventoryLoading] = useState(false);
     const [inventoryError, setInventoryError] = useState(null);
@@ -177,11 +563,16 @@ export default function OpenChestModal({
     const [rollError, setRollError] = useState(null);
     const [result, setResult] = useState(null);
 
+    // Visual reveal effects
+    const [screenFlash, setScreenFlash] = useState(null); // { id, config }
+    const [screenShake, setScreenShake] = useState(false);
+    const [showConfetti, setShowConfetti] = useState(false);
+
     const fetchInventory = useCallback(async () => {
         setInventoryLoading(true);
         setInventoryError(null);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/myinventory`, {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/myinventory`, {
                 credentials: 'include',
             });
             if (!response.ok) {
@@ -202,18 +593,76 @@ export default function OpenChestModal({
             setResult(null);
             setRollError(null);
             setOpenPhase(null);
+            setScreenFlash(null);
+            setScreenShake(false);
+            setShowConfetti(false);
             fetchInventory();
+        } else if (!isOpen) {
+            // Safety: stop any lingering audio when modal closes
+            sound.stopRumble();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, isLoggedIn, discordError, fetchInventory]);
+
+    // Sound: react to openPhase changes
+    useEffect(() => {
+        if (openPhase === 'shaking') {
+            sound.startRumble();
+            return () => sound.stopRumble();
+        }
+        if (openPhase === 'flashing') {
+            sound.stopRumble();
+            sound.playWhooshImpact();
+        }
+        return undefined;
+    }, [openPhase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // When a new result lands, fire rarity-tier visuals + sound
+    useEffect(() => {
+        if (!result) return undefined;
+        const tier = getRarityTier(result.rarity);
+        // 1. Rarity sound
+        sound.playRaritySound(result.rarity);
+        // 2. Screen flash (color depends on rarity tier)
+        const flashCfg = getRarityFlash(result.rarity);
+        const flashId = Date.now();
+        setScreenFlash({ id: flashId, config: flashCfg });
+        // Clear the flash after the animation finishes
+        const t1 = setTimeout(() => setScreenFlash(null), 700);
+        // 3. Confetti + screen shake for ultimate+ (and transcendent)
+        let t2;
+        if (tier >= 4) {
+            setShowConfetti(true);
+            setScreenShake(true);
+            t2 = setTimeout(() => {
+                setScreenShake(false);
+                // keep confetti flying for a bit longer
+            }, 650);
+        }
+        return () => {
+            clearTimeout(t1);
+            if (t2) clearTimeout(t2);
+        };
+    }, [result]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Clear confetti a few seconds after the result appears so it doesn't loop forever
+    useEffect(() => {
+        if (!showConfetti) return undefined;
+        const t = setTimeout(() => setShowConfetti(false), 4500);
+        return () => clearTimeout(t);
+    }, [showConfetti]);
 
     if (!isOpen) return null;
 
     const handleRoll = async () => {
+        // Unlock audio on this user gesture (autoplay policy)
+        sound.getCtx();
+
         setRolling(true);
         setOpenPhase('shaking');
         setRollError(null);
 
-        const baseUrl = import.meta.env.VITE_API_BASE_URL;
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || '/';
         const animStart = Date.now();
         const MIN_SHAKE_MS = 1500;
         const FLASH_MS = 400;
@@ -227,6 +676,7 @@ export default function OpenChestModal({
                 method: 'POST',
                 headers: { 'X-CSRF-Token': csrfToken, 'Content-Type': 'application/json' },
                 credentials: 'include',
+                body: JSON.stringify({ chestType: selectedChest }),
             })
 
             if (!response.ok) {
@@ -237,6 +687,11 @@ export default function OpenChestModal({
                 throw new Error(message);
             }
 
+            // Verifica que a resposta é JSON antes de fazer parse
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                throw new Error('Resposta inválida do servidor. Tente novamente.');
+            }
             const skin = await response.json();
             const splashUrl = getSkinSplashUrl(skin);
             const imageLoaded = await preloadImage(splashUrl);
@@ -251,6 +706,7 @@ export default function OpenChestModal({
         await new Promise((r) => setTimeout(r, remaining));
 
         if (rollErr) {
+            sound.stopRumble();
             setRollError(rollErr);
             setOpenPhase(null);
             setRolling(false);
@@ -280,9 +736,13 @@ export default function OpenChestModal({
     const handleClose = () => {
         // Impede fechar durante a animação para não quebrar o estado
         if (rolling) return;
+        sound.stopRumble();
         setResult(null);
         setRollError(null);
         setOpenPhase(null);
+        setScreenFlash(null);
+        setScreenShake(false);
+        setShowConfetti(false);
         onClose();
     };
 
@@ -291,9 +751,17 @@ export default function OpenChestModal({
     return (
         <>
             <AnimationStyles />
+
+            {/* Screen flash overlay (above everything else) */}
+            {screenFlash && <ScreenFlashOverlay key={screenFlash.id} config={screenFlash.config} />}
+
+            {/* Confetti (CSS only) for ultimate+ */}
+            {showConfetti && <Confetti />}
+
             <div
                 className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
                 onClick={handleClose}
+                style={screenShake ? { animation: 'screenShake 0.65s ease-out' } : undefined}
             >
                 <div
                     className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
@@ -305,16 +773,35 @@ export default function OpenChestModal({
                             <span className="text-2xl">🗝️</span>
                             Abrir baú
                         </h2>
-                        <button
-                            onClick={handleClose}
-                            disabled={rolling}
-                            className="text-white/80 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            aria-label="Fechar"
-                        >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={sound.toggleMute}
+                                className="text-white/85 hover:text-white transition-colors w-9 h-9 flex items-center justify-center rounded-md hover:bg-white/10"
+                                aria-label={sound.muted ? 'Ativar som' : 'Silenciar'}
+                                title={sound.muted ? 'Ativar som' : 'Silenciar'}
+                            >
+                                {sound.muted ? (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M17.95 6.05a8 8 0 010 11.9M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                    </svg>
+                                )}
+                            </button>
+                            <button
+                                onClick={handleClose}
+                                disabled={rolling}
+                                className="text-white/80 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed w-9 h-9 flex items-center justify-center rounded-md hover:bg-white/10"
+                                aria-label="Fechar"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div className="p-6">
@@ -346,6 +833,9 @@ export default function OpenChestModal({
                                 onRollAgain={() => {
                                     setResult(null);
                                     setRollError(null);
+                                    setScreenFlash(null);
+                                    setScreenShake(false);
+                                    setShowConfetti(false);
                                 }}
                             />
                         ) : (
@@ -402,7 +892,7 @@ function ChestOpeningView({ chestType, phase }) {
                 className="text-7xl select-none z-10"
                 style={{
                     animation: !isFlashing
-                        ? `chestShake 0.22s ease-in-out infinite, chestGlow 1s ease-in-out infinite`
+                        ? `chestShake 0.22s ease-in-out infinite, chestBuildup 1.5s ease-in forwards`
                         : undefined,
                     transform: isFlashing ? 'scale(1.5)' : undefined,
                     filter: isFlashing ? 'brightness(4)' : undefined,
@@ -579,8 +1069,9 @@ function ParticleBurst({ rarity }) {
     if (!colors) return null;
 
     const count =
-        ['kTranscendent', 'transcendent'].includes(rarity) ? 22 :
-        ['kUltimate', 'ultimate', 'kMythic', 'mythic'].includes(rarity) ? 17 :
+        ['kTranscendent', 'transcendent'].includes(rarity) ? 26 :
+        ['kUltimate', 'ultimate'].includes(rarity) ? 22 :
+        ['kMythic', 'mythic'].includes(rarity) ? 18 :
         ['kLegendary', 'legendary'].includes(rarity) ? 13 : 9;
 
     const particles = Array.from({ length: count }, (_, i) => {
@@ -617,13 +1108,79 @@ function ParticleBurst({ rarity }) {
     );
 }
 
+// ─── ScreenFlashOverlay ───────────────────────────────────────────────────────
+// Full-screen colored flash on top of everything when the chest is revealed.
+function ScreenFlashOverlay({ config }) {
+    const background =
+        config.type === 'rainbow'
+            ? 'linear-gradient(115deg, #ff0080 0%, #ff8c00 14%, #ffd700 28%, #00ff7f 42%, #00bfff 57%, #8a2be2 75%, #ff0080 100%)'
+            : config.color;
+
+    return (
+        <div
+            className="fixed inset-0 pointer-events-none z-[70]"
+            style={{
+                background,
+                animation: 'screenFlash 0.7s ease-out forwards',
+            }}
+        />
+    );
+}
+
+// ─── Confetti (CSS only, no external libs) ────────────────────────────────────
+function Confetti() {
+    const colors = ['#f43f5e', '#fb923c', '#facc15', '#22c55e', '#06b6d4', '#a855f7', '#ec4899', '#38bdf8'];
+    // Pre-compute once — confetti is purely decorative.
+    const pieces = Array.from({ length: 90 }, (_, i) => {
+        const left = Math.random() * 100;
+        const delay = Math.random() * 0.6;
+        const duration = 2.2 + Math.random() * 1.8;
+        const size = 6 + Math.random() * 8;
+        const color = colors[i % colors.length];
+        const rotation = Math.random() * 360;
+        const isRound = Math.random() > 0.6;
+        return { left, delay, duration, size, color, rotation, isRound, key: i };
+    });
+
+    return (
+        <div className="fixed inset-0 pointer-events-none z-[65] overflow-hidden">
+            {pieces.map((p) => (
+                <div
+                    key={p.key}
+                    style={{
+                        position: 'absolute',
+                        left: `${p.left}%`,
+                        top: '-30px',
+                        width: `${p.size}px`,
+                        height: `${p.size * (p.isRound ? 1 : 1.6)}px`,
+                        backgroundColor: p.color,
+                        borderRadius: p.isRound ? '50%' : '2px',
+                        transform: `rotate(${p.rotation}deg)`,
+                        animation: `confettiFall ${p.duration}s linear ${p.delay}s forwards`,
+                    }}
+                />
+            ))}
+        </div>
+    );
+}
+
 // ─── ResultView ───────────────────────────────────────────────────────────────
 function ResultView({ skin, onRollAgain }) {
     const style = getRarityStyle(skin.rarity);
+    const tier = getRarityTier(skin.rarity);
     const splashUrl = getSkinSplashUrl(skin);
     const showImage = skin._imageLoaded && splashUrl;
     const hasParticles = !!RARITY_PARTICLE_COLORS[skin.rarity];
     const hasShine = ['kLegendary', 'legendary', 'kMythic', 'mythic', 'kUltimate', 'ultimate', 'kTranscendent', 'transcendent'].includes(skin.rarity);
+
+    // Transcendent uses the more intense "sustainedGlow" keyframe; everything else uses rarityGlow.
+    const glowAnimation = style.glow
+        ? (tier >= 5
+            ? 'sustainedGlow 2.4s ease-in-out 0.7s infinite'
+            : 'rarityGlow 2.8s ease-in-out 0.7s infinite')
+        : '';
+
+    const revealAnimation = `cardReveal 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards${glowAnimation ? ', ' + glowAnimation : ''}`;
 
     return (
         <div className="text-center py-2" style={{ animation: 'textFadeUp 0.25s ease-out' }}>
@@ -647,7 +1204,7 @@ function ResultView({ skin, onRollAgain }) {
                 <div
                     className={`absolute inset-0 rounded-xl overflow-hidden ring-4 ${style.ring} shadow-2xl`}
                     style={{
-                        animation: `cardReveal 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards${style.glow ? ', rarityGlow 2.8s ease-in-out 0.7s infinite' : ''}`,
+                        animation: revealAnimation,
                         '--glow-color': style.glow || 'transparent',
                     }}
                 >

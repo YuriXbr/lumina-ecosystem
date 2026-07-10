@@ -9,7 +9,7 @@ import { useUser } from '../../contexts/UserContext';
 import { parseApiError, statusFallbackMessage, isNetworkError } from '../../utils/apiError';
 import { getCsrfToken } from '../../utils/apiFetch';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
 
 export default function LoginPage() {
   const navigate = useNavigate();

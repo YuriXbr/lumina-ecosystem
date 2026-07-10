@@ -38,7 +38,7 @@ const handleLinkDiscord = () => {
     const origin = window.location.origin;
     const params = new URLSearchParams({ origin, intent: 'link' });
     if (token) params.set('linkToken', token);
-    window.location.href = `${import.meta.env.VITE_API_BASE_URL}expapi/oauth2/discord/auth/start?${params}`;
+    window.location.href = `${import.meta.env.VITE_API_BASE_URL || '/'}expapi/oauth2/discord/auth/start?${params}`;
 };
 
   const handleUnlinkDiscord = async () => {
@@ -46,7 +46,7 @@ const handleLinkDiscord = () => {
     setError(null);
     try {
       // Obter token CSRF
-      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, {
+      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/csrf-token`, {
       
       let csrfToken = '';
       if (csrfResponse.ok) {
@@ -55,7 +55,7 @@ const handleLinkDiscord = () => {
       }
 
       // Deslinkar Discord
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/unlink-discord`, { credentials: 'include' })
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/unlink-discord`, { credentials: 'include' })
       
       if (response.ok) {
         const data = await response.json();

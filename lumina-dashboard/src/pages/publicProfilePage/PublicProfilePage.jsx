@@ -7,7 +7,7 @@ import {
 import Header from '../../components/Header';
 import ErrorState from '../../components/ui/ErrorState';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
 
 export default function PublicProfilePage() {
   const { identifier } = useParams();

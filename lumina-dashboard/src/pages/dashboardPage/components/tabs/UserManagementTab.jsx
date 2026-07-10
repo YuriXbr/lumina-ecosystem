@@ -49,7 +49,7 @@ export default function UserManagementTab() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/admin/users?page=${currentPage}&limit=${usersPerPage}&search=${encodeURIComponent(searchTerm)}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/admin/users?page=${currentPage}&limit=${usersPerPage}&search=${encodeURIComponent(searchTerm)}`, {
         credentials: 'include',
       });
 
@@ -88,7 +88,7 @@ export default function UserManagementTab() {
       const csrfToken = await getCsrfToken();
       console.log('CSRF Token obtido:', csrfToken);
       
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/admin/users/${userId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/admin/users/${userId}`, {
         method: 'PUT',
         headers: {
           
@@ -128,7 +128,7 @@ export default function UserManagementTab() {
 
   const getCsrfToken = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, { credentials: 'include' })
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/csrf-token`, { credentials: 'include' })
       if (response.ok) {
         const data = await response.json();
         return data.csrfToken;

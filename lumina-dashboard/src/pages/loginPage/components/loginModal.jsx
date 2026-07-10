@@ -63,7 +63,7 @@ export default function LoginModal() {
 
   const handleDiscordLogin = () => {
     const origin = window.location.origin;
-    window.location.href = `${import.meta.env.VITE_API_BASE_URL}expapi/oauth2/discord/auth/start?origin=${encodeURIComponent(origin)}&intent=login`;
+    window.location.href = `${import.meta.env.VITE_API_BASE_URL || '/'}expapi/oauth2/discord/auth/start?origin=${encodeURIComponent(origin)}&intent=login`;
   };
 
   return (

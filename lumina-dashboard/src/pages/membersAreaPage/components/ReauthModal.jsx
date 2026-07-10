@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowPathIcon, XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
 
 /**
  * Modal que aparece para usuários cujo token OAuth2 do Discord não tem o scope

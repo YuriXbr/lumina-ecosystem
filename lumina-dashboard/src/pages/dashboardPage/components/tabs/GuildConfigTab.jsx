@@ -13,7 +13,7 @@ import ErrorState from '../../../../components/ui/ErrorState';
 import ErrorBanner from '../../../../components/ui/ErrorBanner';
 import { SkeletonRow } from '../../../../components/ui/Skeleton';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
 const GUILDS_PER_PAGE = 10;
 
 export default function GuildConfigTab() {

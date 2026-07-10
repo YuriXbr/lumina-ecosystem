@@ -10,7 +10,7 @@
  *   5. Helper para pegar CSRF token (necessário para rotas state-changing).
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
 
 let csrfTokenCache = null;
 let csrfTokenPromise = null;

@@ -8,7 +8,7 @@ import Header from '../../components/Header';
 import { parseApiError, statusFallbackMessage, isNetworkError } from '../../utils/apiError';
 import { getCsrfToken } from '../../utils/apiFetch';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
 const TOTAL_STEPS = 4; // 1: conta, 2: username, 3: revisão, 4: done
 
 export default function RegisterPage() {

@@ -41,12 +41,13 @@ export default function OAuthCompletePage() {
         const hashParams  = new URLSearchParams(window.location.hash.replace(/^#/, ""));
         const queryParams = new URLSearchParams(window.location.search);
 
+        const token        = hashParams.get("token");
         const isNewAccount  = hashParams.get("isNewAccount")  === "true";
         const hasPassword   = hashParams.get("hasPassword")   === "true";
         const linkedDiscord = hashParams.get("linkedDiscord") === "true";
         const oauthError    = queryParams.get("oauthError");
 
-        // Limpa a URL (remove fragment/query)
+        // Limpa a URL (remove fragment/query) IMEDIATAMENTE — não deixa o token na URL
         window.history.replaceState(null, "", window.location.pathname);
 
         if (oauthError) {
@@ -58,13 +59,36 @@ export default function OAuthCompletePage() {
             return;
         }
 
-        // Sucesso: o cookie httpOnly já foi setado pelo backend no redirect.
-        // Apenas carrega o user no contexto (via /session).
+        if (!token) {
+            setError("Token de autenticação não encontrado. Tente fazer login novamente.");
+            return;
+        }
+
+        // Troca o token da URL por um cookie httpOnly via POST (same-origin através do proxy).
+        // Isso resolve o problema do cookie ser setado no domínio errado em desenvolvimento
+        // (callback OAuth roda em localhost:3000, dashboard em localhost:5173).
         (async () => {
             try {
-                await onLoginSuccess();
+                const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+                const response = await fetch(`${API_BASE}expapi/v1/exchange-token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ token }),
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // Usa o user retornado diretamente — não precisa chamar /session
+                    await onLoginSuccess(data.user || null);
+                } else {
+                    // Fallback: tenta carregar via /session (cookie pode ter sido setado pelo redirect)
+                    await onLoginSuccess();
+                }
             } catch (err) {
-                console.error("Erro ao carregar dados do usuário após OAuth2:", err);
+                console.error("Erro ao trocar token por cookie:", err);
+                // Última tentativa: carrega via /session
+                try { await onLoginSuccess(); } catch {}
             }
 
             if (linkedDiscord) {

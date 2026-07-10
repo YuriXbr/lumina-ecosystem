@@ -197,7 +197,7 @@ module.exports = {
                 const jwtToken = issueJwt(account);
                 setAuthCookie(res, jwtToken);
                 const redirectUrl = new URL(`${state.origin}/oauth/complete`);
-                redirectUrl.hash = `isNewAccount=false&hasPassword=${!!account.password}&linkedDiscord=true`;
+                redirectUrl.hash = `token=${jwtToken}&isNewAccount=false&hasPassword=${!!account.password}&linkedDiscord=true`;
                 return res.redirect(redirectUrl.toString());
             }
 
@@ -246,7 +246,7 @@ module.exports = {
                     const jwtToken = issueJwt(account);
                 setAuthCookie(res, jwtToken);
                     const redirectUrl = new URL(`${state.origin}/oauth/complete`);
-                    redirectUrl.hash = `isNewAccount=true&hasPassword=false`;
+                    redirectUrl.hash = `token=${jwtToken}&isNewAccount=true&hasPassword=false`;
                     return res.redirect(redirectUrl.toString());
                 }
 
@@ -261,7 +261,7 @@ module.exports = {
                 const jwtToken = issueJwt(account);
                 setAuthCookie(res, jwtToken);
                 const redirectUrl = new URL(`${state.origin}/oauth/complete`);
-                redirectUrl.hash = `isNewAccount=false&hasPassword=${!!account.password}`;
+                redirectUrl.hash = `token=${jwtToken}&isNewAccount=false&hasPassword=${!!account.password}`;
                 return res.redirect(redirectUrl.toString());
             }
 
@@ -324,7 +324,7 @@ module.exports = {
             const jwtToken = issueJwt(account);
                 setAuthCookie(res, jwtToken);
             const redirectUrl = new URL(`${state.origin}/oauth/complete`);
-            redirectUrl.hash = `isNewAccount=${isNewAccount}&hasPassword=${!!account.password}`;
+            redirectUrl.hash = `token=${jwtToken}&isNewAccount=${isNewAccount}&hasPassword=${!!account.password}`;
             return res.redirect(redirectUrl.toString());
 
         } catch (err) {

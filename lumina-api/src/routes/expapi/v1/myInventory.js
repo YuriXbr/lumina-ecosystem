@@ -27,13 +27,9 @@ module.exports = {
             const resolved = await resolveDiscordAccount(email);
             discordId = resolved.discordId;
         } catch (err) {
-            return routeError({ res, 
-                error: err, 
-                route: ROUTE,
-                errorCode: err.code || 'RESOLVE_DISCORD_ERROR',
-                userMsg: err.message || 'Erro ao resolver conta Discord.',
-                status: err.status || 400, 
-                extra: { email } 
+            return res.status(err.status || 400).json({
+                error: err.message || 'Erro ao resolver conta Discord.',
+                code: err.code || 'RESOLVE_DISCORD_ERROR',
             });
         }
 

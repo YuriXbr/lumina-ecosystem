@@ -1,3 +1,5 @@
+'use strict';
+
 const { logApiCall }          = require('./logModals/logApiCall.js');
 const { logApiCallError }     = require('./logModals/logApiCallError.js');
 const { sendStartMessage }    = require('./logModals/sendStartMessage.js');
@@ -6,7 +8,7 @@ const { commandErrorWarning } = require('./logModals/commandErrorWarning.js');
 const { dashboardLog }        = require('./logModals/dashboardLog.js');
 const { noPermission }        = require('./logModals/noPermission.js');
 const { eventLogEmbed }       = require('./logModals/eventLogEmbed.js');
-
+const commandMetrics          = require('../services/CommandMetricsService.js');
 
 module.exports = {
     sendStartMessage,
@@ -16,5 +18,6 @@ module.exports = {
     logApiCall,
     logApiCallError,
     commandErrorWarning,
-    eventLogEmbed
-}
+    eventLogEmbed,
+    commandMetrics,
+};

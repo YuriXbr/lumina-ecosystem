@@ -1,15 +1,19 @@
 const DashboardAccountService   = require('../../../database/services/DashboardAccountService');
 const { validateUsername }      = require('../../../utils/identityValidation');
+const { verifyRequestAuth }     = require('../../../utils/authHelpers');
 const { routeError }            = require('../../../logger/logger');
 const ROUTE = 'GET /expapi/v1/user/check-username';
 
 /**
  * Verifica se um username está disponível para uso.
- * Requer auth (não deixar enumerar usernames sem login).
+ *
+ * Auth OPCIONAL — funciona tanto para usuários logados (mudando username
+ * nas settings) quanto para usuários não logados (durante o cadastro).
+ * Se o usuário estiver logado, exclui seu próprio username da checagem.
  */
 module.exports = {
     route: '/expapi/v1/user/check-username',
-    description: 'Verifica disponibilidade de username',
+    description: 'Verifica disponibilidade de username (auth opcional)',
     apiKeyNeeded: false,
     internalKeyNeeded: false,
     jwtNeeded: false,
@@ -20,9 +24,8 @@ module.exports = {
     method: 'get',
 
     async execute(req, res) {
-        const { verifyRequestAuthWithAccountCheck } = require('../../../utils/authHelpers');
-        const { user: decoded, account, error: authError } = await verifyRequestAuthWithAccountCheck(req);
-        if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
+        // Auth opcional — não bloqueia se não tiver token (cadastro)
+        const { user: decoded } = verifyRequestAuth(req);
 
         try {
             const username = String(req.query.username || '').trim();
@@ -39,7 +42,8 @@ module.exports = {
                 });
             }
 
-            const excludeAccountId = account?.accountId || null;
+            // Se logado, exclui seu próprio username da checagem
+            const excludeAccountId = decoded?.accountId || null;
 
             const available = await DashboardAccountService.isUsernameAvailable(username, excludeAccountId);
 

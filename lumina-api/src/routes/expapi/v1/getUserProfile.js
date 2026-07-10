@@ -15,12 +15,11 @@ module.exports = {
     method: 'get',
 
     async execute(req, res) {
-        const { verifyRequestAuth } = require('../../../utils/authHelpers');
-        const { user: decoded, error: authError } = verifyRequestAuth(req);
+        const { verifyRequestAuthWithAccountCheck } = require('../../../utils/authHelpers');
+        const { user: decoded, account, error: authError } = await verifyRequestAuthWithAccountCheck(req);
         if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         try {
-            const account = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
             if (!account)
                 return res.status(404).json({ error: 'Conta não encontrada.', code: 'ACCOUNT_NOT_FOUND' });
 

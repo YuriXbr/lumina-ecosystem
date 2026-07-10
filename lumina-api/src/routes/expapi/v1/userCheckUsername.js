@@ -20,8 +20,8 @@ module.exports = {
     method: 'get',
 
     async execute(req, res) {
-        const { verifyRequestAuth } = require('../../../utils/authHelpers');
-        const { user: decoded, error: authError } = verifyRequestAuth(req);
+        const { verifyRequestAuthWithAccountCheck } = require('../../../utils/authHelpers');
+        const { user: decoded, account, error: authError } = await verifyRequestAuthWithAccountCheck(req);
         if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         try {
@@ -39,7 +39,6 @@ module.exports = {
                 });
             }
 
-            const account = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
             const excludeAccountId = account?.accountId || null;
 
             const available = await DashboardAccountService.isUsernameAvailable(username, excludeAccountId);

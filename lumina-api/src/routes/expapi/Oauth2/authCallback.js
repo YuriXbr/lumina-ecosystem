@@ -153,6 +153,21 @@ module.exports = {
                     return res.redirect(`${state.origin}/oauth/complete?oauthError=link_no_account`);
                 }
 
+                // Audit #2: previne hijack do fluxo de link. O state contém
+                // o linkAccountId (definido em authStart a partir do cookie do
+                // usuário autenticado), mas um atacante que conseguisse forjar
+                // o state ainda poderia tentar vincular Discord à conta de
+                // outra pessoa. Para fechar essa janela, exigimos que o cookie
+                // lumina_token desta requisição pertença à MESMA conta que o
+                // state diz que está sendo vinculada. Sem cookie válido OU
+                // com cookie de outra conta → rejeita com link_no_account.
+                const { verifyRequestAuth } = require('../../../utils/authHelpers');
+                const { user: cookieUser, error: cookieErr } = verifyRequestAuth(req);
+                if (cookieErr || !cookieUser || cookieUser.accountId !== state.linkAccountId) {
+                    addLog('API', 'oauth.link.hijack', `Cookie/accountId mismatch no link flow (state=${state.linkAccountId}, cookie=${cookieUser?.accountId || 'none'})`);
+                    return res.redirect(`${state.origin}/oauth/complete?oauthError=link_no_account`);
+                }
+
                 const account = await DashboardAccountService.getDashboardAccountByAccountId(state.linkAccountId).catch(e => {
                     addLog('DB', 'oauth.link.fetchaccount.fail', e.message);
                     return null;

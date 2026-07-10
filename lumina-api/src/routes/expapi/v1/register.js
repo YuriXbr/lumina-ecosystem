@@ -61,11 +61,14 @@ module.exports = {
         }
 
         // ─── Validação de displayName (opcional — default = firstName) ──────
-        const finalDisplayName = (displayName && String(displayName).trim()) || sanitizedFirstName;
-        const displayV = validateDisplayName(finalDisplayName);
+        // Audit #3: usamos a versão sanitized retornada por validateDisplayName
+        // para garantir que zero-width chars nunca cheguem ao banco.
+        const rawDisplayName = (displayName && String(displayName).trim()) || sanitizedFirstName;
+        const displayV = validateDisplayName(rawDisplayName);
         if (!displayV.valid) {
             return res.status(400).json({ error: displayV.error, code: 'INVALID_DISPLAY_NAME' });
         }
+        const sanitizedDisplayName = displayV.sanitized.trim();
 
         // ─── Verifica se email já existe (catch trata DB errors como erro genérico) ───
         let account;
@@ -101,37 +104,27 @@ module.exports = {
             });
         }
 
-        // ─── Cria a conta ───────────────────────────────────────────────────
+        // ─── Cria a conta com username + displayName ATÔMICOS ───────────────
+        // Audit #5: antes o fluxo era create → update (duas chamadas), o que
+        // abria uma race condition onde dois registros simultâneos podiam
+        // passar pela checagem de username disponível e depois um falhava ao
+        // tentar gravar o username duplicado. Agora username/displayName vão
+        // direto no create, e o índice unique sparse em usernameLower ainda
+        // protege contra duplicatas — caso aconteça, o erro 11000 do Mongo
+        // é capturado abaixo e retornado como USERNAME_TAKEN.
         try {
             const newAccount = await DashboardAccountService.registerNewDashboardAccount(
                 sanitizedEmail, password, sanitizedFirstName, sanitizedLastName,
                 registrationIp, registrationUserAgent, registrationLocation,
-                registrationCountry, registrationCity
+                registrationCountry, registrationCity,
+                {
+                    username,
+                    usernameLower: normalizeUsername(username),
+                    displayName: sanitizedDisplayName,
+                }
             );
             if (!newAccount) {
                 return res.status(500).json({ error: 'Erro ao criar conta.', code: 'SERVER_ERROR' });
-            }
-
-            // Define username + displayName (faz update separado para aplicar validação de cooldown corretamente)
-            try {
-                await DashboardAccountService.update(
-                    { accountId: newAccount.accountId },
-                    { $set: {
-                        username: username,
-                        usernameLower: normalizeUsername(username),
-                        usernameChangedAt: new Date(),
-                        displayName: finalDisplayName,
-                        displayNameChangedAt: new Date(),
-                    }}
-                );
-            } catch (identityErr) {
-                // Se falhar ao definir username (race condition de unicidade), ainda assim
-                // a conta foi criada — loga o erro para o usuário completar depois.
-                addLog('API', 'register.identity.fail', `Falha ao definir username após registro: ${identityErr.message}`, {
-                    userEmail: sanitizedEmail,
-                    extra: { username, error: identityErr.message },
-                });
-                // Não falha o registro — usuário pode definir username depois
             }
 
             addLog('API', 'register.success', `Conta criada: ${sanitizedEmail}`, {
@@ -142,9 +135,17 @@ module.exports = {
             return res.status(200).json({
                 message: 'Conta criada com sucesso.',
                 username,
-                displayName: finalDisplayName,
+                displayName: sanitizedDisplayName,
             });
         } catch (error) {
+            // Audit #5: trata race condition de username duplicado via índice
+            // unique do Mongo — retorna 409 USERNAME_TAKEN em vez de 500.
+            if (error && (error.code === 11000 || error.codeName === 'DuplicateKey') && /username/i.test(error.message || '')) {
+                return res.status(409).json({
+                    error: 'Este username já está em uso. Escolha outro.',
+                    code: 'USERNAME_TAKEN',
+                });
+            }
             if (error.code === 'WEAK_PASSWORD') {
                 return res.status(400).json({ error: 'Senha fraca.', code: 'WEAK_PASSWORD' });
             }

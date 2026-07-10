@@ -59,6 +59,63 @@ function verifyRequestAuth(req) {
 }
 
 /**
+ * Versão assíncrona de verifyRequestAuth que também valida o estado da conta
+ * no banco (banned / blocked). Deve ser usada em rotas autenticadas que precisam
+ * garantir que a conta ainda está ativa.
+ *
+ * Retorna { user, account, error }:
+ *   - error preenchido se o JWT for inválido OU a conta estiver banida/bloqueada
+ *     (status 401 para token inválido, 403 para conta suspensa)
+ *   - account é o documento completo do DashboardAccountService (null se não houver
+ *     JWT válido ou se a conta não existir — nesse caso error é preenchido)
+ */
+async function verifyRequestAuthWithAccountCheck(req) {
+    const { user, error } = verifyRequestAuth(req);
+    if (error) return { user: null, account: null, error };
+
+    // Lazy-require para evitar ciclo de dependência em testes que mockam o service.
+    let DashboardAccountService;
+    try {
+        DashboardAccountService = require('../database/services/DashboardAccountService');
+    } catch {
+        return { user, account: null, error: null };
+    }
+
+    let account = null;
+    try {
+        account = await DashboardAccountService.getDashboardAccountByEmail(user.email);
+    } catch {
+        // Erro de DB não deve bloquear a requisição — apenas retorna sem account.
+        return { user, account: null, error: null };
+    }
+
+    if (!account) {
+        return {
+            user: null,
+            account: null,
+            error: { status: 401, code: 'ACCOUNT_NOT_FOUND', message: 'Conta não encontrada.' },
+        };
+    }
+
+    if (account.banned) {
+        return {
+            user: null,
+            account,
+            error: { status: 403, code: 'ACCOUNT_BANNED', message: 'Esta conta foi banida.' },
+        };
+    }
+    if (account.blocked) {
+        return {
+            user: null,
+            account,
+            error: { status: 403, code: 'ACCOUNT_BLOCKED', message: 'Esta conta está bloqueada.' },
+        };
+    }
+
+    return { user, account, error: null };
+}
+
+/**
  * Middleware Express que exige auth (popula req.user ou retorna 401).
  */
 function requireAuth(req, res, next) {
@@ -116,6 +173,7 @@ module.exports = {
     COOKIE_NAME,
     extractToken,
     verifyRequestAuth,
+    verifyRequestAuthWithAccountCheck,
     requireAuth,
     optionalAuth,
     setAuthCookie,

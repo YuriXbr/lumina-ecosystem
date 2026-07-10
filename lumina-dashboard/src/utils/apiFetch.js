@@ -69,6 +69,17 @@ export async function apiFetch(url, options = {}) {
         window.dispatchEvent(new CustomEvent('auth:unauthorized'));
     }
 
+    // 403 com CSRF_INVALID = token CSRF expirou — invalida cache para regenerar
+    if (response.status === 403) {
+        try {
+            const body = await response.clone().json();
+            if (body.code === 'CSRF_INVALID') {
+                csrfTokenCache = null;
+                csrfTokenPromise = null;
+            }
+        } catch {}
+    }
+
     return response;
 }
 

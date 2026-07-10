@@ -1,23 +1,30 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    // Proxy da API para desenvolvimento local — faz com que o dashboard
-    // (localhost:5173) e a API (localhost:3000) compartilhem a mesma origem
-    // do ponto de vista do browser. Isso resolve o problema de cookies
-    // cross-origin: o cookie é setado e lido na mesma origem (localhost:5173).
-    proxy: {
-      '/expapi': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
+  const config = {
+    plugins: [react()],
+  }
+
+  // Proxy só em desenvolvimento — em produção, VITE_API_BASE_URL aponta
+  // para a API real (api.bot.luminasink.com) e não precisa de proxy.
+  if (mode === 'development' && !env.VITE_API_BASE_URL) {
+    config.server = {
+      proxy: {
+        '/expapi': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+        },
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+        },
       },
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-    },
-  },
+    }
+  }
+
+  return config
 })

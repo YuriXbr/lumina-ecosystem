@@ -48,10 +48,15 @@ export default function LoginPage() {
 
       if (response.ok) {
         // Cookie httpOnly já foi setado pelo backend.
-        // Pequeno delay para garantir que o browser processou o Set-Cookie
-        // antes de chamar /session (que precisa ler o cookie).
-        await new Promise(r => setTimeout(r, 200));
-        await onLoginSuccess();
+        // A resposta inclui o objeto user — não precisamos chamar /session.
+        const data = await response.json();
+        if (data.user) {
+          // Usa o user retornado diretamente pelo login
+          await onLoginSuccess(data.user);
+        } else {
+          // Fallback: se a API não retornou user, busca via /session
+          await onLoginSuccess();
+        }
         navigate('/members');
         return;
       }

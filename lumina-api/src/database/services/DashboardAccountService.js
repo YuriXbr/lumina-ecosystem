@@ -20,7 +20,10 @@ class DashboardAccountService extends DatabaseService {
     }
 
     async getDashboardAccountByEmail(email) {
-        if (!/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(email)) {
+        // Audit #13: permite plus-addressing (ex: user+tag@domain.com) — prática
+        // comum de Gmail/Outlook para endereços aliasáveis. O caractere `+` é
+        // válido na parte local do email conforme RFC 5231.
+        if (!/^[\w.+-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(email)) {
             throw new Error('Invalid email syntax');
         }
         return this.getOne({ email });
@@ -51,8 +54,15 @@ class DashboardAccountService extends DatabaseService {
         }
     }
 
-    async registerNewDashboardAccount(email, password, firstName, lastName, registrationIp, registrationUserAgent, registrationLocation, registrationCountry, registrationCity) {
-        if (!/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(email)) {
+    /**
+     * Cria uma nova conta do dashboard. Audit #5: aceita username/displayName
+     * como parâmetros opcionais para que sejam definidos ATOMICAMENTE no mesmo
+     * `create` — evita a race condition do fluxo anterior (criava conta sem
+     * username, depois fazia update separado, que podia falhar por concorrência
+     * de username entre dois registros simultâneos).
+     */
+    async registerNewDashboardAccount(email, password, firstName, lastName, registrationIp, registrationUserAgent, registrationLocation, registrationCountry, registrationCity, opts = {}) {
+        if (!/^[\w.+-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(email)) {
             throw new Error('Invalid email syntax');
         }
         this._validatePasswordStrength(password);
@@ -66,8 +76,8 @@ class DashboardAccountService extends DatabaseService {
             generatedId = crypto.randomUUID();
             checkUnique = await this.getOne({ accountId: generatedId }); // CORREÇÃO: usar accountId
         } while (checkUnique);
-        
-        return this.create({
+
+        const doc = {
             accountId: generatedId,
             email,
             password: hashedPassword,
@@ -79,7 +89,21 @@ class DashboardAccountService extends DatabaseService {
             registrationCountry,
             registrationCity,
             registrationDate: new Date()
-        });
+        };
+
+        // Audit #5: username + displayName opcionais no create (atômico)
+        if (opts.username) {
+            doc.username = opts.username;
+            doc.usernameLower = opts.usernameLower || normalizeUsername(opts.username);
+            doc.usernameChangedAt = new Date();
+        }
+        if (opts.displayName) {
+            // Audit #3: sanitizado (zero-width chars já removidos pelo caller via validateDisplayName)
+            doc.displayName = opts.displayName;
+            doc.displayNameChangedAt = new Date();
+        }
+
+        return this.create(doc);
     }
 
     /**
@@ -91,7 +115,7 @@ class DashboardAccountService extends DatabaseService {
         if (!provider || !providerId) {
             throw new Error('provider e providerId são obrigatórios');
         }
-        if (!email || !/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(email)) {
+        if (!email || !/^[\w.+-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(email)) {
             throw new Error('Invalid email syntax');
         }
 
@@ -384,6 +408,7 @@ class DashboardAccountService extends DatabaseService {
     /**
      * Define ou altera o displayName de uma conta.
      * Cooldown de 24h entre mudanças (só se já tinha um antes).
+     * Audit #3: armazena a versão sanitizada (sem zero-width chars).
      */
     async setDisplayName(accountId, newDisplayName) {
         if (!accountId) throw new Error('accountId é obrigatório');
@@ -394,6 +419,7 @@ class DashboardAccountService extends DatabaseService {
 
         const v = validateDisplayName(newDisplayName);
         if (!v.valid) { const err = new Error(v.error); err.code = 'INVALID_DISPLAY_NAME'; throw err; }
+        const sanitized = v.sanitized;
 
         if (account.displayName && account.displayNameChangedAt) {
             const c = canChangeDisplayName(account.displayNameChangedAt);
@@ -408,7 +434,7 @@ class DashboardAccountService extends DatabaseService {
         const now = new Date();
         const updated = await this.update(
             { accountId },
-            { $set: { displayName: newDisplayName.trim(), displayNameChangedAt: now }}
+            { $set: { displayName: sanitized.trim(), displayNameChangedAt: now }}
         );
         return { account: updated, changedAt: now };
     }

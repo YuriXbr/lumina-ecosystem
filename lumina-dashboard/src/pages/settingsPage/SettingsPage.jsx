@@ -40,7 +40,12 @@ function SettingsSkeleton() {
 export default function SettingsPage() {
   const { user, refreshUser, loading, error: userError, isAdmin } = useUser();
   const [activeTab, setActiveTab] = useState('profile');
-  const [settings, setSettings] = useState({});
+  const [settings, setSettings] = useState({
+    firstName: '', lastName: '', email: '',
+    emailNotifications: true, discordNotifications: true,
+    botActivityAlerts: false, publicProfile: false,
+    showOnlineStatus: true, language: 'pt-BR', timezone: 'America/Sao_Paulo',
+  });
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null);
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });

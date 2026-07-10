@@ -90,23 +90,45 @@ function validateUsername(username) {
     if (BLACKLIST.has(lower)) {
         return { valid: false, error: 'Este username não está disponível.' };
     }
-    // Verifica se contém palavra blacklisted como substring (ex: "lumina_fan")
+    // Audit #14: checagem por palavra-com-boundary ao invés de substring.
+    // Antes, "lumina_fan" era rejeitado porque contém "lumina" como substring —
+    // mas isso também bloqueava variações legítimas (ex: "illumina", "luminance",
+    // "voluminous"). Com \b (word-boundary), só rejeitamos quando a palavra
+    // aparece isolada ou delimitada por caracteres não-palavra.
+    // IMPORTANTE: underscore É um word-char em JavaScript regex (\w = [A-Za-z0-9_]),
+    // então "lumina_fan" NÃO tem boundary entre "lumina" e "_fan" — não é mais
+    // bloqueado por substring. Para rejeitar "lumina_fan" o usuário precisa que
+    // "lumina" esteja delimitada por start/end ou caracteres que NÃO sejam
+    // word-chars (ex: "lumina.fan", "lumina-fan", "lumina123" — esse último
+    // ainda não tem boundary porque "123" é word-char).
     for (const blocked of BLACKLIST) {
-        if (blocked.length >= 5 && lower.includes(blocked)) {
+        if (blocked.length < 5) continue;
+        const re = new RegExp(`(^|\\b)${escapeRegex(blocked)}(\\b|$)`, 'i');
+        if (re.test(lower)) {
             return { valid: false, error: 'Este username não está disponível.' };
         }
     }
     return { valid: true };
 }
 
+// Helper local para escapar regex (não exportado — só usado aqui)
+function escapeRegex(str) {
+    return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * Valida displayName.
  * Filtra zero-width chars e caracteres de controle que poderiam ser usados
  * para spoofing visual (ex: "Admin" com zero-width space no meio).
+ *
+ * Audit #3: retorna { valid, sanitized } onde `sanitized` é a string pronta
+ * para ser armazenada (zero-width chars removidos). Chamadores DEVEM usar
+ * `sanitized` ao invés do valor original para garantir que a forma
+ * armazenada seja a forma exibida.
  */
 function validateDisplayName(displayName) {
     if (typeof displayName !== 'string') {
-        return { valid: false, error: 'Display name deve ser texto.' };
+        return { valid: false, error: 'Display name deve ser texto.', sanitized: '' };
     }
 
     // Remove zero-width chars e caracteres de controle (exceto tab/newline normais)
@@ -117,20 +139,20 @@ function validateDisplayName(displayName) {
 
     const trimmed = sanitized.trim();
     if (trimmed.length === 0) {
-        return { valid: false, error: 'Display name não pode ser vazio.' };
+        return { valid: false, error: 'Display name não pode ser vazio.', sanitized: '' };
     }
     if (trimmed.length > 32) {
-        return { valid: false, error: 'Display name deve ter no máximo 32 caracteres.' };
+        return { valid: false, error: 'Display name deve ter no máximo 32 caracteres.', sanitized };
     }
     // Não pode ser apenas espaços/underscores
     if (/^[\s_]+$/.test(trimmed)) {
-        return { valid: false, error: 'Display name deve conter caracteres válidos.' };
+        return { valid: false, error: 'Display name deve conter caracteres válidos.', sanitized };
     }
     // Não pode conter apenas zero-width (já filtrado, mas checa se sobrou algo visível)
     if (!trimmed.replace(/\s/g, '').length) {
-        return { valid: false, error: 'Display name deve conter caracteres visíveis.' };
+        return { valid: false, error: 'Display name deve conter caracteres visíveis.', sanitized };
     }
-    return { valid: true };
+    return { valid: true, sanitized };
 }
 
 /**

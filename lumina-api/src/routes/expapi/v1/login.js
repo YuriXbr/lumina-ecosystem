@@ -9,6 +9,12 @@ const ROUTE = 'POST /expapi/v1/login';
 // Antes usavam res.send('texto'), e como o frontend faz response.json(),
 // o parse falhava e caía no catch genérico de "erro de conexão" —
 // mascarando o motivo real (senha errada, conta banida, rate limit, etc).
+//
+// Audit #6: o corpo da resposta de sucesso agora inclui o objeto `user`
+// (accountId, email, firstName, lastName, accessType, etc.) — evita que o
+// frontend precise fazer uma chamada extra a /session imediatamente após
+// o login (eliminando uma race condition onde o cookie ainda não estava
+// disponível para a próxima requisição).
 
 module.exports = {
     route: '/expapi/v1/login',
@@ -70,7 +76,37 @@ module.exports = {
             // Seta cookie httpOnly (imune a XSS) para o dashboard SPA.
             // O token tambem e retornado no JSON para clients nao-browser (CLI, scripts).
             setAuthCookie(res, token);
-            return res.status(200).json({ token, hasPassword: !!account.password });
+
+            // Audit #6: inclui o objeto `user` na resposta para o frontend não
+            // precisar chamar /session separadamente (evita race do cookie).
+            return res.status(200).json({
+                token,
+                hasPassword: !!account.password,
+                user: {
+                    accountId: account.accountId,
+                    email: account.email,
+                    firstName: account.firstName,
+                    lastName: account.lastName,
+                    accessType: account.accessType || 'user',
+                    emailVerified: account.emailVerified || false,
+                    discordOauth2Id: account.discordOauth2Id || '',
+                    authProviders: Object.keys(account.authProviders || {}),
+                    hasPassword: !!account.password,
+                    language: account.language || 'pt-BR',
+                    timezone: account.timezone || 'America/Sao_Paulo',
+                    username: account.username || '',
+                    displayName: account.displayName || '',
+                    emailNotifications: account.emailNotifications ?? true,
+                    discordNotifications: account.discordNotifications ?? true,
+                    botActivityAlerts: account.botActivityAlerts || false,
+                    publicProfile: account.publicProfile || false,
+                    showOnlineStatus: account.showOnlineStatus ?? true,
+                    blocked: account.blocked || false,
+                    banned: account.banned || false,
+                    registrationDate: account.registrationDate,
+                    lastLogin: account.lastLogin,
+                },
+            });
         } catch (error) {
             switch (error.code) {
                 case 'OAUTH_ONLY':

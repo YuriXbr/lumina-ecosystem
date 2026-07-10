@@ -1,5 +1,5 @@
 const DashboardAccountService = require('../../../database/services/DashboardAccountService');
-const { verifyRequestAuth } = require('../../../utils/authHelpers');
+const { verifyRequestAuth, verifyRequestAuthWithAccountCheck } = require('../../../utils/authHelpers');
 const { routeError } = require('../../../logger/logger');
 
 const ROUTE = 'GET /expapi/v1/session';
@@ -29,25 +29,32 @@ module.exports = {
 
     async execute(req, res) {
         try {
-            const { user: decoded, error } = verifyRequestAuth(req);
-
-            // Sempre retorna 200 — o frontend decide o que fazer com authenticated
-            if (error || !decoded) {
+            // Sempre retorna 200 — o frontend decide o que fazer com authenticated.
+            // Não usamos verifyRequestAuthWithAccountCheck diretamente porque
+            // ele retornaria erro 401 quando não há token; session.js precisa
+            // devolver 200 { authenticated: false } nesse caso.
+            const { error } = verifyRequestAuth(req);
+            if (error || !verifyRequestAuth(req).user) {
                 return res.status(200).json({ authenticated: false });
             }
 
-            // Busca a conta completa para retornar dados atualizados
-            const account = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
-            if (!account) {
-                // Conta foi deletada ou email mudou — sessão inválida
+            // Usa a versão com checagem de conta para validar banned/blocked
+            // e já receber o account populado.
+            const { account, error: authError } = await verifyRequestAuthWithAccountCheck(req);
+
+            // Token inválido/expirado → não autenticado (sem 401)
+            if (authError && authError.status === 401) {
                 return res.status(200).json({ authenticated: false });
             }
-
-            if (account.banned || account.blocked) {
+            // Conta banida/bloqueada → authenticated:false com reason
+            if (authError && (authError.code === 'ACCOUNT_BANNED' || authError.code === 'ACCOUNT_BLOCKED')) {
                 return res.status(200).json({
                     authenticated: false,
-                    reason: account.banned ? 'ACCOUNT_BANNED' : 'ACCOUNT_BLOCKED',
+                    reason: authError.code,
                 });
+            }
+            if (authError || !account) {
+                return res.status(200).json({ authenticated: false });
             }
 
             return res.status(200).json({

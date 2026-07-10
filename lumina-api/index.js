@@ -243,6 +243,29 @@ loadRoutes(path.join(__dirname, 'src', 'routes'));
 const swaggerRoute = require('./src/routes/docs/swagger-route.js');
 swaggerRoute(app);
 
+// ─── Audit #11: TTL index para account closure ────────────────────────────
+// MongoDB remove automaticamente documentos quando o campo de TTL expira.
+// Aqui criamos um índice TTL em `deletionScheduledFor` com partialFilterExpression
+// para afetar SOMENTE contas que tenham essa data definida (contas normais têm
+// `deletionScheduledFor: null` e não são afetadas).
+// O setTimeout garante que o mongoose esteja conectado antes de tentar criar
+// o índice; o `.catch(() => {})` silencia erros (índice já existe, DB offline,
+// etc.) — não é crítico para o startup da API.
+setTimeout(() => {
+    try {
+        const mongoose = require('mongoose');
+        if (mongoose.connection && mongoose.connection.db) {
+            mongoose.connection.db.collection('dashboardaccounts').createIndex(
+                { deletionScheduledFor: 1 },
+                { expireAfterSeconds: 0, partialFilterExpression: { deletionScheduledFor: { $type: 'date' } } }
+            ).catch(() => {});
+            addLog('DB', 'ttl.index.deletionscheduledfor', 'Índice TTL de fechamento de conta criado/verificado');
+        }
+    } catch (e) {
+        // Silencioso — não bloqueia o startup da API
+    }
+}, 5000);
+
 app.get('/expapi/v1/csrf-token', csrfProtection, (req, res) => {
     res.json({ csrfToken: req.csrfToken() });
 });

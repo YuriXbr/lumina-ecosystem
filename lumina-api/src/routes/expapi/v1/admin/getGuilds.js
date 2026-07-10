@@ -18,13 +18,15 @@ module.exports = {
     method: 'get',
 
     async execute(req, res) {
-        const { verifyRequestAuth } = require('../../../../utils/authHelpers');
-        const { user: decoded, error: authError } = verifyRequestAuth(req);
+        const { verifyRequestAuthWithAccountCheck } = require('../../../../utils/authHelpers');
+        const { user: decoded, account: adminAccount, error: authError } = await verifyRequestAuthWithAccountCheck(req);
         if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         try {
-            const adminAccount = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
             if (!adminAccount) return res.status(404).json({ error: 'Conta não encontrada.', code: 'ACCOUNT_NOT_FOUND' });
+            // Audit #4: bloqueia contas suspensas de usar rotas admin
+            if (adminAccount.banned || adminAccount.blocked)
+                return res.status(403).json({ error: 'Conta suspensa.', code: 'ACCOUNT_SUSPENDED' });
 
             if ((ACCESS_LEVELS[adminAccount.accessType] || 0) < 7)
                 return res.status(403).json({ error: 'Permissão insuficiente.', code: 'INSUFFICIENT_PERMISSION' });

@@ -1,25 +1,28 @@
 const DashboardAccountService   = require('../../../database/services/DashboardAccountService');
 const { routeError }            = require('../../../logger/logger');
 
-const ROUTE = 'PUT /expapi/v1/user/settings';
+const ROUTE = 'PUT /expapi/v1/user/profile';
 
 const ALLOWED_LANGUAGES = ['pt-BR','en-US','es-ES'];
 const ALLOWED_TIMEZONES = ['America/Sao_Paulo','America/New_York','Europe/London','Asia/Tokyo'];
 
 module.exports = {
-    route: '/expapi/v1/user/settings',
-    description: "Atualiza as configurações do usuário autenticado",
-    apiKeyNeeded: false, 
+    // Frontend chama PUT /expapi/v1/user/profile. Mantemos o route path
+    // correspondente ao que o frontend espera. (Alias legado: /user/settings
+    // continua funcionando graças ao arquivo legado — ver index.js loadRoutes.)
+    route: '/expapi/v1/user/profile',
+    description: "Atualiza as configurações do usuário autenticado (PUT /user/profile)",
+    apiKeyNeeded: false,
     jwtNeeded: false,
-    enabled: true, 
-    loginLimiterNeeded: false, 
+    enabled: true,
+    loginLimiterNeeded: false,
     csrfProtectionNeeded: true,
-    checkAuthNeeded: false, 
+    checkAuthNeeded: false,
     method: 'put',
 
     async execute(req, res) {
-        const { verifyRequestAuth } = require('../../../utils/authHelpers');
-        const { user: decoded, error: authError } = verifyRequestAuth(req);
+        const { verifyRequestAuthWithAccountCheck } = require('../../../utils/authHelpers');
+        const { user: decoded, account, error: authError } = await verifyRequestAuthWithAccountCheck(req);
         if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         const { emailNotifications, discordNotifications, botActivityAlerts,
@@ -31,7 +34,6 @@ module.exports = {
             return res.status(400).json({ error: 'Fuso horário inválido.', code: 'INVALID_TIMEZONE' });
 
         try {
-            const account = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
             if (!account)
                 return res.status(404).json({ error: 'Conta não encontrada.', code: 'ACCOUNT_NOT_FOUND' });
 

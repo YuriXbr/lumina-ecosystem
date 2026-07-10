@@ -173,8 +173,31 @@ export const UserProvider = ({ children }) => {
     setUser(null);
   };
 
-  const onLoginSuccess = async () => {
-    await loadUser();
+  const onLoginSuccess = async (directUser = null) => {
+    if (directUser) {
+      // Se a API já retornou o user (ex: login response), usa diretamente
+      setUser(directUser);
+      setLoading(false);
+      // Busca info do Discord em background se tiver vinculado
+      if (directUser.discordOauth2Id) {
+        try {
+          const discordRes = await fetch(`${API_BASE}expapi/v1/discordinfo`, {
+            credentials: 'include',
+          });
+          if (discordRes.ok) {
+            const discordData = await discordRes.json();
+            setUser(prevUser => prevUser ? ({
+              ...prevUser,
+              id: discordData.id,
+              username: prevUser.username || discordData.username,
+              avatar: discordData.avatar,
+            }) : prevUser);
+          }
+        } catch {}
+      }
+    } else {
+      await loadUser();
+    }
   };
 
   const value = {

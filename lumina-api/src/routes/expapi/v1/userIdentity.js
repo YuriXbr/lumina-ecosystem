@@ -24,15 +24,16 @@ module.exports = {
     method: 'put', // PUT — idempotente para definir identidade
 
     async execute(req, res) {
-        const { verifyRequestAuth } = require('../../../utils/authHelpers');
-        const { user: decoded, error: authError } = verifyRequestAuth(req);
+        const { verifyRequestAuthWithAccountCheck } = require('../../../utils/authHelpers');
+        const { user: decoded, account, error: authError } = await verifyRequestAuthWithAccountCheck(req);
         if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         try {
-            const account = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
             if (!account)
                 return res.status(404).json({ error: 'Conta não encontrada.', code: 'ACCOUNT_NOT_FOUND' });
 
+            // banned/blocked já tratado por verifyRequestAuthWithAccountCheck, mas
+            // mantemos a checagem explícita para clareza de fluxo.
             if (account.banned)
                 return res.status(403).json({ error: 'Conta banida.', code: 'ACCOUNT_BANNED' });
             if (account.blocked)
@@ -85,6 +86,7 @@ module.exports = {
                     return res.status(400).json({ error: v.error, code: 'INVALID_DISPLAY_NAME' });
                 }
 
+                // Audit #3: armazena a versão sanitizada (sem zero-width chars)
                 if (account.displayName && account.displayNameChangedAt) {
                     const c = canChangeDisplayName(account.displayNameChangedAt);
                     if (!c.canChange) {
@@ -97,7 +99,7 @@ module.exports = {
                     }
                 }
 
-                updates.displayName = newDisplayName;
+                updates.displayName = v.sanitized.trim();
                 updates.displayNameChangedAt = new Date();
             }
 

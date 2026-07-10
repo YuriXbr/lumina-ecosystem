@@ -16,12 +16,11 @@ module.exports = {
     method: 'get',
 
     async execute(req, res) {
-        const { verifyRequestAuth } = require('../../../utils/authHelpers');
-        const { user: decoded, error: authError } = verifyRequestAuth(req);
+        const { verifyRequestAuthWithAccountCheck } = require('../../../utils/authHelpers');
+        const { user: decoded, account, error: authError } = await verifyRequestAuthWithAccountCheck(req);
         if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         try {
-            let account = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
             if (!account)
                 return res.status(404).json({ error: 'Conta não encontrada.', code: 'ACCOUNT_NOT_FOUND' });
             if (!account.discordOauth2Token?.trim())
@@ -39,7 +38,7 @@ module.exports = {
                     });
                     const tokenRes = await axios.post('https://discord.com/api/oauth2/token', params.toString(),
                         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-                    account = await DashboardAccountService.update({ email: decoded.email }, {
+                    const updated = await DashboardAccountService.update({ email: decoded.email }, {
                         $set: {
                             discordOauth2Token: tokenRes.data.access_token,
                             discordOauth2RefreshToken: tokenRes.data.refresh_token,
@@ -48,10 +47,20 @@ module.exports = {
                             discordOauth2TokenScope: 'identify email messages.read'
                         }
                     });
-                    if (!account) {
+                    if (!updated) {
                         return routeError({ res, error: new Error('Conta nao encontrada apos refresh'), route: ROUTE, errorCode: 'ACCOUNT_NOT_FOUND_AFTER_REFRESH', userMsg: 'Conta nao encontrada.', extra: { email: decoded.email } });
                     }
+                    account = updated;
                 } catch (refreshError) {
+                    if (refreshError.response?.status === 429) {
+                        const retryAfter = parseFloat(refreshError.response?.headers?.['retry-after'] || '2');
+                        res.set('Retry-After', String(Math.ceil(retryAfter) || 2));
+                        return res.status(429).json({
+                            error: 'O Discord está limitando requisições. Tente novamente em alguns segundos.',
+                            code: 'DISCORD_RATE_LIMITED',
+                            retryAfter: Math.ceil(retryAfter) || 2,
+                        });
+                    }
                     return routeError({ res, error: refreshError, route: ROUTE,
                         errorCode: 'DISCORD_TOKEN_REFRESH_ERROR',
                         userMsg: 'Erro ao atualizar token do Discord. Reconecte sua conta.',
@@ -59,8 +68,22 @@ module.exports = {
                 }
             }
 
-            const discordRes = await axios.get('https://discord.com/api/users/@me',
-                { headers: { Authorization: `Bearer ${account.discordOauth2Token}` } });
+            let discordRes;
+            try {
+                discordRes = await axios.get('https://discord.com/api/users/@me',
+                    { headers: { Authorization: `Bearer ${account.discordOauth2Token}` } });
+            } catch (err) {
+                if (err.response?.status === 429) {
+                    const retryAfter = parseFloat(err.response?.headers?.['retry-after'] || '2');
+                    res.set('Retry-After', String(Math.ceil(retryAfter) || 2));
+                    return res.status(429).json({
+                        error: 'O Discord está limitando requisições. Tente novamente em alguns segundos.',
+                        code: 'DISCORD_RATE_LIMITED',
+                        retryAfter: Math.ceil(retryAfter) || 2,
+                    });
+                }
+                throw err;
+            }
             const { avatar, username, id, banner, accent_color, global_name } = discordRes.data;
             return res.status(200).json({ avatar, username, id, banner, accentColor: accent_color, globalName: global_name });
         } catch (error) {

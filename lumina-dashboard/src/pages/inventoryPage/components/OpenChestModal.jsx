@@ -223,7 +223,11 @@ export default function OpenChestModal({
 
         try {
             const csrfToken = await fetchCsrfToken(baseUrl);
-            const response = await fetch(`${baseUrl}expapi/v1/rollskin`, { credentials: 'include' })
+            const response = await fetch(`${baseUrl}expapi/v1/rollskin`, {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': csrfToken, 'Content-Type': 'application/json' },
+                credentials: 'include',
+            })
 
             if (!response.ok) {
                 const message = await readErrorMessage(

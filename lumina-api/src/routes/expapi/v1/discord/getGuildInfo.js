@@ -1,7 +1,7 @@
 const DashboardAccountService = require('../../../../database/services/DashboardAccountService');
 const GuildService = require('../../../../database/services/GuildService');
 const { routeError, addLog } = require('../../../../logger/logger');
-const { verifyRequestAuth } = require('../../../../utils/authHelpers');
+const { verifyRequestAuthWithAccountCheck } = require('../../../../utils/authHelpers');
 const axios = require('axios');
 
 const ROUTE = 'GET /expapi/v1/discord/guild/:guildId';
@@ -32,7 +32,7 @@ module.exports = {
     checkAuthNeeded: false,
 
     async execute(req, res) {
-        const { user: decoded, error: authError } = verifyRequestAuth(req);
+        const { user: decoded, error: authError } = await verifyRequestAuthWithAccountCheck(req);
         if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         const { guildId } = req.params;
@@ -41,7 +41,9 @@ module.exports = {
 
         try {
             // ─── 1. Verificar Discord vinculado ─────────────────────────────
-            const account = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
+            // account já vem populado pelo verifyRequestAuthWithAccountCheck, mas
+            // pegamos uma cópia fresca para podermos atualizar em caso de refresh.
+            let account = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
             if (!account)
                 return res.status(404).json({ error: 'Conta não encontrada.', code: 'ACCOUNT_NOT_FOUND' });
 
@@ -97,6 +99,15 @@ module.exports = {
                     timeout: 8000,
                 });
             } catch (userGuildsErr) {
+                if (userGuildsErr.response?.status === 429) {
+                    const retryAfter = parseFloat(userGuildsErr.response?.headers?.['retry-after'] || '2');
+                    res.set('Retry-After', String(Math.ceil(retryAfter) || 2));
+                    return res.status(429).json({
+                        error: 'O Discord está limitando requisições. Tente novamente em alguns segundos.',
+                        code: 'DISCORD_RATE_LIMITED',
+                        retryAfter: Math.ceil(retryAfter) || 2,
+                    });
+                }
                 if (userGuildsErr.response?.status === 403) {
                     return res.status(403).json({
                         error: 'Seu token Discord não tem permissão para listar servidores. Reconecte sua conta.',
@@ -141,16 +152,29 @@ module.exports = {
                         premiumSince: memberRes.data.premium_since || null,
                     };
                 } catch (memberErr) {
+                    if (memberErr.response?.status === 429) {
+                        const retryAfter = parseFloat(memberErr.response?.headers?.['retry-after'] || '2');
+                        res.set('Retry-After', String(Math.ceil(retryAfter) || 2));
+                        return res.status(429).json({
+                            error: 'O Discord está limitando requisições. Tente novamente em alguns segundos.',
+                            code: 'DISCORD_RATE_LIMITED',
+                            retryAfter: Math.ceil(retryAfter) || 2,
+                        });
+                    }
                     // Se falhar (scope insuficiente, etc), continua sem memberInfo
                     addLog('API', 'discord.member.fetch', `Não foi possível buscar member info (provavelmente scope antigo): ${memberErr.message}`);
                 }
             }
 
             // ─── 5. Buscar config do bot no banco (se bot estiver na guilda) ─
+            // Audit #18: campos sensíveis (config de moderação, listas de bloqueio)
+            // são retornados apenas se canManage for true. Usuários comuns recebem
+            // apenas a config básica (prefix, language, toggles).
             let botConfig = null;
             try {
                 const guildData = await GuildService.getGuildData(guildId);
                 if (guildData) {
+                    // Config pública (qualquer membro pode ver)
                     botConfig = {
                         prefix: guildData.prefix || 'l!',
                         language: guildData.guildLocale || 'en-US',
@@ -158,24 +182,27 @@ module.exports = {
                         moderationEnabled: !!guildData.moderationChannelId,
                         musicEnabled: !!guildData.djEnabled,
                         memberCount: guildData.memberCount || 0,
-                        // Extended config
-                        warnsToMute: guildData.warnsToMute || 3,
-                        warnsToTimeOut: guildData.warnsToTimeOut || 5,
-                        warnsToKick: guildData.warnsToKick || 6,
-                        warnsToBan: guildData.warnsToBan || 7,
-                        persistentMute: guildData.persistentMute ?? true,
-                        persistentWarns: guildData.persistentWarns ?? true,
-                        autoWarnPunishment: guildData.autoWarnPunishment || false,
                         gachaEnabled: guildData.gachaEnabled ?? true,
                         gachaChestsEnabled: guildData.gachaChestsEnabled ?? true,
                         gachaMaxRolls: guildData.gachaMaxRolls || 8,
                         gachaRefreshInterval: guildData.gachaRollsRefreshInterval || 10800000,
-                        commandsEnabled: guildData.commandsEnabled || {},
-                        autoMessages: guildData.autoMessages || [],
-                        blockedUsers: guildData.blockedUsers || [],
-                        blockedRoles: guildData.blockedRoles || [],
-                        blockedChannels: guildData.blockedChannels || [],
                     };
+
+                    // Config de gerenciamento — só para quem pode administrar a guilda
+                    if (canManage) {
+                        botConfig.warnsToMute = guildData.warnsToMute || 3;
+                        botConfig.warnsToTimeOut = guildData.warnsToTimeOut || 5;
+                        botConfig.warnsToKick = guildData.warnsToKick || 6;
+                        botConfig.warnsToBan = guildData.warnsToBan || 7;
+                        botConfig.persistentMute = guildData.persistentMute ?? true;
+                        botConfig.persistentWarns = guildData.persistentWarns ?? true;
+                        botConfig.autoWarnPunishment = guildData.autoWarnPunishment || false;
+                        botConfig.commandsEnabled = guildData.commandsEnabled || {};
+                        botConfig.autoMessages = guildData.autoMessages || [];
+                        botConfig.blockedUsers = guildData.blockedUsers || [];
+                        botConfig.blockedRoles = guildData.blockedRoles || [];
+                        botConfig.blockedChannels = guildData.blockedChannels || [];
+                    }
                 }
             } catch (dbErr) {
                 addLog('DB', 'guild.fetch.fail', `Falha ao buscar config da guilda ${guildId}: ${dbErr.message}`);

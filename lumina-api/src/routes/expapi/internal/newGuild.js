@@ -1,11 +1,11 @@
 const GuildService = require('../../../database/services/GuildService');
-const { routeError } = require('../../../logger/logger');
+const { routeError, addLog } = require('../../../logger/logger');
 
 const ROUTE = 'POST /expapi/internal/newguild';
 
 module.exports = {
     route: '/expapi/internal/newguild',
-    description: "Create a new guild",
+    description: "Create a new guild (idempotent: upsert if bot was re-added)",
     apiKeyNeeded: false,
     internalKeyNeeded: true,
     jwtNeeded: false,
@@ -22,11 +22,25 @@ module.exports = {
 
         }
         try {
+            // Upsert: se a guilda já existe (bot re-adicionado a um servidor onde
+            // já esteve), atualiza os dados ao invés de retornar 409. Retorna 200
+            // em ambos os casos (criação nova OU re-adição).
             const existing = await GuildService.getGuildData(guildId);
             if (existing) {
-                return res.status(409).json({ error: 'Guilda já existe.', code: 'GUILD_ALREADY_EXISTS' });
+                await GuildService.updateGuildData(guildId, {
+                    guildOwnerId: ownerId,
+                    guildReferenceName: guildName,
+                });
+                addLog('API', 'guild.upsert.readded', `Bot re-adicionado à guilda existente ${guildId} (${guildName})`);
+                return res.status(200).json({
+                    ...existing,
+                    guildOwnerId: ownerId,
+                    guildReferenceName: guildName,
+                    _upserted: true,
+                });
             }
             const result = await GuildService.createGuildData({ guildId, guildOwnerId: ownerId, guildReferenceName: guildName });
+            addLog('API', 'guild.create', `Nova guilda registrada ${guildId} (${guildName})`);
             return res.status(200).json(result);
         } catch (error) {
             return routeError({

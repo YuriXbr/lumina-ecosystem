@@ -30,10 +30,8 @@ export async function fetchMyGuilds() {
  * Busca o feed de novidades (público — não exige auth).
  */
 export async function fetchNews({ limit = 20, offset = 0 } = {}) {
-  const url = new URL(`${API_BASE}expapi/v1/news`);
-  url.searchParams.set('limit', String(limit));
-  url.searchParams.set('offset', String(offset));
-  const res = await fetch(url.toString(), {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  const res = await fetch(`${API_BASE}expapi/v1/news?${params.toString()}`, {
     credentials: 'include',
   });
   if (!res.ok) {

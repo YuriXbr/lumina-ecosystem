@@ -17,7 +17,7 @@ export default function RegisterModal() {
     useEffect(() => {
         const fetchCsrfToken = async () => {
             try {
-                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/csrf-token`, { credentials: 'include' })
+                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, { credentials: 'include' })
 
                 if (response.ok) {
                     const data = await response.json();
@@ -96,7 +96,7 @@ export default function RegisterModal() {
         }, 15000);
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/register`, {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/register`, {
 
             clearTimeout(timeoutId);
             setIsLoading(false);
@@ -132,7 +132,7 @@ export default function RegisterModal() {
 
     const handleDiscordRegister = () => {
         const origin = window.location.origin;
-        window.location.href = `${import.meta.env.VITE_API_BASE_URL || '/'}expapi/oauth2/discord/auth/start?origin=${encodeURIComponent(origin)}&intent=register`;
+        window.location.href = `${import.meta.env.VITE_API_BASE_URL}expapi/oauth2/discord/auth/start?origin=${encodeURIComponent(origin)}&intent=register`;
     };
 
     return (

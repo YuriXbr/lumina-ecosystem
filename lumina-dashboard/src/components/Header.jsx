@@ -6,6 +6,7 @@ import {
   Cog6ToothIcon, ShieldCheckIcon, ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 import { useUser } from '../contexts/UserContext';
+import { useT } from '../i18n/LanguageContext.jsx';
 import monochromeLogo from '../pages/assets/monochromeBlack.svg';
 
 /**
@@ -19,14 +20,15 @@ import monochromeLogo from '../pages/assets/monochromeBlack.svg';
  * É o "header principal" do produto. Subheaders (tabs internas de /settings, /admin,
  * e a topbar antiga do AppShell) ficam abaixo deste, em suas próprias páginas.
  */
-const NAV_LINKS = [
-  { name: 'Comandos', href: '/commands' },
-  { name: 'Inventário', href: '/inventory' },
-  { name: 'Assinaturas', href: '/pricing' },
-  { name: 'Sobre', href: '/about' },
+const NAV_LINK_KEYS = [
+  { labelKey: 'nav.commands', href: '/commands' },
+  { labelKey: 'nav.inventory', href: '/inventory' },
+  { labelKey: 'nav.pricing', href: '/pricing' },
+  { labelKey: 'nav.about', href: '/about' },
 ];
 
 export default function Header() {
+  const t = useT();
   const { user, loading, isAdmin, logout } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
@@ -67,7 +69,7 @@ export default function Header() {
             </Link>
 
             <nav className="hidden md:flex items-center gap-5">
-              {NAV_LINKS.map(item => {
+              {NAV_LINK_KEYS.map(item => {
                 const active = location.pathname === item.href ||
                   (item.href !== '/' && location.pathname.startsWith(item.href));
                 return (
@@ -78,7 +80,7 @@ export default function Header() {
                       active ? 'text-purple-700' : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    {item.name}
+                    {t(item.labelKey)}
                   </Link>
                 );
               })}
@@ -94,7 +96,7 @@ export default function Header() {
                 <button
                   onClick={() => setUserMenuOpen(o => !o)}
                   className="flex items-center gap-2 p-1 pr-2 rounded-full hover:bg-gray-100 transition-colors"
-                  aria-label="Menu do usuário"
+                  aria-label={t("common.openMenu")}
                 >
                   {avatarUrl ? (
                     <img
@@ -108,7 +110,7 @@ export default function Header() {
                     {(user.firstName?.[0] || user.email?.[0] || '?').toUpperCase()}
                   </span>
                   <span className="hidden sm:inline text-sm font-medium text-gray-700">
-                    {user.displayName || user.firstName || user.username || 'Conta'}
+                    {user.displayName || user.firstName || user.username || t('common.account')}
                   </span>
                 </button>
 
@@ -126,16 +128,16 @@ export default function Header() {
                     </div>
                     <Link to="/members" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
                       <UserCircleIcon className="h-4 w-4" />
-                      Área de Membros
+                      {t('header.area')}
                     </Link>
                     <Link to="/settings" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
                       <Cog6ToothIcon className="h-4 w-4" />
-                      Configurações
+                      {t('header.settings')}
                     </Link>
                     {isAdmin() && (
                       <Link to="/admin" className="flex items-center gap-2 px-3 py-2 text-sm text-purple-700 hover:bg-purple-50">
                         <ShieldCheckIcon className="h-4 w-4" />
-                        Painel Admin
+                        {t('header.adminPanel')}
                       </Link>
                     )}
                     <div className="border-t border-gray-100 mt-1 pt-1">
@@ -144,7 +146,7 @@ export default function Header() {
                         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                       >
                         <ArrowRightOnRectangleIcon className="h-4 w-4" />
-                        Sair
+                        {t('common.logout')}
                       </button>
                     </div>
                   </div>
@@ -153,10 +155,10 @@ export default function Header() {
             ) : (
               <div className="hidden sm:flex items-center gap-2">
                 <Link to="/login" className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-purple-700">
-                  Entrar
+                  {t('header.login')}
                 </Link>
                 <Link to="/register" className="px-3 py-1.5 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700">
-                  Criar conta
+                  {t('header.signup')}
                 </Link>
               </div>
             )}
@@ -166,7 +168,7 @@ export default function Header() {
               type="button"
               onClick={() => setMobileMenuOpen(true)}
               className="md:hidden p-2 text-gray-600 hover:text-gray-900"
-              aria-label="Abrir menu"
+              aria-label={t("common.openMenu")}
             >
               <Bars3Icon className="h-6 w-6" />
             </button>
@@ -185,13 +187,13 @@ export default function Header() {
             </button>
           </div>
           <nav className="p-2 space-y-1">
-            {NAV_LINKS.map(item => (
+            {NAV_LINK_KEYS.map(item => (
               <Link
                 key={item.href}
                 to={item.href}
                 className="block px-3 py-2.5 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100"
               >
-                {item.name}
+                {t(item.labelKey)}
               </Link>
             ))}
             <div className="border-t border-gray-100 my-2" />
@@ -199,16 +201,16 @@ export default function Header() {
               <>
                 <Link to="/members" className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100">
                   <UserCircleIcon className="h-5 w-5" />
-                  Área de Membros
+                  {t('header.area')}
                 </Link>
                 <Link to="/settings" className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100">
                   <Cog6ToothIcon className="h-5 w-5" />
-                  Configurações
+                  {t('header.settings')}
                 </Link>
                 {isAdmin() && (
                   <Link to="/admin" className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-purple-700 hover:bg-purple-50">
                     <ShieldCheckIcon className="h-5 w-5" />
-                    Painel Admin
+                    {t('header.adminPanel')}
                   </Link>
                 )}
                 <button
@@ -216,16 +218,16 @@ export default function Header() {
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-red-600 hover:bg-red-50"
                 >
                   <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                  Sair
+                  {t('common.logout')}
                 </button>
               </>
             ) : (
               <div className="space-y-1 pt-2">
                 <Link to="/login" className="block px-3 py-2.5 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100">
-                  Entrar
+                  {t('header.login')}
                 </Link>
                 <Link to="/register" className="block px-3 py-2.5 rounded-md text-sm font-medium text-white bg-purple-600 text-center">
-                  Criar conta
+                  {t('header.signup')}
                 </Link>
               </div>
             )}

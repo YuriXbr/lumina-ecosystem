@@ -1,5 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionsBitField } = require('discord.js');
 const LuminaApiService = require('../../utils/services/LuminaApiService');
+const i18n = require('../../utils/i18n/index.js');
+const { loc } = require('../../utils/i18n/commandLocales.js');
 const api = new LuminaApiService();
 
 module.exports = {
@@ -9,44 +11,53 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('unmute')
         .setDescription('Unmute a user.')
-        .addUserOption(option => option.setName('user').setDescription('The user to unmute.').setRequired(true)),
-    async execute(interaction) {
+        .setDescriptionLocalizations(loc('Desilencia um usuário.', 'Desilencia a un usuario.'))
+        .addUserOption(option => option
+            .setName('user')
+            .setDescription('The user to unmute.')
+            .setDescriptionLocalizations(loc('O usuário para desilenciar.', 'El usuario para desilenciar.'))
+            .setRequired(true)),
+
+    async execute(interaction, t) {
+        const translator = t || i18n.getTranslator(i18n.resolveFromInteraction(interaction));
         await interaction.deferReply();
 
         const user = interaction.options.getUser('user');
         const target = interaction.guild.members.cache.get(user.id);
-        const author = interaction.user.id;
-        const staff = interaction.guild.members.cache.get(author);
+        const staff = interaction.guild.members.cache.get(interaction.user.id);
 
-        // Fetch the guild data from the database
-        let guildData = await getGuildData(interaction.guild.id);
+        // TODO: buscar guildData via API (atualmente a função getGuildData não está importada)
+        // let guildData = await getGuildData(interaction.guild.id);
+        const LuminaApiService = require('../../utils/services/LuminaApiService');
+        const api = new LuminaApiService();
+        let guildData;
+        try {
+            guildData = await api.post('/expapi/internal/fetchguilddata', { guildId: interaction.guild.id });
+        } catch (e) {
+            guildData = null;
+        }
         if (!guildData || !guildData.muteRoleId) {
-            return promptSetup(interaction);
+            return interaction.editReply({ content: translator('cmd.setupRoles.missingFields'), ephemeral: true });
         }
 
-        const mutedRoleId = guildData.muteRoleId;
-        const mutedRole = interaction.guild.roles.cache.get(mutedRoleId);
+        const mutedRole = interaction.guild.roles.cache.get(guildData.muteRoleId);
 
-        if (!hasPermission(staff)) {
-            return interaction.editReply({ content: 'You do not have permission to do that.', ephemeral: true });
+        if (!staff.permissions.has(PermissionsBitField.Flags.MuteMembers) && !staff.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            return interaction.editReply({ content: translator('cmd.unmute.noPermission'), ephemeral: true });
         }
 
         if (!mutedRole) {
-            return interaction.editReply({ content: 'The muted role does not exist. Please set a valid muted role in the database.', ephemeral: true });
+            return interaction.editReply({ content: translator('cmd.unmute.botCannotUnmute'), ephemeral: true });
         }
 
         if (!target.roles.cache.has(mutedRole.id)) {
-            return interaction.editReply({ content: 'This user is not muted.', ephemeral: true });
+            return interaction.editReply({ content: translator('cmd.unmute.notMuted'), ephemeral: true });
         }
 
         if (target.voice.channel) target.voice.setMute(false);
 
         await target.roles.remove(mutedRole);
 
-        // Remove the mute record from the database
-        await removeMute(interaction.guild.id, user.id);
-
-        // Remove o registro de mute via API
         try {
             await api.post('/expapi/internal/removepunishrecord', {
                 type: 'mute',
@@ -58,23 +69,10 @@ module.exports = {
         }
 
         const embed = new EmbedBuilder()
-            .setTitle('User Unmuted')
-            .setDescription(`${user.tag} has been unmuted.`)
+            .setTitle(translator('cmd.unmute.title'))
+            .setDescription(translator('cmd.unmute.description', { user: user.tag }))
             .setColor('Green');
 
         await interaction.editReply({ embeds: [embed], ephemeral: true });
-    }
+    },
 };
-
-async function promptSetup(interaction) {
-    const embed = new EmbedBuilder()
-        .setTitle('Configuração Necessária')
-        .setDescription('O servidor não está configurado. Por favor, execute o comando /setuproles para configurar.')
-        .setColor('Red');
-
-    await interaction.editReply({ embeds: [embed], ephemeral: true });
-}
-
-function hasPermission(staff) {
-    return staff.permissions.has(PermissionsBitField.Flags.MuteMembers) || staff.permissions.has(PermissionsBitField.Flags.Administrator);
-}

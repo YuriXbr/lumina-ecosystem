@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { ArrowPathIcon, XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { useT } from '../../../i18n/LanguageContext.jsx';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 /**
  * Modal que aparece para usuários cujo token OAuth2 do Discord não tem o scope
@@ -11,6 +12,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
  * intent=link, que re-autoriza com os novos scopes.
  */
 export default function ReauthModal({ onClose }) {
+  const t = useT();
   const [linking, setLinking] = useState(false);
 
   const handleReauth = () => {
@@ -32,39 +34,30 @@ export default function ReauthModal({ onClose }) {
           <button
             onClick={onClose}
             className="absolute top-3 right-3 text-white/80 hover:text-white p-1"
-            aria-label="Fechar"
+            aria-label={t("common.close")}
           >
             <XMarkIcon className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-2 text-white">
             <ArrowPathIcon className="h-6 w-6" />
-            <h2 className="text-lg font-bold">Re-sincronização necessária</h2>
+            <h2 className="text-lg font-bold">{t("membersArea.reauth.title")}</h2>
           </div>
         </div>
 
         <div className="px-6 py-5 space-y-4">
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800 flex items-start gap-2">
             <ExclamationTriangleIcon className="h-4 w-4 flex-shrink-0 mt-0.5" />
-            <span>
-              Sua conexão com o Discord precisa ser atualizada para incluir novas
-              permissões. Isso permite que o Lumina acesse informações dos seus
-              servidores sem precisar do token do bot.
-            </span>
+            <span>{t("membersArea.reauth.desc1Full")}</span>
           </div>
 
-          <p className="text-sm text-gray-600">
-            Detectamos que sua conta Discord foi conectada antes de uma atualização
-            do sistema. Para garantir que todas as funcionalidades funcionem
-            corretamente (incluindo visualização de servidores e configurações),
-            você precisa reautorizar o acesso.
-          </p>
+          <p className="text-sm text-gray-600">{t("membersArea.reauth.desc2Full")}</p>
 
           <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500 space-y-1">
-            <p className="font-medium text-gray-700">O que será atualizado:</p>
+            <p className="font-medium text-gray-700">{t("membersArea.reauth.whatWillUpdate")}</p>
             <ul className="list-disc pl-4 space-y-0.5">
-              <li>Permissão para ler seus servidores (<code>guilds</code>)</li>
-              <li>Permissão para ler seu perfil de membro (<code>guilds.members.read</code>)</li>
-              <li>Permissão para ler seu email e avatar (<code>identify email</code>)</li>
+              <li>{t("membersArea.reauth.scopeGuilds")}</li>
+              <li>{t('membersArea.reauth.scopeMembers')}</li>
+              <li>{t('membersArea.reauth.scopeEmail')}</li>
             </ul>
           </div>
 
@@ -73,7 +66,7 @@ export default function ReauthModal({ onClose }) {
               onClick={onClose}
               className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
             >
-              Mais tarde
+              {t('membersArea.reauth.later')}
             </button>
             <button
               onClick={handleReauth}
@@ -83,12 +76,12 @@ export default function ReauthModal({ onClose }) {
               {linking ? (
                 <>
                   <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Redirecionando...
+                  {t('membersArea.reauth.redirecting')}
                 </>
               ) : (
                 <>
                   <ArrowPathIcon className="h-4 w-4" />
-                  Re-sincronizar
+                  {t('membersArea.reauth.button')}
                 </>
               )}
             </button>

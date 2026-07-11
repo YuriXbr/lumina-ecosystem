@@ -1,5 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionsBitField } = require('discord.js');
 const LuminaApiService = require('../../utils/services/LuminaApiService');
+const i18n = require('../../utils/i18n/index.js');
+const { loc } = require('../../utils/i18n/commandLocales.js');
 const api = new LuminaApiService();
 
 module.exports = {
@@ -9,24 +11,30 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('unban')
         .setDescription('Unban a user.')
-        .addUserOption(option => option.setName('user').setDescription('The user to unban.').setRequired(true)),
-    async execute(interaction) {
+        .setDescriptionLocalizations(loc('Desbane um usuário.', 'Desbanea a un usuario.'))
+        .addUserOption(option => option
+            .setName('user')
+            .setDescription('The user to unban.')
+            .setDescriptionLocalizations(loc('O usuário para desbanir.', 'El usuario para desbanear.'))
+            .setRequired(true)),
+
+    async execute(interaction, t) {
+        const translator = t || i18n.getTranslator(i18n.resolveFromInteraction(interaction));
         await interaction.deferReply();
 
         const user = interaction.options.getUser('user');
         const staff = interaction.guild.members.cache.get(interaction.user.id);
 
         if (!staff.permissions.has(PermissionsBitField.Flags.BanMembers) && !staff.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return interaction.editReply({ content: 'You do not have permission to do that.', ephemeral: true });
+            return interaction.editReply({ content: translator('cmd.unban.noPermission'), ephemeral: true });
         }
 
         try {
             await interaction.guild.bans.remove(user.id);
         } catch (err) {
-            return interaction.editReply({ content: 'This user is not banned or I do not have permission to unban them.', ephemeral: true });
+            return interaction.editReply({ content: translator('cmd.unban.notBanned'), ephemeral: true });
         }
 
-        // Remove o registro de ban via API
         try {
             await api.post('/expapi/internal/removepunishrecord', {
                 type: 'ban',
@@ -38,23 +46,10 @@ module.exports = {
         }
 
         const embed = new EmbedBuilder()
-            .setTitle('User Unbanned')
-            .setDescription(`${user.tag} has been unbanned.`)
+            .setTitle(translator('cmd.unban.title'))
+            .setDescription(translator('cmd.unban.description', { user: user.tag }))
             .setColor('Green');
 
         await interaction.editReply({ embeds: [embed], ephemeral: true });
-    }
+    },
 };
-
-async function promptSetup(interaction) {
-    const embed = new EmbedBuilder()
-        .setTitle('Configuração Necessária')
-        .setDescription('O servidor não está configurado. Por favor, execute o comando /setuproles para configurar.')
-        .setColor('Red');
-
-    await interaction.editReply({ embeds: [embed], ephemeral: true });
-}
-
-function hasPermission(staff) {
-    return staff.permissions.has(PermissionsBitField.Flags.BanMembers) || staff.permissions.has(PermissionsBitField.Flags.Administrator);
-}

@@ -138,8 +138,10 @@ tags:
     description: User inventory, daily rewards, skin rolling (dashboard-side)
   - name: News
     description: Public news feed
+  - name: Badges
+    description: Badge system — redeem codes, view user badges
   - name: Admin
-    description: Admin-only endpoints (users, guilds, logs, metrics, news management)
+    description: Admin-only endpoints (users, guilds, badges, logs, metrics, news management)
   - name: Internal
     description: Bot ↔ API bridge endpoints (require `internal-key` header)
 
@@ -208,6 +210,121 @@ components:
           type: object
           additionalProperties: true
           description: Optional structured details (e.g. attemptsRemaining, lockedUntil).
+
+    Badge:
+      type: object
+      description: A redeemable badge definition.
+      properties:
+        code:
+          type: string
+          description: Unique redemption code (uppercase).
+          example: BETA2025
+        name:
+          type: string
+          example: Beta Tester
+        description:
+          type: string
+        imageUrl:
+          type: string
+          description: URL to the badge image.
+        rarity:
+          type: string
+          enum: [common, rare, epic, legendary, mythic]
+        highlightColor:
+          type: string
+          description: Hex color for UI highlight.
+          example: '#8B5CF6'
+
+    BadgeWithCount:
+      allOf:
+        - $ref: '#/components/schemas/Badge'
+        - type: object
+          properties:
+            availableFrom:
+              type: string
+              format: date-time
+            expiresAt:
+              type: string
+              format: date-time
+              nullable: true
+            maxRedemptions:
+              type: integer
+              description: 0 = unlimited.
+            minAccessLevel:
+              type: string
+            active:
+              type: boolean
+            createdBy:
+              type: string
+            createdAt:
+              type: string
+              format: date-time
+            redemptionCount:
+              type: integer
+              description: Number of users who have redeemed this badge.
+
+    BadgeCreate:
+      type: object
+      required: [code, name]
+      properties:
+        code:
+          type: string
+          minLength: 3
+          description: Unique redemption code (3+ chars, will be uppercased).
+          example: BETA2025
+        name:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        rarity:
+          type: string
+          enum: [common, rare, epic, legendary, mythic]
+          default: common
+        highlightColor:
+          type: string
+          default: '#8B5CF6'
+        availableFrom:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: null = never expires.
+        maxRedemptions:
+          type: integer
+          default: 0
+          description: 0 = unlimited.
+        minAccessLevel:
+          type: string
+          default: user
+          description: Minimum accessType required to redeem.
+
+    UserBadge:
+      type: object
+      description: A badge redeemed by a user.
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        rarity:
+          type: string
+          enum: [common, rare, epic, legendary, mythic]
+        highlightColor:
+          type: string
+        redeemedAt:
+          type: string
+          format: date-time
+        redeemedVia:
+          type: string
+          enum: [dashboard, bot]
 
     User:
       type: object
@@ -4208,3 +4325,347 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/ServerError'
+
+  # ─── Badge System ──────────────────────────────────────────────────────────
+
+  /expapi/v1/badges/my:
+    get:
+      tags: [Badges]
+      summary: List authenticated user's badges
+      description: Returns all badges redeemed by the authenticated user, sorted by rarity (mythic first) then by redemption date (most recent first).
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User's badges
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  badges:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserBadge'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /expapi/v1/badges/redeem:
+    post:
+      tags: [Badges]
+      summary: Redeem a badge code
+      description: |
+        Redeems a badge using a code. Validates:
+          1. Code exists and badge is active
+          2. Badge is within the redemption window (availableFrom ≤ now < expiresAt)
+          3. User has not already redeemed this badge
+          4. User meets the minimum access level requirement
+          5. Max redemptions limit not exceeded
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  description: Badge redemption code (case-insensitive, auto-uppercased)
+                  example: BETA2025
+      responses:
+        '200':
+          description: Badge redeemed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  badge:
+                    $ref: '#/components/schemas/Badge'
+        '400':
+          description: Missing code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Badge inactive, expired, not yet available, or user lacks access level
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Badge code not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: User already redeemed this badge
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /expapi/v1/badges/user/{identifier}:
+    get:
+      tags: [Badges]
+      summary: List public badges of a user
+      description: |
+        Returns the public badges of a user identified by accountId, username, or Discord ID.
+        Only returns badges if the target user has `publicProfile` enabled.
+      parameters:
+        - name: identifier
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User identifier (MongoDB ObjectId, username, or Discord ID)
+      responses:
+        '200':
+          description: User's public badges
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  badges:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserBadge'
+                  username:
+                    type: string
+                  displayName:
+                    type: string
+        '403':
+          description: Profile is private
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /expapi/v1/admin/badges:
+    get:
+      tags: [Admin]
+      summary: List all badges (admin)
+      description: Returns all badges with redemption counts. Requires admin+ access level.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All badges
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  badges:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BadgeWithCount'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Admin]
+      summary: Create a new badge (admin)
+      description: Creates a new badge with a unique redemption code. Requires admin+ access level.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BadgeCreate'
+      responses:
+        '201':
+          description: Badge created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  badge:
+                    $ref: '#/components/schemas/Badge'
+        '400':
+          description: Invalid input (code too short, invalid rarity, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Badge code already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /expapi/v1/admin/badges/{code}:
+    delete:
+      tags: [Admin]
+      summary: Delete a badge (admin)
+      description: |
+        Deletes a badge by its code. Requires admin+ access level.
+        Note: Does NOT delete userBadge records — they become orphaned and are
+        filtered out as null in getMyBadges/getUserBadges responses.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Badge code (case-insensitive)
+      responses:
+        '200':
+          description: Badge deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Badge not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /expapi/internal/createbadge:
+    post:
+      tags: [Internal]
+      summary: Create a badge via bot (internal)
+      description: |
+        Internal endpoint called by the bot when an admin uses `/createbadge`.
+        The bot passes the Discord ID of the admin; the API looks up the linked
+        account and verifies admin+ permission before creating the badge.
+      security:
+        - internalKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [discordUserId, code, name]
+              properties:
+                discordUserId:
+                  type: string
+                  description: Discord ID of the admin creating the badge
+                code:
+                  type: string
+                  description: Unique redemption code (3+ chars)
+                name:
+                  type: string
+                description:
+                  type: string
+                imageUrl:
+                  type: string
+                rarity:
+                  type: string
+                  enum: [common, rare, epic, legendary, mythic]
+                highlightColor:
+                  type: string
+                  description: Hex color (e.g. #8B5CF6)
+                maxRedemptions:
+                  type: integer
+                  description: 0 = unlimited
+                minAccessLevel:
+                  type: string
+                  description: Minimum access type required to redeem
+      responses:
+        '201':
+          description: Badge created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  badge:
+                    $ref: '#/components/schemas/Badge'
+        '403':
+          description: Insufficient permission (not admin+)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /expapi/internal/redeembadge:
+    post:
+      tags: [Internal]
+      summary: Redeem a badge via bot (internal)
+      description: |
+        Internal endpoint called by the bot when a user uses `/redeem`.
+        The bot passes the Discord ID of the user; the API looks up the linked
+        account and records the redemption.
+      security:
+        - internalKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [discordUserId, code]
+              properties:
+                discordUserId:
+                  type: string
+                  description: Discord ID of the user redeeming the badge
+                code:
+                  type: string
+                  description: Badge redemption code
+      responses:
+        '200':
+          description: Badge redeemed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  badge:
+                    $ref: '#/components/schemas/Badge'
+        '403':
+          description: Badge inactive, expired, or user lacks access level
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Badge or account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Already redeemed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

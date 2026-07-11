@@ -1,5 +1,6 @@
 const DashboardAccountService = require('../../../../database/services/DashboardAccountService');
 const GuildService = require('../../../../database/services/GuildService');
+const BotService = require('../../../../database/services/BotService');
 const { routeError, addLog } = require('../../../../logger/logger');
 const { verifyRequestAuthWithAccountCheck } = require('../../../../utils/authHelpers');
 const axios = require('axios');
@@ -10,6 +11,88 @@ const ROUTE = 'GET /expapi/v1/discord/guild/:guildId';
 const PERM_MANAGE_GUILD = 0x20;
 const PERM_ADMINISTRATOR = 0x8;
 
+// Discord channel types — apenas 0 (GUILD_TEXT) é exposto no dropdown de canais.
+const CHANNEL_TYPE_GUILD_TEXT = 0;
+
+/**
+ * Busca o token do bot. Ordem de precedência:
+ *   1. process.env.DISCORD_BOT_TOKEN (padrão do lumina-bot/index.js)
+ *   2. campo `token` no documento do bot no banco (BotService) — se existir
+ *
+ * Retorna string vazia se não houver token disponível.
+ */
+async function resolveBotToken() {
+    try {
+        if (process.env.DISCORD_BOT_TOKEN?.trim())
+            return process.env.DISCORD_BOT_TOKEN.trim();
+
+        const bot = await BotService.getBot();
+        if (bot && typeof bot.token === 'string' && bot.token.trim())
+            return bot.token.trim();
+    } catch (err) {
+        addLog('API', 'discord.bot.token.resolve', `Falha ao resolver bot token: ${err.message}`);
+    }
+    return '';
+}
+
+/**
+ * Busca canais de texto (type 0) e cargos (excluindo @everyone e managed)
+ * usando o token do bot. Retorna { channels, roles } com arrays vazios em
+ * caso de falha — nunca propaga o erro para o caller.
+ */
+async function fetchGuildChannelsAndRoles(guildId, botToken) {
+    const out = { channels: [], roles: [] };
+    if (!botToken) return out;
+
+    const headers = { Authorization: `Bot ${botToken}` };
+
+    // ─── Canais ────────────────────────────────────────────────────────────
+    try {
+        const channelsRes = await axios.get(
+            `https://discord.com/api/v10/guilds/${guildId}/channels`,
+            { headers, timeout: 8000 }
+        );
+        if (Array.isArray(channelsRes.data)) {
+            out.channels = channelsRes.data
+                .filter(c => c.type === CHANNEL_TYPE_GUILD_TEXT)
+                .map(c => ({ id: c.id, name: c.name }))
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+        }
+    } catch (channelsErr) {
+        if (channelsErr.response?.status === 429) {
+            // Respeita rate limit do Discord mas não derruba a request principal.
+            addLog('API', 'discord.channels.ratelimit', `Rate limit ao buscar canais da guilda ${guildId}`);
+        } else {
+            addLog('API', 'discord.channels.fail', `Falha ao buscar canais da guilda ${guildId}: ${channelsErr.message}`);
+        }
+    }
+
+    // ─── Cargos ───────────────────────────────────────────────────────────
+    try {
+        const rolesRes = await axios.get(
+            `https://discord.com/api/v10/guilds/${guildId}/roles`,
+            { headers, timeout: 8000 }
+        );
+        if (Array.isArray(rolesRes.data)) {
+            out.roles = rolesRes.data
+                .filter(r =>
+                    r.id !== guildId &&        // exclui @everyone
+                    !r.managed                 // exclui cargos de bots/integrações
+                )
+                .map(r => ({ id: r.id, name: r.name, color: r.color || 0 }))
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+        }
+    } catch (rolesErr) {
+        if (rolesErr.response?.status === 429) {
+            addLog('API', 'discord.roles.ratelimit', `Rate limit ao buscar cargos da guilda ${guildId}`);
+        } else {
+            addLog('API', 'discord.roles.fail', `Falha ao buscar cargos da guilda ${guildId}: ${rolesErr.message}`);
+        }
+    }
+
+    return out;
+}
+
 /**
  * Busca informações da guilda usando o TOKEN DO USUÁRIO (OAuth2 Bearer),
  * sem precisar do bot token.
@@ -18,9 +101,12 @@ const PERM_ADMINISTRATOR = 0x8;
  *   1. Verifica se o usuário tem Discord vinculado
  *   2. Verifica membership do usuário na guilda (GET /users/@me/guilds)
  *   3. Busca info do membro (GET /users/@me/guilds/{guildId}/member) se o scope permitir
- *   4. Combina com config do bot no banco (GuildService)
+ *   4. Busca canais (type 0) e cargos via bot token (para popular dropdowns no dashboard)
+ *   5. Combina com config do bot no banco (GuildService)
  *
- * O bot token NÃO é mais necessário para operações de leitura.
+ * O bot token só é necessário para a listagem de canais/cargos (passo 4).
+ * Se não houver bot token ou a chamada falhar, retornamos arrays vazios
+ * — o resto da request continua funcionando normalmente.
  */
 module.exports = {
     route: '/expapi/v1/discord/guild/:guildId',
@@ -166,7 +252,15 @@ module.exports = {
                 }
             }
 
-            // ─── 5. Buscar config do bot no banco (se bot estiver na guilda) ─
+            // ─── 5. Buscar canais e cargos via bot token ────────────────────
+            // Usado pelo dashboard para popular dropdowns de canais/cargos nas
+            // configurações da guilda. Se o bot não estiver na guilda, o token
+            // não estiver disponível ou o Discord rate-limitar, retornamos
+            // arrays vazios — a request principal não falha.
+            const botToken = await resolveBotToken();
+            const { channels, roles } = await fetchGuildChannelsAndRoles(guildId, botToken);
+
+            // ─── 6. Buscar config do bot no banco (se bot estiver na guilda) ─
             // Audit #18: campos sensíveis (config de moderação, listas de bloqueio)
             // são retornados apenas se canManage for true. Usuários comuns recebem
             // apenas a config básica (prefix, language, toggles).
@@ -202,13 +296,23 @@ module.exports = {
                         botConfig.blockedUsers = guildData.blockedUsers || [];
                         botConfig.blockedRoles = guildData.blockedRoles || [];
                         botConfig.blockedChannels = guildData.blockedChannels || [];
+                        // Campos de IDs de canal/cargo — necessários para o dashboard
+                        // pré-selecionar o valor atual nos dropdowns.
+                        botConfig.memberJoinChannelId = guildData.memberJoinChannelId || '';
+                        botConfig.memberLeaveChannelId = guildData.memberLeaveChannelId || '';
+                        botConfig.moderationChannelId = guildData.moderationChannelId || '';
+                        botConfig.botInfoChannelId = guildData.botInfoChannelId || '';
+                        botConfig.eventLogChannelId = guildData.eventLogChannelId || '';
+                        botConfig.muteRoleId = guildData.muteRoleId || '';
+                        botConfig.banRoleId = guildData.banRoleId || '';
+                        botConfig.djRoleId = guildData.djRoleId || '';
                     }
                 }
             } catch (dbErr) {
                 addLog('DB', 'guild.fetch.fail', `Falha ao buscar config da guilda ${guildId}: ${dbErr.message}`);
             }
 
-            // ─── 6. Montar resposta ─────────────────────────────────────────
+            // ─── 7. Montar resposta ─────────────────────────────────────────
             return res.status(200).json({
                 id: guildInfo.id,
                 name: guildInfo.name,
@@ -221,6 +325,8 @@ module.exports = {
                 member: memberInfo,
                 botConfig,
                 hasBot: !!botConfig,
+                channels,
+                roles,
             });
         } catch (error) {
             return routeError({

@@ -45,7 +45,7 @@ Lumina é um bot Discord completo e moderno focado em **League of Legends** e **
 ### 1. Clone e instale
 
 ```bash
-git clone https://github.com/YuriXbr/lumina-bot.git
+git clone https://github.com/YuriXbr/lumina-ecosystem.git
 cd lumina-bot
 npm install
 ```
@@ -414,7 +414,7 @@ Ao usar o Lumina Bot, você concorda com:
 
 ### Onde Buscar Ajuda
 
-- **📋 Issues**: [GitHub Issues](https://github.com/YuriXbr/lumina-bot/issues)
+- **📋 Issues**: [GitHub Issues](https://github.com/YuriXbr/lumina-ecosystem/issues)
 - **💬 Discord**: [Servidor da Comunidade](https://discord.gg/lumina)
 - **📖 Wiki**: [Documentação Completa](https://github.com/YuriXbr/lumina/wiki)
 - **📧 Contato**: [E-mail do Desenvolvedor](mailto:contact@lumina.com)

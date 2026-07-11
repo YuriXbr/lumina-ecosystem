@@ -10,25 +10,49 @@ const DAILY_REWARD = {
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const STREAK_WINDOW_MS = 2 * DAY_IN_MS;
 
+// Whitelist de itens que podem ser adicionados/removidos do inventário.
+// Prevenção contra NoSQL injection: sem isto, um attacker com a internal-key
+// poderia passar item="_id" ou item="dailyRewardStreak" e corromper campos
+// arbitrários do documento via $inc.
+const ALLOWED_ITEMS = new Set([
+    'hextechChests',
+    'masterWorkChests',
+    'keys',
+]);
+
 class InventoryService extends DatabaseService {
     constructor() {
         super('inventory', mongoSchema.inventory);
     }
 
     async addInventory(userId, item, amount) {
+        if (!ALLOWED_ITEMS.has(item)) {
+            throw new Error(`Item inválido: ${item}`);
+        }
+        const qty = Number(amount);
+        if (!Number.isFinite(qty) || qty <= 0) {
+            throw new Error(`Quantidade inválida: ${amount}`);
+        }
         await this.connect();
         return this.model.findOneAndUpdate(
             { userId },
-            { $inc: { [item]: amount } },
+            { $inc: { [item]: qty } },
             { upsert: true, new: true }
         );
     }
 
     async removeInventory(userId, item, amount) {
+        if (!ALLOWED_ITEMS.has(item)) {
+            throw new Error(`Item inválido: ${item}`);
+        }
+        const qty = Number(amount);
+        if (!Number.isFinite(qty) || qty <= 0) {
+            throw new Error(`Quantidade inválida: ${amount}`);
+        }
         await this.connect();
         return this.model.findOneAndUpdate(
             { userId },
-            { $inc: { [item]: -amount } },
+            { $inc: { [item]: -qty } },
             { upsert: true, new: true }
         );
     }
@@ -72,7 +96,9 @@ class InventoryService extends DatabaseService {
         }
 
         const lastClaim = inventory.dailyRewardClaim ? new Date(inventory.dailyRewardClaim) : null;
-        const keepsStreak = lastClaim && (now.getTime() - lastClaim.getTime()) <= STREAK_WINDOW_MS;
+        // Grace period: 1 hour buffer beyond the 48h window (B-H10)
+    const GRACE_PERIOD_MS = 60 * 60 * 1000; // 1 hour
+    const keepsStreak = lastClaim && (now.getTime() - lastClaim.getTime()) <= (STREAK_WINDOW_MS + GRACE_PERIOD_MS);
         const newStreak = keepsStreak ? (inventory.dailyRewardStreak || 0) + 1 : 1;
         const nextDailyReward = new Date(now.getTime() + DAY_IN_MS);
 

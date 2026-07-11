@@ -106,9 +106,11 @@ async function fetchChampionName(key, commandOrigin = "unknown") {
  * @returns {Promise<Array<number>|undefined>} The list of free champion IDs or undefined if an error occurs.
  */
 async function getChampionRotation(commandOrigin = "unknown") {
-    const url = `https://br1.api.riotgames.com/lol/platform/v3/champion-rotations?api_key=${apiKey}`;
+    // Champion rotation é global (mesma em todas as regiões).
+    // Usamos br1 como servidor regional para a chamada.
+    const url = `https://br1.api.riotgames.com/lol/platform/v3/champion-rotations`;
     try {
-        const response = await axios.get(url);
+        const response = await axios.get(url, { headers: { 'X-Riot-Token': apiKey } });
         logApiCall(commandOrigin, 'getChampionRotation', {}, response.data, response.data.freeChampionIds);
         return response.data.freeChampionIds;
     } catch (err) {

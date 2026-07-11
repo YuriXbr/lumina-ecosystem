@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const colorCodes = require('../../colorCodes.js');
 const botConfigService = require('../../services/EncryptionService.js');
+const i18n = require('../../i18n/index.js');
 
 const mainGuild    = botConfigService.bot.mainGuild;
 const eventsChannel = botConfigService.bot.logEventsChannel;
@@ -13,19 +14,21 @@ const allChannel   = botConfigService.bot.logAllChannel;
  * @param {string} eventCaller      - Nome do evento que disparou
  */
 async function noPermission(command, interaction, eventCaller) {
+    const locale = i18n.resolveFromInteraction(interaction);
+    const t = i18n.getTranslator(locale);
     const ts = new Date().toLocaleString('pt-BR').replace(',', '');
 
     console.log(colorCodes.arrow + colorCodes.alerta(
         `[NO PERMISSION] ${ts} | ${interaction.user.tag} (${interaction.user.id}) tentou usar /${command.data.name} sem permissão | Guild: ${interaction.guild?.name} (${interaction.guild?.id})`
     ));
 
-    // Embed de resposta ao usuário
+    // Embed de resposta ao usuário (traduzido)
     const userEmbed = new EmbedBuilder()
-        .setTitle('🚫 Sem permissão')
-        .setDescription(`Você não tem permissão para usar o comando \`/${command.data.name}\`.`)
+        .setTitle(t('logModal.noPermissionTitle'))
+        .setDescription(`${t('logModal.noPermissionDesc')} \`/${command.data.name}\`.`)
         .setColor(0xFF9800);
 
-    // Log no canal de eventos
+    // Log no canal de eventos (campos traduzidos)
     try {
         const client  = interaction.client;
         const guild   = client.guilds.cache.get(mainGuild);
@@ -33,13 +36,13 @@ async function noPermission(command, interaction, eventCaller) {
 
         if (channel) {
             const logEmbed = new EmbedBuilder()
-                .setTitle(`🚫 Sem Permissão — \`/${command.data.name}\``)
+                .setTitle(`${t('logModal.noPermissionTitle')} — \`/${command.data.name}\``)
                 .setColor(0xFF9800)
                 .addFields(
-                    { name: '👤 Usuário',  value: `${interaction.user.tag} (${interaction.user.id})`, inline: true },
-                    { name: '🏠 Guild',    value: `${interaction.guild?.name ?? 'N/A'} (${interaction.guild?.id ?? 'N/A'})`, inline: true },
-                    { name: '📣 Evento',   value: eventCaller, inline: true },
-                    { name: '🕐 Horário', value: `\`${ts}\``, inline: true },
+                    { name: t('logModal.fieldUser'),  value: `${interaction.user.tag} (${interaction.user.id})`, inline: true },
+                    { name: t('logModal.fieldGuild'), value: `${interaction.guild?.name ?? 'N/A'} (${interaction.guild?.id ?? 'N/A'})`, inline: true },
+                    { name: t('logModal.fieldEvent'), value: eventCaller, inline: true },
+                    { name: t('logModal.fieldTime'),  value: `\`${ts}\``, inline: true },
                 )
                 .setTimestamp();
 

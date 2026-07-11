@@ -1,5 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, AttachmentBuilder } = require('discord.js');
 const { fetchRule34Posts } = require('../../api/rule34');
+const i18n = require('../../utils/i18n/index.js');
+const { loc } = require('../../utils/i18n/commandLocales.js');
 
 module.exports = {
     permission: 'admin',
@@ -7,40 +9,45 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('test')
         .setDescription('Browse Rule34 images')
+        .setDescriptionLocalizations(loc('Navegar por imagens do Rule34', 'Navegar por imágenes de Rule34'))
         .addStringOption(option =>
             option.setName('tags')
                 .setDescription('Tags to search for (e.g., ahri, league_of_legends)')
+                .setDescriptionLocalizations(loc('Tags para pesquisar (ex: ahri, league_of_legends)', 'Tags para buscar (ej: ahri, league_of_legends)'))
                 .setRequired(false)
         )
         .addStringOption(option =>
             option.setName('sort')
                 .setDescription('Sort order')
+                .setDescriptionLocalizations(loc('Ordem de classificação', 'Orden de clasificación'))
                 .setRequired(false)
                 .addChoices(
-                    { name: 'Score (Highest first)', value: 'score' },
-                    { name: 'New (Latest first)', value: 'new' },
-                    { name: 'Old (Oldest first)', value: 'old' }
+                    { name: 'Score (Highest first)', name_localizations: loc('Pontuação (Maior primeiro)', 'Puntuación (Mayor primero)'), value: 'score' },
+                    { name: 'New (Latest first)', name_localizations: loc('Novo (Mais recente primeiro)', 'Nuevo (Más reciente primero)'), value: 'new' },
+                    { name: 'Old (Oldest first)', name_localizations: loc('Antigo (Mais antigo primeiro)', 'Antiguo (Más antiguo primero)'), value: 'old' }
                 )
         )
         .addStringOption(option =>
             option.setName('rating')
                 .setDescription('Content rating filter')
+                .setDescriptionLocalizations(loc('Filtro de classificação de conteúdo', 'Filtro de clasificación de contenido'))
                 .setRequired(false)
                 .addChoices(
-                    { name: 'All', value: 'all' },
-                    { name: 'Safe', value: 'safe' },
-                    { name: 'Questionable', value: 'questionable' },
-                    { name: 'Explicit', value: 'explicit' }
+                    { name: 'All', name_localizations: loc('Todos', 'Todos'), value: 'all' },
+                    { name: 'Safe', name_localizations: loc('Seguro', 'Seguro'), value: 'safe' },
+                    { name: 'Questionable', name_localizations: loc('Questionável', 'Cuestionable'), value: 'questionable' },
+                    { name: 'Explicit', name_localizations: loc('Explícito', 'Explícito'), value: 'explicit' }
                 )
         ),
         
         
         
-    async execute(interaction) {
+    async execute(interaction, t) {
+        const translator = t || i18n.getTranslator(i18n.resolveFromInteraction(interaction));
         try {
             if (!interaction.channel.nsfw) {
             return interaction.reply({
-                content: '⚠️ Este comando só pode ser usado em canais NSFW.\nUse um canal apropriado e tente novamente.',
+                content: translator('cmd.test.nsfwRequired'),
                 ephemeral: true
             });
             }
@@ -137,7 +144,7 @@ module.exports = {
 
             if (allImages.length === 0) {
                 return await interaction.editReply({
-                    content: '❌ Nenhuma imagem encontrada para estas tags.',
+                    content: translator('cmd.test.noImages'),
                     ephemeral: true
                 });
             }
@@ -313,7 +320,7 @@ module.exports = {
             collector.on('collect', async (buttonInteraction) => {
                 if (buttonInteraction.user.id !== interaction.user.id) {
                     return await buttonInteraction.reply({
-                        content: '❌ Apenas quem executou o comando pode usar estes botões!',
+                        content: translator('cmd.test.notYourButton'),
                         ephemeral: true
                     });
                 }
@@ -354,7 +361,7 @@ module.exports = {
                         // Mostrar feedback de carregamento
                         await buttonInteraction.editReply({
                             embeds: [new EmbedBuilder()
-                                .setTitle('⏳ Carregando...')
+                                .setTitle(translator('cmd.test.loading'))
                                 .setDescription(`Buscando com ${excludeAI ? 'IA desativada' : 'IA ativada'}...`)
                                 .setColor(0xFFA500)
                             ],
@@ -366,7 +373,7 @@ module.exports = {
                         
                         if (allImages.length === 0) {
                             await buttonInteraction.editReply({
-                                content: '❌ Nenhuma imagem encontrada com este filtro.',
+                                content: translator('cmd.test.noImagesFilter'),
                                 embeds: [],
                                 files: [],
                                 components: []
@@ -398,7 +405,7 @@ module.exports = {
                         const mediaText = mediaFilter === 'all' ? 'todos os tipos' : mediaFilter === 'images' ? 'apenas imagens' : 'apenas vídeos';
                         await buttonInteraction.editReply({
                             embeds: [new EmbedBuilder()
-                                .setTitle('⏳ Carregando...')
+                                .setTitle(translator('cmd.test.loading'))
                                 .setDescription(`Buscando ${mediaText}...`)
                                 .setColor(0xFFA500)
                             ],
@@ -515,7 +522,7 @@ module.exports = {
 
                 if (reason === 'time') {
                     await interaction.followUp({
-                        content: '⏱️ Tempo esgotado! Use o comando novamente para continuar navegando.',
+                        content: translator('cmd.test.timedOut'),
                         ephemeral: true
                     }).catch(() => {});
                 }
@@ -525,7 +532,7 @@ module.exports = {
             console.error('Erro no comando test:', error);
             
             const errorMessage = {
-                content: '❌ Ocorreu um erro ao buscar as imagens.',
+                content: translator('cmd.test.fetchError'),
                 ephemeral: true
             };
 

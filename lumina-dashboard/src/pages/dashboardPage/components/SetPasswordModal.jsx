@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { parseApiError, statusFallbackMessage, isNetworkError } from "../../../utils/apiError";
+import { useT } from '../../../i18n/LanguageContext.jsx';
 
 /**
  * Modal para o usuário definir uma senha pela primeira vez (contas criadas
@@ -24,6 +25,7 @@ import { parseApiError, statusFallbackMessage, isNetworkError } from "../../../u
  *   )}
  */
 export default function SetPasswordModal({ onSuccess, onSkip }) {
+  const t = useT();
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [error, setError] = useState("");
@@ -34,25 +36,32 @@ export default function SetPasswordModal({ onSuccess, onSkip }) {
         setError("");
 
         if (password.length < 8 || password.length > 128) {
-            setError("A senha deve ter entre 8 e 128 caracteres.");
+            setError(t("membersArea.setPassword.lengthError"));
             return;
         }
         if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
-            setError("A senha deve conter maiúscula, minúscula e número.");
+            setError(t("membersArea.setPassword.complexError"));
             return;
         }
         if (password !== confirmPassword) {
-            setError("As senhas não coincidem.");
+            setError(t("membersArea.setPassword.mismatchError"));
             return;
         }
 
         setIsLoading(true);
         try {
-            const csrfRes = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/csrf-token`, { credentials: 'include' })
+            const csrfRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, { credentials: 'include' })
             const { csrfToken } = await csrfRes.json();
 
-            const token = localStorage.getItem("token");
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/user/set-password`, { credentials: 'include' })
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/set-password`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': csrfToken,
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify({ password, confirmPassword }),
+                        })
 
             if (response.ok) {
                 onSuccess?.();
@@ -65,8 +74,8 @@ export default function SetPasswordModal({ onSuccess, onSkip }) {
             console.error("Erro ao definir senha:", err);
             setError(
                 isNetworkError(err)
-                    ? "Erro de conexão. Verifique sua internet e tente novamente."
-                    : "Erro inesperado. Tente novamente."
+                    ? t("membersArea.setPassword.connectionError")
+                    : t("membersArea.setPassword.unexpectedError")
             );
         } finally {
             setIsLoading(false);
@@ -76,15 +85,14 @@ export default function SetPasswordModal({ onSuccess, onSkip }) {
     return (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Defina uma senha para sua conta</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{t("membersArea.setPassword.title")}</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                    Sua conta foi criada com Discord. Defina uma senha para também poder
-                    entrar com email e senha, além do Discord.
+                    {t("membersArea.setPassword.desc")}
                 </p>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <input
                         type="password"
-                        placeholder="Nova senha"
+                        placeholder={t("membersArea.setPassword.newPassword")}
                         value={password}
                         maxLength={128}
                         disabled={isLoading}
@@ -93,7 +101,7 @@ export default function SetPasswordModal({ onSuccess, onSkip }) {
                     />
                     <input
                         type="password"
-                        placeholder="Confirme a senha"
+                        placeholder={t("membersArea.setPassword.confirmPassword")}
                         value={confirmPassword}
                         maxLength={128}
                         disabled={isLoading}
@@ -108,14 +116,14 @@ export default function SetPasswordModal({ onSuccess, onSkip }) {
                             disabled={isLoading}
                             className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
                         >
-                            Agora não
+                            {t("membersArea.setPassword.notNow")}
                         </button>
                         <button
                             type="submit"
                             disabled={isLoading}
                             className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 disabled:opacity-60"
                         >
-                            {isLoading ? "Salvando..." : "Salvar senha"}
+                            {isLoading ? t("membersArea.setPassword.saving") : t("membersArea.setPassword.save")}
                         </button>
                     </div>
                 </form>

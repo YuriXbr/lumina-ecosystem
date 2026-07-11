@@ -4,7 +4,8 @@ import {
   SparklesIcon, ServerIcon, GiftIcon, TicketIcon,
   ArrowRightIcon
 } from '@heroicons/react/24/outline';
-import { useUser } from '../../contexts/UserContext';
+import { useUser } from '../../contexts/UserContext'
+import { useT } from '../../i18n/LanguageContext.jsx';
 import { fetchNews } from '../../utils/membersApi';
 import AppShell from '../../components/AppShell';
 import Header from '../../components/Header';
@@ -14,18 +15,20 @@ import InventoryPreview from '../../components/InventoryPreview';
 import NewsFeed from '../../components/NewsFeed';
 import UsernameOnboardingModal from './components/UsernameOnboardingModal';
 import ReauthModal from './components/ReauthModal';
+import BadgesTab from './components/BadgesTab';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 // ─── Tabs da coluna principal ────────────────────────────────────────────────
 const TABS = [
-  { id: 'servers',  label: 'Servidores', icon: ServerIcon },
-  { id: 'badges',   label: 'Badges',     icon: GiftIcon },
-  { id: 'raffles',  label: 'Sorteios',   icon: TicketIcon },
+  { id: 'servers',  labelKey: 'members.tabs.servers', icon: ServerIcon },
+  { id: 'badges',   labelKey: 'members.tabs.badges',   icon: GiftIcon },
+  { id: 'raffles',  labelKey: 'members.tabs.raffles',  icon: TicketIcon },
 ];
 
 // ─── Estado "Em breve" genérico ──────────────────────────────────────────────
 function ComingSoon({ icon: Icon, title, description }) {
+  const t = useT();
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
       <div className="mx-auto w-14 h-14 rounded-full bg-purple-50 flex items-center justify-center mb-4">
@@ -34,7 +37,7 @@ function ComingSoon({ icon: Icon, title, description }) {
       <h3 className="text-base font-semibold text-gray-900">{title}</h3>
       <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">{description}</p>
       <span className="inline-block mt-4 px-3 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
-        Em breve
+        {t('common.comingSoon')}
       </span>
     </div>
   );
@@ -42,6 +45,7 @@ function ComingSoon({ icon: Icon, title, description }) {
 
 // ─── Hero anônima (não logado) ───────────────────────────────────────────────
 function AnonymousHero({ news, newsLoading, newsError, onRetryNews }) {
+  const t = useT();
   const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
@@ -52,29 +56,28 @@ function AnonymousHero({ news, newsLoading, newsError, onRetryNews }) {
         <div className="text-center max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium mb-6">
             <SparklesIcon className="h-3.5 w-3.5" />
-            Área de Membros
+            {t('members.title')}
           </div>
           <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-gray-900">
-            Gerencie seus servidores<br />
-            <span className="text-purple-600">em um só lugar</span>
+            {t('members.heroTitle')}<br />
+            <span className="text-purple-600">{t('members.heroHighlight')}</span>
           </h1>
           <p className="mt-6 text-lg text-gray-600">
-            Veja quais servidores têm o Lumina Bot, configure módulos por servidor,
-            acompanhe seu inventário e fique por dentro das novidades.
+            {t('members.heroSubtitle')}
           </p>
           <div className="mt-8 flex items-center justify-center gap-3 flex-wrap">
             <button
               onClick={() => navigate('/login')}
               className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white font-medium rounded-md hover:bg-purple-700 transition-colors"
             >
-              Entrar na Área de Membros
+              {t('nav.login')}
               <ArrowRightIcon className="h-4 w-4" />
             </button>
             <button
               onClick={() => navigate('/register')}
               className="px-6 py-3 text-gray-700 font-medium hover:text-purple-700 transition-colors"
             >
-              Criar conta
+              {t('members.createAccount')}
             </button>
           </div>
         </div>
@@ -83,8 +86,8 @@ function AnonymousHero({ news, newsLoading, newsError, onRetryNews }) {
       {/* Feed de novidades (público) */}
       <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Últimas novidades</h2>
-          <p className="text-sm text-gray-500 mt-1">Fique por dentro do que está acontecendo no Lumina</p>
+          <h2 className="text-2xl font-bold text-gray-900">{t("members.latestNews")}</h2>
+          <p className="text-sm text-gray-500 mt-1">{t("members.newsSubtitle")}</p>
         </div>
         <div className="space-y-3">
           {newsLoading && (
@@ -96,18 +99,18 @@ function AnonymousHero({ news, newsLoading, newsError, onRetryNews }) {
           )}
           {newsError && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700 text-center">
-              Erro ao carregar novidades.
-              <button onClick={onRetryNews} className="ml-2 underline">Tentar novamente</button>
+              {t("members.newsLoadError")}
+              <button onClick={onRetryNews} className="ml-2 underline">{t("common.tryAgain")}</button>
             </div>
           )}
           {!newsLoading && !newsError && news.length === 0 && (
-            <p className="text-center text-gray-400 py-10">Nenhuma novidade publicada ainda.</p>
+            <p className="text-center text-gray-400 py-10">{t("members.noNews")}</p>
           )}
           {!newsLoading && !newsError && news.map(p => (
             <article key={p.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-200 transition-colors">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-medium text-purple-600 bg-purple-100 px-1.5 py-0.5 rounded">{p.tag}</span>
-                <span className="text-xs text-gray-400">{new Date(p.publishedAt).toLocaleDateString('pt-BR')}</span>
+                <span className="text-xs text-gray-400">{new Date(p.publishedAt).toLocaleDateString(undefined)}</span>
               </div>
               <h3 className="text-sm font-semibold text-gray-900">{p.title}</h3>
               {p.excerpt && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{p.excerpt}</p>}
@@ -121,6 +124,7 @@ function AnonymousHero({ news, newsLoading, newsError, onRetryNews }) {
 
 // ─── Área de Membros logada ──────────────────────────────────────────────────
 function MembersContent() {
+  const t = useT();
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState('servers');
 
@@ -153,8 +157,8 @@ function MembersContent() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   useEffect(() => {
     if (user && !user.username) {
-      const t = setTimeout(() => setShowOnboarding(true), 600);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setShowOnboarding(true), 600);
+      return () => clearTimeout(timer);
     }
   }, [user]);
 
@@ -166,8 +170,8 @@ function MembersContent() {
       // Se tem Discord vinculado mas o scope não inclui guilds.members.read
       // (ou não tem scope registrado — contas muito antigas), pede re-auth
       if (!scope.includes('guilds.members.read')) {
-        const t = setTimeout(() => setShowReauth(true), 1200);
-        return () => clearTimeout(t);
+        const timer = setTimeout(() => setShowReauth(true), 1200);
+        return () => clearTimeout(timer);
       }
     }
   }, [user]);
@@ -182,9 +186,9 @@ function MembersContent() {
         {user?.deletionScheduledFor && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start justify-between gap-3">
             <div className="text-sm text-red-800">
-              <strong>Conta agendada para exclusão.</strong> Sua conta será permanentemente excluída em{' '}
-              {new Date(user.deletionScheduledFor).toLocaleDateString('pt-BR')}.
-              Faça login regularmente para cancelar esta ação.
+              <strong>{t('settings.account.closeAccount', { defaultValue: 'Close account' })}.</strong> {t('account.deletionScheduled', { defaultValue: 'Sua conta será permanentemente excluída em' })}{' '}
+              {new Date(user.deletionScheduledFor).toLocaleDateString(t('common.locale', { defaultValue: 'pt-BR' }))}.
+              {t('account.deletionCancel', { defaultValue: 'Faça login regularmente para cancelar esta ação.' })}
             </div>
           </div>
         )}
@@ -207,7 +211,7 @@ function MembersContent() {
                     }`}
                   >
                     <Icon className="h-4 w-4" />
-                    {tab.label}
+                    {t(tab.labelKey)}
                   </button>
                 );
               })}
@@ -216,19 +220,13 @@ function MembersContent() {
             {/* Conteúdo da tab */}
             {activeTab === 'servers' && <MutualGuildsList />}
 
-            {activeTab === 'badges' && (
-              <ComingSoon
-                icon={GiftIcon}
-                title="Badges de eventos"
-                description="Participe de eventos especiais no Discord e ganhe badges exclusivas para exibir no seu perfil. Em breve!"
-              />
-            )}
+            {activeTab === 'badges' && <BadgesTab />}
 
             {activeTab === 'raffles' && (
               <ComingSoon
                 icon={TicketIcon}
-                title="Sorteios e eventos"
-                description="Participe de sorteios de skins, baús e outros prêmios. Esta funcionalidade está chegando!"
+                title={t("members.tabs.raffles")}
+                description={t("members.rafflesDesc", { defaultValue: "Participe de sorteios de skins, baús e outros prêmios. Esta funcionalidade está chegando!" })}
               />
             )}
 
@@ -266,6 +264,7 @@ function MembersContent() {
 
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function MembersAreaPage() {
+  const t = useT();
   const { user, loading } = useUser();
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
@@ -292,7 +291,7 @@ export default function MembersAreaPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto" />
-          <p className="mt-4 text-sm text-gray-500">Carregando...</p>
+          <p className="mt-4 text-sm text-gray-500">{t("common.loading")}</p>
         </div>
       </div>
     );

@@ -1,6 +1,8 @@
 import React from 'react';
+import { useT } from '../../../i18n/LanguageContext.jsx';
 
 function SkinCard({ skin }) {
+  const t = useT();
     const getRarityColor = (rarity) => {
         const colors = {
             kNoRarity: 'from-gray-500 to-gray-600',
@@ -15,16 +17,13 @@ function SkinCard({ skin }) {
     };
 
     const getRarityLabel = (rarity) => {
-        const labels = {
-            kNoRarity: 'Sem Raridade',
-            kLegacy: 'Legado',
-            kEpic: 'Épica',
-            kLegendary: 'Lendária',
-            kMythic: 'Mítica',
-            kUltimate: 'Ultimate',
-            kTranscendent: 'Transcendente'
-        };
-        return labels[rarity] || 'Desconhecida';
+        // API returns rarity with 'k' prefix (kLegacy, kEpic, etc.)
+        // Translation keys don't have the prefix (legacy, epic, etc.)
+        // Strip the 'k' prefix if present
+        const normalizedRarity = rarity?.startsWith('k') ? rarity.slice(1).toLowerCase() : rarity?.toLowerCase();
+        // Handle kNoRarity → noRarity key
+        if (rarity === 'kNoRarity') return t('inventory.noRarity');
+        return t(`inventory.rarity.${normalizedRarity}`) || t('common.unknown');
     };
 
     return (

@@ -15,8 +15,10 @@ function computeProbabilities(chest, skinsQuantity) {
         throw new Error('Nenhuma skin disponível na base de dados (totalSkins = 0).');
     }
 
+    // Pesos base (não-normalizados) para cada raridade
+    let weights;
     if (chest === 'hextechChests') {
-        return {
+        weights = {
             legacy: legacySkins / totalSkins,
             epic: epicSkins / (totalSkins + 100),
             legendary: legendarySkins / (totalSkins + 150),
@@ -24,16 +26,32 @@ function computeProbabilities(chest, skinsQuantity) {
             mythic: mythicSkins / (totalSkins + 300),
             transcendent: (transcendentSkins / totalSkins) / 2,
         };
+    } else {
+        // Masterwork: melhores chances para raridades altas
+        weights = {
+            legacy: (legacySkins / totalSkins) * 0.5,
+            epic: epicSkins / totalSkins,
+            legendary: legendarySkins / (totalSkins + 50),
+            ultimate: ultimateSkins / (totalSkins + 100),
+            mythic: mythicSkins / (totalSkins + 150),
+            transcendent: (transcendentSkins / totalSkins) / 2,
+        };
     }
 
-    return {
-        legacy: legacySkins / totalSkins,
-        epic: epicSkins / totalSkins,
-        legendary: legendarySkins / totalSkins,
-        ultimate: ultimateSkins / totalSkins,
-        mythic: mythicSkins / (totalSkins + 200),
-        transcendent: (transcendentSkins / totalSkins) / 2,
-    };
+    // CORREÇÃO: Normaliza para que a soma seja exatamente 1.0
+    // Antes, as probabilidades eram frações independentes que podiam
+    // não somar 1, fazendo pickRarity retornar null em ~24% dos casos.
+    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+    if (sum <= 0) {
+        throw new Error('Soma de probabilidades é zero — sem skins disponíveis.');
+    }
+
+    const normalized = {};
+    for (const rarity of RARITY_ORDER) {
+        normalized[rarity] = (weights[rarity] || 0) / sum;
+    }
+
+    return normalized;
 }
 
 function pickRarity(probabilities, randomValue = Math.random()) {

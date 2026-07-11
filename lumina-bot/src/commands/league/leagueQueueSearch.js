@@ -1,5 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const api = require('../../api/riotApi.js');
+const api = require('../../api/riotApi.js')
+const i18n = require('../../utils/i18n/index.js');
+const { loc } = require('../../utils/i18n/commandLocales.js');;
 const { loadingEmbed, errorEmbed, complexLoadingEmbed } = require('../../utils/embeds/cmdEmbeds.js');
 
 module.exports = {
@@ -55,24 +57,25 @@ module.exports = {
                 )
         ),
 
-    async execute(interaction) {
+    async execute(interaction, t) {
+        const translator = t || i18n.getTranslator(i18n.resolveFromInteraction(interaction));
         const elo = interaction.options.getString('elo');
         const division = interaction.options.getString('division');
         const server = interaction.options.getString('server');
         await interaction.deferReply();
 
-        await complexLoadingEmbed('Fetching data, please wait...', 'leagueQueueSearch', interaction, true, false, true, 'Fetching ranked queues');
+        await complexLoadingEmbed(translator('cmd.leagueQueueSearch.loading'), 'leagueQueueSearch', interaction, true, false, true, translator('cmd.leagueQueueSearch.loadingDesc'));
 
         try {
             const rankedQueues = await api.getRankedQueues(server, elo, division, 'leagueQueueSearch');
             if (!rankedQueues) {
-                return await errorEmbed('An error occurred while fetching the ranked queues.', 'leagueQueueSearch', interaction, true, true, true);
+                return await errorEmbed(translator('cmd.leagueQueueSearch.fetchError'), 'leagueQueueSearch', interaction, true, true, true);
             }
             console.log('Type of rankedQueues:', typeof rankedQueues);
             console.log('Content of rankedQueues:', rankedQueues);
 
             if (!Array.isArray(rankedQueues) || rankedQueues.length === 0) {
-                return await errorEmbed(`No ranked queues found for ${elo} ${division}.`, 'leagueQueueSearch', interaction, true, true, true);
+                return await errorEmbed(translator('cmd.leagueQueueSearch.noResults', { elo, division }), 'leagueQueueSearch', interaction, true, true, true);
             }
 
             const totalPages = Math.ceil(rankedQueues.length / 15);
@@ -103,8 +106,8 @@ module.exports = {
 
                 const embed = new EmbedBuilder()
                     .setColor('#0099ff')
-                    .setTitle(`Ranked Queues for ${elo} ${division}`)
-                    .setDescription(`Found ${rankedQueues.length} ranked queues.`)
+                    .setTitle(translator('cmd.leagueQueueSearch.title', { elo, division }))
+                    .setDescription(translator('cmd.leagueQueueSearch.description', { count: rankedQueues.length }))
                     .setTimestamp()
                     .setFooter({ text: `Page ${page + 1} of ${totalPages}`, iconURL: 'https://i.imgur.com/xU45ZZz.png' });
 
@@ -124,12 +127,12 @@ module.exports = {
                     .addComponents(
                         new ButtonBuilder()
                             .setCustomId('prev')
-                            .setLabel('Previous')
+                            .setLabel(translator('cmd.leagueQueueSearch.previous'))
                             .setStyle(ButtonStyle.Primary)
                             .setDisabled(page === 0),
                         new ButtonBuilder()
                             .setCustomId('next')
-                            .setLabel('Next')
+                            .setLabel(translator('cmd.leagueQueueSearch.next'))
                             .setStyle(ButtonStyle.Primary)
                             .setDisabled(page === totalPages - 1)
                     );
@@ -165,7 +168,7 @@ module.exports = {
 
         } catch (error) {
             console.error(error);
-            interaction.editReply('An error occurred while fetching the ranked queues.');
+            interaction.editReply(translator('cmd.leagueQueueSearch.fetchError'));
         }
     },
 };

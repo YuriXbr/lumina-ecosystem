@@ -3,15 +3,17 @@ import { Dialog, DialogPanel } from '@headlessui/react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import monochrome from '../../assets/monochromeBlack.svg'
 import { checkSession, API_BASE } from '../../../utils/apiFetch'
-
-const navigation = [
-  { name: 'Comandos', href: '/commands' },
-  { name: 'Inventário', href: '/inventory' },
-  { name: 'Assinaturas', href: '/pricing' },
-  { name: 'Sobre Nós', href: '/about' },
-]
+import { useT } from '../../../i18n/LanguageContext.jsx'
 
 export default function HomeNavBar() {
+  const t = useT();
+  const navigation = [
+    { name: t('nav.commands'), href: '/commands' },
+    { name: t('nav.inventory'), href: '/inventory' },
+    { name: t('nav.pricing'), href: '/pricing' },
+    { name: t('nav.about'), href: '/about' },
+  ]
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [discordInfo, setDiscordInfo] = useState(null)
@@ -43,7 +45,7 @@ export default function HomeNavBar() {
 
   return (
     <div className="bg-white">
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+      <header className="absolute inset-x-0 top-0 z-50">
         <nav aria-label="Global" className="flex items-center justify-between p-6 lg:px-8">
           <div className="flex lg:flex-1">
             <a href={isLoggedIn ? '/members' : '/'} className="-m-1.5 p-1.5">
@@ -59,7 +61,7 @@ export default function HomeNavBar() {
               onClick={() => setMobileMenuOpen(true)}
               className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700"
             >
-              <span className="sr-only">Abrir menu</span>
+              <span className="sr-only">{t('common.openMenu', { defaultValue: 'Open menu' })}</span>
               <Bars3Icon aria-hidden="true" className="h-6 w-6" />
             </button>
           </div>
@@ -93,12 +95,12 @@ export default function HomeNavBar() {
                     {discordInfo?.username?.[0]?.toUpperCase() || '?'}
                   </span>
                 )}
-                <span>{discordInfo?.username || 'Dashboard'}</span>
+                <span>{discordInfo?.username || t('nav.dashboard')}</span>
                 <span aria-hidden="true">&rarr;</span>
               </a>
             ) : (
               <a href="/login" className="text-sm font-semibold leading-6 text-gray-900">
-                Log in <span aria-hidden="true">&rarr;</span>
+                {t('nav.login')} <span aria-hidden="true">&rarr;</span>
               </a>
             )}
           </div>
@@ -118,7 +120,7 @@ export default function HomeNavBar() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="-m-2.5 rounded-md p-2.5 text-gray-700"
               >
-                <span className="sr-only">Fechar menu</span>
+                <span className="sr-only">{t('common.closeMenu', { defaultValue: 'Close menu' })}</span>
                 <XMarkIcon aria-hidden="true" className="h-6 w-6" />
               </button>
             </div>
@@ -154,14 +156,14 @@ export default function HomeNavBar() {
                           {discordInfo?.username?.[0]?.toUpperCase() || '?'}
                         </span>
                       )}
-                      <span>{discordInfo?.username || 'Dashboard'}</span>
+                      <span>{discordInfo?.username || t('nav.dashboard')}</span>
                     </a>
                   ) : (
                     <a
                       href="/login"
                       className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
                     >
-                      Log in
+                      {t('nav.login')}
                     </a>
                   )}
                 </div>

@@ -1,5 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const api = require('../../api/riotApi.js');
+const api = require('../../api/riotApi.js')
+const i18n = require('../../utils/i18n/index.js');
+const { loc } = require('../../utils/i18n/commandLocales.js');;
 const { loadingEmbed, errorEmbed } = require('../../utils/embeds/cmdEmbeds.js');
 
 module.exports = {
@@ -79,42 +81,43 @@ module.exports = {
         ),
 
 
-        async execute(interaction) {
+        async execute(interaction, t) {
+        const translator = t || i18n.getTranslator(i18n.resolveFromInteraction(interaction));
             await interaction.deferReply();
             const region = interaction.options.getString('region');
             const server = interaction.options.getString('server');
             const summonerName = interaction.options.getString('summonername');
             const tagLine = interaction.options.getString('tagline');
-            if(tagLine.length > 5) return errorEmbed('The tagline must have a maximum of 5 characters.', 'leagueProfile', interaction, true, true);
-            if(tagLine[0] === '#') return errorEmbed('You must inset only the numbers of the tagline. Do not insert "#"', 'leagueProfile', interaction, true, true);
+            if(tagLine.length > 5) return errorEmbed(translator('cmd.leagueProfile.taglineTooLong'), 'leagueProfile', interaction, true, true);
+            if(tagLine[0] === '#') return errorEmbed(translator('cmd.leagueProfile.taglineFormat'), 'leagueProfile', interaction, true, true);
             
             interaction.editReply({embeds: [loadingEmbed]});
         
             const accountInfo = await api.getAccountByRiotId(region, summonerName, tagLine, 'leagueProfile');
-            if (!accountInfo) return errorEmbed('An error occurred while trying to get the account information.', 'leagueProfile', interaction, true, true);
+            if (!accountInfo) return errorEmbed(translator('cmd.leagueProfile.accountError'), 'leagueProfile', interaction, true, true);
             if (accountInfo && accountInfo.error === 'Account not found') {
-                return errorEmbed('The summoner you entered does not exist. Please check the account name and server.', 'leagueProfile', interaction, true, true);
+                return errorEmbed(translator('cmd.leagueProfile.summonerNotFound'), 'leagueProfile', interaction, true, true);
             }
 
             const summonerInfo = await api.getSummonerInfo(server, accountInfo.puuid, 'leagueProfile');
-            if (!summonerInfo) return errorEmbed('An error occurred while trying to get the summoner information.', 'leagueProfile', interaction, true, true);
+            if (!summonerInfo) return errorEmbed(translator('cmd.leagueProfile.summonerError'), 'leagueProfile', interaction, true, true);
             
             const queueInfo = await api.getLeagueEntries(server, summonerInfo.id, 'leagueProfile');
             if (!queueInfo)
-                return errorEmbed('An error occurred while trying to get the queue information.', 'leagueProfile', interaction, true, true);
+                return errorEmbed(translator('cmd.leagueProfile.queueError'), 'leagueProfile', interaction, true, true);
             const masteryInfo = await api.getChampionMastery(server, summonerInfo.puuid, 'leagueProfile');
-            if (!masteryInfo) return errorEmbed('An error occurred while trying to get the mastery information.', 'leagueProfile', interaction, true, true);
+            if (!masteryInfo) return errorEmbed(translator('cmd.leagueProfile.masteryError'), 'leagueProfile', interaction, true, true);
             const topMastery = masteryInfo.sort((a, b) => b.championPoints - a.championPoints)[0];
             const topMasteryChampion = await api.fetchChampionName(topMastery.championId, 'leagueProfile');
             
             const ddragonVersion = await api.getDDragonLatestVersion('leagueProfile');
-            if (!ddragonVersion) return errorEmbed('An error occurred while trying to get the DDragon version.', 'leagueProfile', interaction, true, true);
+            if (!ddragonVersion) return errorEmbed(translator('cmd.leagueProfile.ddragonError'), 'leagueProfile', interaction, true, true);
         
             const champFullImage = `http://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/champion/${topMasteryChampion.fullImage}`;
             const embed = new EmbedBuilder()
                 .setColor('#0099ff')
-                .setTitle(`Summoner name: ${accountInfo.gameName}#${accountInfo.tagLine}`)
-                .setDescription(`Level: ${summonerInfo.summonerLevel}`)
+                .setTitle(translator('cmd.leagueProfile.summonerTitle', { name: accountInfo.gameName, tag: accountInfo.tagLine }))
+                .setDescription(translator('cmd.leagueProfile.levelDesc', { level: summonerInfo.summonerLevel }))
                 .setTimestamp()
                 .setFooter({text: 'Powered by Riot Games API', iconURL: 'https://i.imgur.com/xU45ZZz.png'})
                 .setThumbnail(`http://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/profileicon/${summonerInfo.profileIconId}.png`)

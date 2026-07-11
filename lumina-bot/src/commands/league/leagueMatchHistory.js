@@ -10,68 +10,70 @@ const {
 const {
     generateMatchChart,
     generateTeamComparisonChart,
+    generateViewChart,
 } = require('../../utils/scripts/chartGenerator');
 const {
     complexLoadingEmbed,
     errorEmbed,
 } = require('../../utils/embeds/cmdEmbeds.js');
 const { emojis } = require('../../assets/emojis.js');
+const i18n = require('../../utils/i18n/index.js');
+const { loc } = require('../../utils/i18n/commandLocales.js');
 
-const max = Number(process.env.RIOT_MAX_MATCH_HISTORY) || 5; // Default to 5 if not set
+const max = Number(process.env.RIOT_MAX_MATCH_HISTORY) || 5;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // View definitions
-// Each view has: id, name (label for the middle button), statKey + statLabel
-// (used for the team comparison chart), and a fields builder.
+// nameKey / teamStatLabelKey are i18n keys resolved at render time.
 // ─────────────────────────────────────────────────────────────────────────────
 const VIEWS = [
     {
         id: 'overview',
-        name: 'Visão Geral',
+        nameKey: 'cmd.leagueMatchHistory.viewOverview',
         teamStatKey: 'totalDamageDealtToChampions',
-        teamStatLabel: 'Dano a Campeões',
+        teamStatLabelKey: 'cmd.leagueMatchHistory.teamLabelDamageDealt',
     },
     {
         id: 'damage_dealt',
-        name: 'Dano Causado',
+        nameKey: 'cmd.leagueMatchHistory.viewDamageDealt',
         teamStatKey: 'totalDamageDealtToChampions',
-        teamStatLabel: 'Dano a Campeões',
+        teamStatLabelKey: 'cmd.leagueMatchHistory.teamLabelDamageDealt',
     },
     {
         id: 'damage_taken',
-        name: 'Dano Recebido',
+        nameKey: 'cmd.leagueMatchHistory.viewDamageTaken',
         teamStatKey: 'totalDamageTaken',
-        teamStatLabel: 'Dano Recebido',
+        teamStatLabelKey: 'cmd.leagueMatchHistory.teamLabelDamageTaken',
     },
     {
         id: 'heal',
-        name: 'Cura',
+        nameKey: 'cmd.leagueMatchHistory.viewHeal',
         teamStatKey: 'totalHeal',
-        teamStatLabel: 'Cura Total',
+        teamStatLabelKey: 'cmd.leagueMatchHistory.teamLabelHeal',
     },
     {
         id: 'farm',
-        name: 'Farm',
+        nameKey: 'cmd.leagueMatchHistory.viewFarm',
         teamStatKey: 'totalMinionsKilled',
-        teamStatLabel: 'CS Total',
+        teamStatLabelKey: 'cmd.leagueMatchHistory.teamLabelFarm',
     },
     {
         id: 'objectives',
-        name: 'Objetivos',
+        nameKey: 'cmd.leagueMatchHistory.viewObjectives',
         teamStatKey: 'damageDealtToObjectives',
-        teamStatLabel: 'Dano a Objetivos',
+        teamStatLabelKey: 'cmd.leagueMatchHistory.teamLabelObjectives',
     },
     {
         id: 'wards',
-        name: 'Wards',
+        nameKey: 'cmd.leagueMatchHistory.viewWards',
         teamStatKey: 'wardsPlaced',
-        teamStatLabel: 'Wards Colocadas',
+        teamStatLabelKey: 'cmd.leagueMatchHistory.teamLabelWards',
     },
     {
         id: 'kda',
-        name: 'KDA',
+        nameKey: 'cmd.leagueMatchHistory.viewKda',
         teamStatKey: 'kda',
-        teamStatLabel: 'KDA',
+        teamStatLabelKey: 'cmd.leagueMatchHistory.teamLabelKda',
     },
 ];
 
@@ -79,11 +81,6 @@ const VIEWS = [
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Maps teamPosition (correct field) to the role emoji.
- * NOTE: Uses `teamPosition` (TOP/JUNGLE/MIDDLE/BOTTOM/UTILITY), NOT `lane`
- * (which incorrectly reports JUNGLE for top-laners with Smite, etc.).
- */
 function getRoleEmoji(teamPosition) {
     switch (teamPosition) {
         case 'TOP': return emojis.leagueTop;
@@ -95,24 +92,19 @@ function getRoleEmoji(teamPosition) {
     }
 }
 
-/** Formata número para exibição com separador de milhar pt-BR. */
-function fmt(v) {
-    return (v || 0).toLocaleString('pt-BR');
+function fmt(v, locale) {
+    return (v || 0).toLocaleString(locale || 'en-US');
 }
 
-/** Formata duração em segundos como "Xm Ys". */
 function formatDuration(seconds) {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}m ${s}s`;
 }
 
-/** Lê um valor aninhado (top-level ou dentro de `objectives`). */
 function pickStat(p, key) {
     if (typeof p[key] === 'number') return p[key];
-    if (p.objectives && typeof p.objectives[key] === 'number') {
-        return p.objectives[key];
-    }
+    if (p.objectives && typeof p.objectives[key] === 'number') return p.objectives[key];
     return 0;
 }
 
@@ -121,63 +113,64 @@ function pickStat(p, key) {
  * @param {string} viewId - O ID da view
  * @param {object} p - Dados do participante
  * @param {object} match - Dados da partida
- * @returns {Array<{name: string, value: string, inline: boolean}>}
+ * @param {Function} t - translator function
+ * @param {string} locale - locale string
  */
-function getViewFields(viewId, p, match) {
+function getViewFields(viewId, p, match, t, locale) {
     const durationMin = match.info.gameDuration / 60 || 1;
 
     switch (viewId) {
         case 'overview':
             return [
-                { name: 'Abates', value: fmt(p.kills), inline: true },
-                { name: 'Mortes', value: fmt(p.deaths), inline: true },
-                { name: 'Assistências', value: fmt(p.assists), inline: true },
-                { name: 'KDA', value: ((p.kills + p.assists) / Math.max(1, p.deaths)).toFixed(2), inline: true },
-                { name: 'Ouro', value: fmt(p.goldEarned), inline: true },
-                { name: 'Visão', value: fmt(p.visionScore), inline: true },
-                { name: 'Wards', value: fmt(p.wardsPlaced), inline: true },
-                { name: 'Dano Causado', value: fmt(p.totalDamageDealtToChampions), inline: true },
-                { name: 'Dano Recebido', value: fmt(p.totalDamageTaken), inline: true },
-                { name: 'CS', value: fmt(p.totalMinionsKilled), inline: true },
-                { name: 'CS/min', value: (p.totalMinionsKilled / durationMin).toFixed(2), inline: true },
+                { name: t('cmd.leagueMatchHistory.statKills'), value: fmt(p.kills, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statDeaths'), value: fmt(p.deaths, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statAssists'), value: fmt(p.assists, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statKDA'), value: ((p.kills + p.assists) / Math.max(1, p.deaths)).toFixed(2), inline: true },
+                { name: t('cmd.leagueMatchHistory.statGold'), value: fmt(p.goldEarned, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statVision'), value: fmt(p.visionScore, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statWards'), value: fmt(p.wardsPlaced, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statDamageDealt'), value: fmt(p.totalDamageDealtToChampions, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statDamageTaken'), value: fmt(p.totalDamageTaken, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statCS'), value: fmt(p.totalMinionsKilled, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statCSPerMin'), value: (p.totalMinionsKilled / durationMin).toFixed(2), inline: true },
             ];
 
         case 'damage_dealt':
             return [
-                { name: 'Dano Total a Campeões', value: fmt(p.totalDamageDealtToChampions), inline: true },
-                { name: 'Dano Físico', value: fmt(p.physicalDamageDealtToChampions), inline: true },
-                { name: 'Dano Mágico', value: fmt(p.magicDamageDealtToChampions), inline: true },
-                { name: 'Dano Verdadeiro', value: fmt(p.trueDamageDealtToChampions), inline: true },
-                { name: 'Dano a Objetivos', value: fmt(p.damageDealtToObjectives), inline: true },
-                { name: 'Dano a Torres', value: fmt(p.damageDealtToTurrets), inline: true },
-                { name: 'Dano a Monstros Épicos', value: fmt(p.damageDealtToEpicMonsters), inline: true },
-                { name: 'Dano Total', value: fmt(p.totalDamageDealt), inline: true },
+                { name: t('cmd.leagueMatchHistory.statTotalDamageChamps'), value: fmt(p.totalDamageDealtToChampions, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statPhysicalDamage'), value: fmt(p.physicalDamageDealtToChampions, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statMagicDamage'), value: fmt(p.magicDamageDealtToChampions, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statTrueDamage'), value: fmt(p.trueDamageDealtToChampions, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statDamageObjectives'), value: fmt(p.damageDealtToObjectives, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statDamageTurrets'), value: fmt(p.damageDealtToTurrets, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statDamageEpicMonsters'), value: fmt(p.damageDealtToEpicMonsters, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statTotalDamage'), value: fmt(p.totalDamageDealt, locale), inline: true },
             ];
 
         case 'damage_taken':
             return [
-                { name: 'Dano Total Recebido', value: fmt(p.totalDamageTaken), inline: true },
-                { name: 'Dano Físico Recebido', value: fmt(p.physicalDamageTaken), inline: true },
-                { name: 'Dano Mágico Recebido', value: fmt(p.magicDamageTaken), inline: true },
-                { name: 'Dano Verdadeiro Recebido', value: fmt(p.trueDamageTaken), inline: true },
-                { name: 'Dano Mitigado', value: fmt(p.damageSelfMitigated), inline: true },
-                { name: 'Cura Total', value: fmt(p.totalHeal), inline: true },
+                { name: t('cmd.leagueMatchHistory.statTotalDamageTaken'), value: fmt(p.totalDamageTaken, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statPhysicalDamageTaken'), value: fmt(p.physicalDamageTaken, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statMagicDamageTaken'), value: fmt(p.magicDamageTaken, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statTrueDamageTaken'), value: fmt(p.trueDamageTaken, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statDamageMitigated'), value: fmt(p.damageSelfMitigated, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statTotalHeal'), value: fmt(p.totalHeal, locale), inline: true },
             ];
 
         case 'heal':
             return [
-                { name: 'Cura Total', value: fmt(p.totalHeal), inline: true },
-                { name: 'Cura em Aliados', value: fmt(p.totalHealsOnTeammates), inline: true },
-                { name: 'Escudo em Aliados', value: fmt(p.totalDamageShieldedOnTeammates), inline: true },
+                { name: t('cmd.leagueMatchHistory.statTotalHeal'), value: fmt(p.totalHeal, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statHealTeammates'), value: fmt(p.totalHealsOnTeammates, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statShieldTeammates'), value: fmt(p.totalDamageShieldedOnTeammates, locale), inline: true },
             ];
 
         case 'farm':
             return [
-                { name: 'CS Total', value: fmt(p.totalMinionsKilled), inline: true },
-                { name: 'Monstros Neutros', value: fmt(p.neutralMinionsKilled), inline: true },
-                { name: 'CS/min', value: (p.totalMinionsKilled / durationMin).toFixed(2), inline: true },
-                { name: 'Ouro Ganho', value: fmt(p.goldEarned), inline: true },
-                { name: 'Ouro Gasto', value: fmt(p.goldSpent), inline: true },
+                { name: t('cmd.leagueMatchHistory.statCSTotal'), value: fmt(p.totalMinionsKilled, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statNeutralMonsters'), value: fmt(p.neutralMinionsKilled, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statCSPerMin'), value: (p.totalMinionsKilled / durationMin).toFixed(2), inline: true },
+                { name: t('cmd.leagueMatchHistory.statGoldEarned'), value: fmt(p.goldEarned, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statGoldSpent'), value: fmt(p.goldSpent, locale), inline: true },
             ];
 
         case 'objectives': {
@@ -186,44 +179,44 @@ function getViewFields(viewId, p, match) {
             const heraldKills = pickStat(p, 'riftHeraldKills');
             const objectivesStolen = pickStat(p, 'objectivesStolen');
             return [
-                { name: 'Torres Destruídas', value: fmt(p.turretKills), inline: true },
-                { name: 'Inibidores Destruídos', value: fmt(p.inhibitorKills), inline: true },
-                { name: 'Barons', value: fmt(baronKills), inline: true },
-                { name: 'Dragões', value: fmt(dragonKills), inline: true },
-                { name: 'Arautos', value: fmt(heraldKills), inline: true },
-                { name: 'Objetivos Roubados', value: fmt(objectivesStolen), inline: true },
+                { name: t('cmd.leagueMatchHistory.statTurretsDestroyed'), value: fmt(p.turretKills, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statInhibitorsDestroyed'), value: fmt(p.inhibitorKills, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statBarons'), value: fmt(baronKills, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statDragons'), value: fmt(dragonKills, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statHeralds'), value: fmt(heraldKills, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statObjectivesStolen'), value: fmt(objectivesStolen, locale), inline: true },
             ];
         }
 
         case 'wards':
             return [
-                { name: 'Wards Colocadas', value: fmt(p.wardsPlaced), inline: true },
-                { name: 'Wards Destruídas', value: fmt(p.wardsKilled), inline: true },
-                { name: 'Pontuação de Visão', value: fmt(p.visionScore), inline: true },
-                { name: 'Wards Detectoras', value: fmt(p.detectorWardsPlaced), inline: true },
-                { name: 'Wards de Visão Compradas', value: fmt(p.visionWardsBoughtInGame), inline: true },
-                { name: 'Wards de Visão (Sight)', value: fmt(p.sightWardsBoughtInGame), inline: true },
+                { name: t('cmd.leagueMatchHistory.statWardsPlaced'), value: fmt(p.wardsPlaced, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statWardsKilled'), value: fmt(p.wardsKilled, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statVisionScore'), value: fmt(p.visionScore, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statDetectorWards'), value: fmt(p.detectorWardsPlaced, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statVisionWardsBought'), value: fmt(p.visionWardsBoughtInGame, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statSightWardsBought'), value: fmt(p.sightWardsBoughtInGame, locale), inline: true },
             ];
 
         case 'kda': {
             const kda = ((p.kills + p.assists) / Math.max(1, p.deaths)).toFixed(2);
             const firstBlood = p.firstBloodKill
-                ? 'Abate'
+                ? t('cmd.leagueMatchHistory.firstBloodKill')
                 : p.firstBloodAssist
-                    ? 'Assistência'
-                    : 'Não';
+                    ? t('cmd.leagueMatchHistory.firstBloodAssist')
+                    : t('cmd.leagueMatchHistory.firstBloodNo');
             return [
-                { name: 'Abates', value: fmt(p.kills), inline: true },
-                { name: 'Mortes', value: fmt(p.deaths), inline: true },
-                { name: 'Assistências', value: fmt(p.assists), inline: true },
-                { name: 'KDA', value: kda, inline: true },
-                { name: 'Double Kills', value: fmt(p.doubleKills), inline: true },
-                { name: 'Triple Kills', value: fmt(p.tripleKills), inline: true },
-                { name: 'Quadra Kills', value: fmt(p.quadraKills), inline: true },
-                { name: 'Penta Kills', value: fmt(p.pentaKills), inline: true },
-                { name: 'Killing Sprees', value: fmt(p.killingSprees), inline: true },
-                { name: 'Maior Killing Spree', value: fmt(p.largestKillingSpree), inline: true },
-                { name: 'First Blood', value: firstBlood, inline: true },
+                { name: t('cmd.leagueMatchHistory.statKills'), value: fmt(p.kills, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statDeaths'), value: fmt(p.deaths, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statAssists'), value: fmt(p.assists, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statKDA'), value: kda, inline: true },
+                { name: t('cmd.leagueMatchHistory.statDoubleKills'), value: fmt(p.doubleKills, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statTripleKills'), value: fmt(p.tripleKills, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statQuadraKills'), value: fmt(p.quadraKills, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statPentaKills'), value: fmt(p.pentaKills, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statKillingSprees'), value: fmt(p.killingSprees, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statLargestKillingSpree'), value: fmt(p.largestKillingSpree, locale), inline: true },
+                { name: t('cmd.leagueMatchHistory.statFirstBlood'), value: firstBlood, inline: true },
             ];
         }
 
@@ -235,7 +228,7 @@ function getViewFields(viewId, p, match) {
 /**
  * Constrói o embed da partida para a view atual.
  */
-function buildMatchEmbed(processed, viewIdx, teamMode, summonerName, tagLine, matchIdx, total) {
+function buildMatchEmbed(processed, viewIdx, teamMode, summonerName, tagLine, matchIdx, total, t, locale) {
     const { participant, match, championData, ddragonVersion } = processed;
     const view = VIEWS[viewIdx];
 
@@ -244,7 +237,7 @@ function buildMatchEmbed(processed, viewIdx, teamMode, summonerName, tagLine, ma
     const color = win ? 0x0099ff : 0xff3636;
     const championName = (championData && championData.name) || participant.championName || 'unknown';
 
-    const dateStr = new Date(match.info.gameStartTimestamp).toLocaleString('pt-BR', {
+    const dateStr = new Date(match.info.gameStartTimestamp).toLocaleString(locale, {
         day: '2-digit',
         month: '2-digit',
         hour: '2-digit',
@@ -258,56 +251,54 @@ function buildMatchEmbed(processed, viewIdx, teamMode, summonerName, tagLine, ma
 
     const embed = new EmbedBuilder()
         .setColor(color)
-        .setTitle(`${roleEmoji} ${summonerName}#${tagLine} - ${championName}  |  ${win ? 'Victória' : 'Derrota'}`)
+        .setTitle(`${roleEmoji} ${summonerName}#${tagLine} - ${championName}  |  ${win ? t('cmd.leagueMatchHistory.victory') : t('cmd.leagueMatchHistory.defeat')}`)
         .setDescription(
-            `Partida ${matchIdx + 1}/${total} | ${dateStr} | Duração: ${durationStr}` +
-            (teamMode ? `\n**Modo Comparação de Equipe** — ${view.teamStatLabel}` : `\n**View:** ${view.name}`)
+            `${t('cmd.leagueMatchHistory.matchOf', { current: matchIdx + 1, total })} | ${dateStr} | ${t('cmd.leagueMatchHistory.duration')}: ${durationStr}` +
+            (teamMode ? `\n**${t('cmd.leagueMatchHistory.teamMode')}** — ${t(view.teamStatLabelKey)}` : `\n**${t('cmd.leagueMatchHistory.viewLabel')}:** ${t(view.nameKey)}`)
         )
         .setThumbnail(championThumb)
         .setImage(teamMode ? 'attachment://team-comparison.png' : 'attachment://match-stats.png')
         .setTimestamp()
         .setFooter({ text: 'Powered by Riot Games API', iconURL: 'https://i.imgur.com/xU45ZZz.png' });
 
-    const fields = getViewFields(view.id, participant, match);
+    const fields = getViewFields(view.id, participant, match, t, locale);
     embed.addFields(fields);
 
     return embed;
 }
 
 /**
- * Constrói as duas ActionRows de botões com base no estado atual.
- *
- * Row 1: `◀️ Anterior` | `{View Name}` (disabled) | `▶️ Próximo` | `👥 Team`
- * Row 2: `◀️ Partida Anterior` | `Partida X/Y` (disabled) | `▶️ Próxima Partida`
+ * Constrói as duas ActionRows de botões.
+ * t = translator function (required for button labels)
  */
-function buildRows(matchIdx, total, viewIdx, teamMode, processedMatches, loadingMatches, allDisabled = false) {
+function buildRows(matchIdx, total, viewIdx, teamMode, processedMatches, loadingMatches, allDisabled, t) {
     const view = VIEWS[viewIdx];
 
     // ── Row 1: views + team toggle ──────────────────────────────────────────
     const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId('view_prev')
-            .setLabel('Anterior')
+            .setLabel(t('cmd.leagueMatchHistory.btnPrevious'))
             .setEmoji('◀️')
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(allDisabled),
         new ButtonBuilder()
             .setCustomId('view_current')
-            .setLabel(view.name)
+            .setLabel(t(view.nameKey))
             .setStyle(ButtonStyle.Primary)
-            .setDisabled(true), // Always disabled — display only
+            .setDisabled(true),
         new ButtonBuilder()
             .setCustomId('view_next')
-            .setLabel('Próximo')
+            .setLabel(t('cmd.leagueMatchHistory.btnNext'))
             .setEmoji('▶️')
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(allDisabled),
         new ButtonBuilder()
             .setCustomId('view_team')
-            .setLabel(teamMode ? 'Modo Time' : 'Comparar Time')
+            .setLabel(teamMode ? t('cmd.leagueMatchHistory.btnTeamMode') : t('cmd.leagueMatchHistory.btnCompareTeam'))
             .setEmoji('👥')
             .setStyle(teamMode ? ButtonStyle.Success : ButtonStyle.Secondary)
-            .setDisabled(allDisabled || viewIdx === 0), // Desabilita na Visão Geral
+            .setDisabled(allDisabled || viewIdx === 0),
     );
 
     // ── Row 2: match navigation ─────────────────────────────────────────────
@@ -316,27 +307,27 @@ function buildRows(matchIdx, total, viewIdx, teamMode, processedMatches, loading
     const nextLoading = loadingMatches.has(matchIdx + 1);
     const nextReady = processedMatches.has(matchIdx + 1);
 
-    let nextLabel = '▶️ Próxima Partida';
+    let nextLabel = '▶️ ' + t('cmd.leagueMatchHistory.btnMatchNext');
     let nextDisabled = allDisabled;
     if (isLast) {
         nextDisabled = true;
     } else if (nextLoading && !nextReady) {
-        nextLabel = 'Carregando...';
+        nextLabel = t('cmd.leagueMatchHistory.btnLoading');
         nextDisabled = true;
     }
 
     const row2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId('match_prev')
-            .setLabel('Partida Anterior')
+            .setLabel(t('cmd.leagueMatchHistory.btnMatchPrev'))
             .setEmoji('◀️')
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(allDisabled || isFirst),
         new ButtonBuilder()
             .setCustomId('match_current')
-            .setLabel(`Partida ${matchIdx + 1}/${total}`)
+            .setLabel(t('cmd.leagueMatchHistory.btnMatchOf', { current: matchIdx + 1, total }))
             .setStyle(ButtonStyle.Primary)
-            .setDisabled(true), // Always disabled — display only
+            .setDisabled(true),
         new ButtonBuilder()
             .setCustomId('match_next')
             .setLabel(nextLabel)
@@ -356,16 +347,18 @@ module.exports = {
     cooldown: 15,
     data: new SlashCommandBuilder()
         .setName('leaguematchhistory')
-        .setNameLocalizations({
-            'pt-BR': 'historicodepartidas',
-        })
+        .setNameLocalizations({ 'pt-BR': 'historicodepartidas', 'es-ES': 'historialdepartidas' })
         .setDescription('Shows the match history of a League of Legends player.')
+        .setDescriptionLocalizations(loc(
+            'Mostra o histórico de partidas de um jogador de League of Legends.',
+            'Muestra el historial de partidas de un jugador de League of Legends.'
+        ))
         .addStringOption((option) =>
             option
                 .setName('region')
-                .setNameLocalizations({ 'pt-BR': 'região' })
+                .setNameLocalizations({ 'pt-BR': 'região', 'es-ES': 'región' })
                 .setDescription('The region of the player.')
-                .setDescriptionLocalizations({ 'pt-BR': 'A região do jogador.' })
+                .setDescriptionLocalizations(loc('A região do jogador.', 'La región del jugador.'))
                 .setRequired(true)
                 .addChoices(
                     { name: 'AMERICAS', value: 'americas' },
@@ -376,31 +369,33 @@ module.exports = {
         .addStringOption((option) =>
             option
                 .setName('summonername')
-                .setNameLocalizations({ 'pt-BR': 'invocador' })
+                .setNameLocalizations({ 'pt-BR': 'invocador', 'es-ES': 'invocador' })
                 .setDescription('The summoner name of the player.')
-                .setDescriptionLocalizations({ 'pt-BR': 'O nome do invocador.' })
+                .setDescriptionLocalizations(loc('O nome do invocador.', 'El nombre del invocador.'))
                 .setRequired(true),
         )
         .addStringOption((option) =>
             option
                 .setName('tagline')
-                .setNameLocalizations({ 'pt-BR': 'hashtag' })
+                .setNameLocalizations({ 'pt-BR': 'hashtag', 'es-ES': 'etiqueta' })
                 .setDescription('The tagline of the player.')
-                .setDescriptionLocalizations({ 'pt-BR': 'O hashtag do jogador.' })
+                .setDescriptionLocalizations(loc('O hashtag do jogador.', 'La etiqueta del jugador.'))
                 .setRequired(true),
         )
         .addNumberOption((option) =>
             option
                 .setName('number')
-                .setNameLocalizations({ 'pt-BR': 'quantidade' })
+                .setNameLocalizations({ 'pt-BR': 'quantidade', 'es-ES': 'cantidad' })
                 .setDescription('The number of matches to show.')
-                .setDescriptionLocalizations({ 'pt-BR': 'A quantidade de partidas a serem mostradas.' })
+                .setDescriptionLocalizations(loc('A quantidade de partidas a serem mostradas.', 'La cantidad de partidas a mostrar.'))
                 .setRequired(false)
                 .setMinValue(1)
                 .setMaxValue(max),
         ),
 
-    async execute(interaction) {
+    async execute(interaction, t) {
+        const translator = t || i18n.getTranslator(i18n.resolveFromInteraction(interaction));
+        const locale = i18n.resolveFromInteraction(interaction);
         await interaction.deferReply();
 
         // ── Parse & validate options ──────────────────────────────────────────
@@ -409,22 +404,10 @@ module.exports = {
         const tagLine = interaction.options.getString('tagline');
 
         if (tagLine.length > 5) {
-            return await errorEmbed(
-                'The tagline must have a maximum of 5 characters.',
-                'leaguematchhistory',
-                interaction,
-                true,
-                false,
-            );
+            return await errorEmbed(translator('cmd.leagueProfile.taglineTooLong'), 'leaguematchhistory', interaction, true, false);
         }
         if (tagLine[0] === '#') {
-            return await errorEmbed(
-                'You must insert only the numbers of the tagline. Do not insert "#".',
-                'leaguematchhistory',
-                interaction,
-                true,
-                false,
-            );
+            return await errorEmbed(translator('cmd.leagueProfile.taglineFormat'), 'leaguematchhistory', interaction, true, false);
         }
 
         let number = interaction.options.getNumber('number') || 1;
@@ -432,86 +415,47 @@ module.exports = {
 
         // ── Loading: account info ─────────────────────────────────────────────
         await complexLoadingEmbed(
-            '<a:loading:1274651043908816969> Buscando informações da conta...',
-            'leaguematchhistory',
-            interaction,
-            true,
-            false,
-            true,
+            `<a:loading:1274651043908816969> ${translator('cmd.leagueMatchHistory.loadingAccount')}`,
+            'leaguematchhistory', interaction, true, false, true,
         );
 
         const accountInfo = await api.getAccountByRiotId(region, summonerName, tagLine, 'leagueMatchHistory');
         if (!accountInfo) {
-            return await errorEmbed(
-                'An error occurred while fetching the account information.',
-                'leaguematchhistory',
-                interaction,
-                true,
-                false,
-            );
+            return await errorEmbed(translator('cmd.leagueMatchHistory.accountError'), 'leaguematchhistory', interaction, true, false);
         }
         if (accountInfo.error) {
-            return await errorEmbed(
-                'The summoner you entered does not exist. Please check the account name and region.',
-                'leaguematchhistory',
-                interaction,
-                true,
-                false,
-            );
+            return await errorEmbed(translator('cmd.leagueMatchHistory.notFound'), 'leaguematchhistory', interaction, true, false);
         }
 
         // ── Loading: match history ────────────────────────────────────────────
         await complexLoadingEmbed(
-            '<a:loading:1274651043908816969> Buscando histórico de partidas...',
-            'leaguematchhistory',
-            interaction,
-            true,
-            false,
-            true,
+            `<a:loading:1274651043908816969> ${translator('cmd.leagueMatchHistory.loadingHistory')}`,
+            'leaguematchhistory', interaction, true, false, true,
         );
 
         const fullHistory = await api.getMatchHistory(region, accountInfo.puuid, 'leagueMatchHistory');
         if (!fullHistory || !Array.isArray(fullHistory) || fullHistory.length === 0) {
-            return await errorEmbed(
-                'An error occurred while fetching the match history, or no matches were found.',
-                'leaguematchhistory',
-                interaction,
-                true,
-                false,
-            );
+            return await errorEmbed(translator('cmd.leagueMatchHistory.noMatches'), 'leaguematchhistory', interaction, true, false);
         }
 
-        // Slice to requested number of matches
         const matches = fullHistory.slice(0, number);
         const total = matches.length;
 
         // ── Loading: first match ──────────────────────────────────────────────
         await complexLoadingEmbed(
-            '<a:loading:1274651043908816969> Buscando partidas...\n' +
-            `<a:loading:1274651043908816969> Processando partida 1 de ${total}...`,
-            'leaguematchhistory',
-            interaction,
-            true,
-            false,
-            true,
+            `<a:loading:1274651043908816969> ${translator('cmd.leagueMatchHistory.loadingMatches')}\n` +
+            `<a:loading:1274651043908816969> ${translator('cmd.leagueMatchHistory.loadingProcessingMatch', { current: 1, total })}`,
+            'leaguematchhistory', interaction, true, false, true,
         );
 
         // ── Match cache & loading state ───────────────────────────────────────
-        // processedMatches: Map<index, { participant, match, championData, ddragonVersion, individualChart, teamCharts: Map<viewIdx, Buffer> }>
         const processedMatches = new Map();
-        // loadingMatches: Set<index> — indices currently being loaded
         const loadingMatches = new Set();
 
-        /**
-         * Processa uma partida: encontra o participante, busca o nome do campeão,
-         * gera o gráfico individual e armazena tudo no cache.
-         */
         async function processMatch(idx) {
             if (processedMatches.has(idx)) return processedMatches.get(idx);
             if (loadingMatches.has(idx)) {
-                // Aguarda o processamento em andamento
                 while (loadingMatches.has(idx)) {
-                    // eslint-disable-next-line no-await-in-loop
                     await new Promise((r) => setTimeout(r, 100));
                 }
                 return processedMatches.get(idx);
@@ -522,15 +466,10 @@ module.exports = {
                 const match = matches[idx];
                 if (!match || !match.info) throw new Error('Match data not found');
 
-                const participant = match.info.participants.find(
-                    (p) => p.puuid === accountInfo.puuid,
-                );
+                const participant = match.info.participants.find((p) => p.puuid === accountInfo.puuid);
                 if (!participant) throw new Error('Participant not found in match');
 
-                const championData = await api.fetchChampionName(
-                    participant.championId,
-                    'leagueMatchHistory',
-                );
+                const championData = await api.fetchChampionName(participant.championId, 'leagueMatchHistory');
                 const ddragonVersion = await api.getDDragonLatestVersion('leagueMatchHistory');
                 const individualChart = await generateMatchChart(participant);
 
@@ -540,6 +479,7 @@ module.exports = {
                     championData,
                     ddragonVersion,
                     individualChart,
+                    individualCharts: new Map(), // Per-view chart cache (FIX)
                     teamCharts: new Map(),
                 };
                 processedMatches.set(idx, result);
@@ -551,14 +491,8 @@ module.exports = {
             }
         }
 
-        /**
-         * Busca ou gera o gráfico de comparação de equipe para a view atual.
-         * Resultados são cacheados por (matchIdx, viewIdx).
-         */
         async function getOrGenerateTeamChart(processed, viewIdx) {
-            if (processed.teamCharts.has(viewIdx)) {
-                return processed.teamCharts.get(viewIdx);
-            }
+            if (processed.teamCharts.has(viewIdx)) return processed.teamCharts.get(viewIdx);
             const view = VIEWS[viewIdx];
             const allParticipants = processed.match.info.participants;
             const buffer = await generateTeamComparisonChart(
@@ -566,15 +500,29 @@ module.exports = {
                 allParticipants,
                 view.teamStatKey,
                 processed.ddragonVersion,
-                view.teamStatLabel,
+                translator(view.teamStatLabelKey),
             );
             processed.teamCharts.set(viewIdx, buffer);
             return buffer;
         }
 
-        // ── Processa a primeira partida ──────────────────────────────────────
+        /**
+         * FIX: Generates/retrieves a per-view individual chart.
+         * Before, all views used the same overview chart. Now each view
+         * gets its own chart with only the relevant stats.
+         */
+        async function getOrGenerateIndividualChart(processed, viewIdx) {
+            if (viewIdx === 0) return processed.individualChart;
+            if (processed.individualCharts.has(viewIdx)) return processed.individualCharts.get(viewIdx);
+            const view = VIEWS[viewIdx];
+            const buffer = await generateViewChart(processed.participant, view.id);
+            processed.individualCharts.set(viewIdx, buffer);
+            return buffer;
+        }
+
+        // ── Process first match ──────────────────────────────────────────────
         let currentMatchIdx = 0;
-        let currentViewIdx = 0; // Visão Geral
+        let currentViewIdx = 0;
         let teamMode = false;
 
         let firstProcessed;
@@ -582,155 +530,69 @@ module.exports = {
             firstProcessed = await processMatch(0);
         } catch (err) {
             console.error('[leagueMatchHistory] Erro ao processar primeira partida:', err);
-            return await errorEmbed(
-                'An error occurred while analyzing the match statistics.',
-                'leaguematchhistory',
-                interaction,
-                true,
-                false,
-            );
+            return await errorEmbed(translator('cmd.leagueMatchHistory.errorProcessing'), 'leaguematchhistory', interaction, true, false);
         }
 
-        // ── Renderiza o embed inicial ─────────────────────────────────────────
-        const initialEmbed = buildMatchEmbed(
-            firstProcessed,
-            currentViewIdx,
-            teamMode,
-            summonerName,
-            tagLine,
-            currentMatchIdx,
-            total,
-        );
-        const initialRows = buildRows(
-            currentMatchIdx,
-            total,
-            currentViewIdx,
-            teamMode,
-            processedMatches,
-            loadingMatches,
-        );
-        const initialFiles = [
-            new AttachmentBuilder(firstProcessed.individualChart, { name: 'match-stats.png' }),
-        ];
+        // ── Render initial embed ─────────────────────────────────────────────
+        const initialEmbed = buildMatchEmbed(firstProcessed, currentViewIdx, teamMode, summonerName, tagLine, currentMatchIdx, total, translator, locale);
+        const initialRows = buildRows(currentMatchIdx, total, currentViewIdx, teamMode, processedMatches, loadingMatches, false, translator);
+        const initialFiles = [new AttachmentBuilder(firstProcessed.individualChart, { name: 'match-stats.png' })];
 
-        await interaction.editReply({
-            embeds: [initialEmbed],
-            components: initialRows,
-            files: initialFiles,
-            content: null,
-        });
+        await interaction.editReply({ embeds: [initialEmbed], components: initialRows, files: initialFiles, content: null });
 
-        // ── Pré-carrega a próxima partida em background ──────────────────────
+        // ── Preload next match in background ─────────────────────────────────
         function preloadNext() {
             const nextIdx = currentMatchIdx + 1;
             if (nextIdx < total && !processedMatches.has(nextIdx) && !loadingMatches.has(nextIdx)) {
                 processMatch(nextIdx)
-                    .then(() => {
-                        // Atualiza silenciosamente os botões para refletir que a próxima
-                        // partida está pronta (apenas se ainda estamos na mesma partida).
-                        refreshRowsQuietly().catch(() => {});
-                    })
-                    .catch((err) => {
-                        console.error('[leagueMatchHistory] Background preload falhou:', err.message);
-                    });
+                    .then(() => { refreshRowsQuietly().catch(() => {}); })
+                    .catch((err) => { console.error('[leagueMatchHistory] Background preload falhou:', err.message); });
             }
         }
         preloadNext();
 
-        // ── Captura a mensagem para o collector ───────────────────────────────
-        const replyMessage = await interaction.fetchReply();
-
         // ── Collector ─────────────────────────────────────────────────────────
+        const replyMessage = await interaction.fetchReply();
         const filter = (i) => i.user.id === interaction.user.id;
-        const collector = replyMessage.createMessageComponentCollector({
-            filter,
-            time: 5 * 60 * 1000, // 5 minutos
-        });
+        const collector = replyMessage.createMessageComponentCollector({ filter, time: 5 * 60 * 1000 });
 
-        /**
-         * Atualiza o embed e botões sem alterar o conteúdo (usado após preload).
-         */
         async function refreshRowsQuietly() {
             const processed = processedMatches.get(currentMatchIdx);
             if (!processed) return;
-            const embed = buildMatchEmbed(
-                processed,
-                currentViewIdx,
-                teamMode,
-                summonerName,
-                tagLine,
-                currentMatchIdx,
-                total,
-            );
-            const rows = buildRows(
-                currentMatchIdx,
-                total,
-                currentViewIdx,
-                teamMode,
-                processedMatches,
-                loadingMatches,
-            );
+            const embed = buildMatchEmbed(processed, currentViewIdx, teamMode, summonerName, tagLine, currentMatchIdx, total, translator, locale);
+            const rows = buildRows(currentMatchIdx, total, currentViewIdx, teamMode, processedMatches, loadingMatches, false, translator);
             await interaction.editReply({ embeds: [embed], components: rows });
         }
 
-        /**
-         * Atualiza a mensagem com o embed atual (sem alterar anexos).
-         */
         async function refreshEmbedOnly(i) {
             const processed = processedMatches.get(currentMatchIdx);
             if (!processed) return;
-            const embed = buildMatchEmbed(
-                processed,
-                currentViewIdx,
-                teamMode,
-                summonerName,
-                tagLine,
-                currentMatchIdx,
-                total,
-            );
-            const rows = buildRows(
-                currentMatchIdx,
-                total,
-                currentViewIdx,
-                teamMode,
-                processedMatches,
-                loadingMatches,
-            );
+            const embed = buildMatchEmbed(processed, currentViewIdx, teamMode, summonerName, tagLine, currentMatchIdx, total, translator, locale);
+            const rows = buildRows(currentMatchIdx, total, currentViewIdx, teamMode, processedMatches, loadingMatches, false, translator);
             await i.editReply({ embeds: [embed], components: rows });
         }
 
         /**
-         * Atualiza a mensagem com o embed atual + anexo apropriado
-         * (gráfico individual ou gráfico de comparação de equipe).
+         * Updates the message with the current embed + appropriate attachment.
+         * FIX: When teamMode is false, now uses getOrGenerateIndividualChart
+         * which generates a view-specific chart instead of always using the
+         * overview chart.
          */
         async function refreshWithAttachment(i) {
             const processed = processedMatches.get(currentMatchIdx);
             if (!processed) return;
 
-            const embed = buildMatchEmbed(
-                processed,
-                currentViewIdx,
-                teamMode,
-                summonerName,
-                tagLine,
-                currentMatchIdx,
-                total,
-            );
-            const rows = buildRows(
-                currentMatchIdx,
-                total,
-                currentViewIdx,
-                teamMode,
-                processedMatches,
-                loadingMatches,
-            );
+            const embed = buildMatchEmbed(processed, currentViewIdx, teamMode, summonerName, tagLine, currentMatchIdx, total, translator, locale);
+            const rows = buildRows(currentMatchIdx, total, currentViewIdx, teamMode, processedMatches, loadingMatches, false, translator);
 
             let files;
             if (teamMode) {
                 const teamChart = await getOrGenerateTeamChart(processed, currentViewIdx);
                 files = [new AttachmentBuilder(teamChart, { name: 'team-comparison.png' })];
             } else {
-                files = [new AttachmentBuilder(processed.individualChart, { name: 'match-stats.png' })];
+                // FIX: Use per-view chart instead of always overview
+                const viewChart = await getOrGenerateIndividualChart(processed, currentViewIdx);
+                files = [new AttachmentBuilder(viewChart, { name: 'match-stats.png' })];
             }
 
             await i.editReply({ embeds: [embed], components: rows, files });
@@ -738,9 +600,10 @@ module.exports = {
 
         collector.on('collect', async (i) => {
             try {
-                // ── View navigation ──────────────────────────────────────────
                 if (i.customId === 'view_prev') {
                     currentViewIdx = (currentViewIdx - 1 + VIEWS.length) % VIEWS.length;
+                    // Auto-desliga team mode ao voltar para Visão Geral
+                    if (currentViewIdx === 0) teamMode = false;
                     await i.deferUpdate();
                     await refreshWithAttachment(i);
                     return;
@@ -748,12 +611,13 @@ module.exports = {
 
                 if (i.customId === 'view_next') {
                     currentViewIdx = (currentViewIdx + 1) % VIEWS.length;
+                    // Auto-desliga team mode ao voltar para Visão Geral
+                    if (currentViewIdx === 0) teamMode = false;
                     await i.deferUpdate();
                     await refreshWithAttachment(i);
                     return;
                 }
 
-                // ── Team comparison toggle ──────────────────────────────────
                 if (i.customId === 'view_team') {
                     teamMode = !teamMode;
                     await i.deferUpdate();
@@ -761,12 +625,11 @@ module.exports = {
                     return;
                 }
 
-                // ── Match navigation: previous ───────────────────────────────
                 if (i.customId === 'match_prev') {
                     if (currentMatchIdx > 0) {
                         currentMatchIdx--;
-                        currentViewIdx = 0; // Reset to Visão Geral
-                        teamMode = false;   // Reset team mode
+                        currentViewIdx = 0;
+                        teamMode = false;
                         await i.deferUpdate();
                         await refreshWithAttachment(i);
                     } else {
@@ -775,7 +638,6 @@ module.exports = {
                     return;
                 }
 
-                // ── Match navigation: next ───────────────────────────────────
                 if (i.customId === 'match_next') {
                     if (currentMatchIdx >= total - 1) {
                         await i.deferUpdate();
@@ -784,57 +646,37 @@ module.exports = {
 
                     const nextIdx = currentMatchIdx + 1;
 
-                    // Caso 1: próxima partida já está carregada — troca imediatamente
                     if (processedMatches.has(nextIdx)) {
                         currentMatchIdx = nextIdx;
-                        currentViewIdx = 0; // Reset to Visão Geral
-                        teamMode = false;   // Reset team mode
+                        currentViewIdx = 0;
+                        teamMode = false;
                         await i.deferUpdate();
                         await refreshWithAttachment(i);
                         preloadNext();
                         return;
                     }
 
-                    // Caso 2: próxima partida NÃO está carregada — carrega sob demanda
-                    // Mostra mensagem "Carregando partida..." enquanto processa
                     await i.deferUpdate();
 
                     const loadingEmbed = new EmbedBuilder()
                         .setColor(0xffff00)
-                        .setTitle('<a:loading:1274651043908816969> | CARREGANDO')
-                        .setDescription(`Carregando partida ${nextIdx + 1}/${total}...`)
-                        .setFooter({
-                            text: 'origin: leaguematchhistory',
-                            iconURL: 'https://i.imgur.com/xU45ZZz.png',
-                        });
+                        .setTitle(`<a:loading:1274651043908816969> | ${translator('cmd.leagueMatchHistory.loadingTitle')}`)
+                        .setDescription(translator('cmd.leagueMatchHistory.loadingMatch', { current: nextIdx + 1, total }))
+                        .setFooter({ text: 'origin: leaguematchhistory', iconURL: 'https://i.imgur.com/xU45ZZz.png' });
 
-                    // Atualiza o botão para mostrar "Carregando..." (disabled)
-                    const loadingRows = buildRows(
-                        currentMatchIdx,
-                        total,
-                        currentViewIdx,
-                        teamMode,
-                        processedMatches,
-                        loadingMatches,
-                    );
+                    const loadingRows = buildRows(currentMatchIdx, total, currentViewIdx, teamMode, processedMatches, loadingMatches, false, translator);
 
-                    await i.editReply({
-                        embeds: [loadingEmbed],
-                        components: loadingRows,
-                        files: [],
-                        content: null,
-                    });
+                    await i.editReply({ embeds: [loadingEmbed], components: loadingRows, files: [], content: null });
 
                     try {
                         await processMatch(nextIdx);
                         currentMatchIdx = nextIdx;
-                        currentViewIdx = 0; // Reset to Visão Geral
-                        teamMode = false;   // Reset team mode
+                        currentViewIdx = 0;
+                        teamMode = false;
                         await refreshWithAttachment(i);
                         preloadNext();
                     } catch (err) {
                         console.error('[leagueMatchHistory] Erro ao carregar partida sob demanda:', err);
-                        // Restaura o embed anterior
                         await refreshWithAttachment(i);
                     }
                     return;
@@ -842,42 +684,20 @@ module.exports = {
             } catch (err) {
                 console.error('[leagueMatchHistory] Erro no collector:', err);
                 try {
-                    await i.followUp({
-                        content: 'Ocorreu um erro ao processar sua ação. Tente novamente.',
-                        ephemeral: true,
-                    });
-                } catch (_) {
-                    // noop
-                }
+                    await i.followUp({ content: translator('cmd.leagueMatchHistory.errorCollector'), ephemeral: true });
+                } catch (_) {}
             }
         });
 
         collector.on('end', async () => {
             try {
-                // Desabilita todos os botões ao terminar o collector
                 const processed = processedMatches.get(currentMatchIdx);
                 if (!processed) return;
-                const embed = buildMatchEmbed(
-                    processed,
-                    currentViewIdx,
-                    teamMode,
-                    summonerName,
-                    tagLine,
-                    currentMatchIdx,
-                    total,
-                );
-                const rows = buildRows(
-                    currentMatchIdx,
-                    total,
-                    currentViewIdx,
-                    teamMode,
-                    processedMatches,
-                    loadingMatches,
-                    true, // allDisabled
-                );
+                const embed = buildMatchEmbed(processed, currentViewIdx, teamMode, summonerName, tagLine, currentMatchIdx, total, translator, locale);
+                const rows = buildRows(currentMatchIdx, total, currentViewIdx, teamMode, processedMatches, loadingMatches, true, translator);
                 await interaction.editReply({ embeds: [embed], components: rows });
             } catch (err) {
-                // noop — mensagem pode ter sido deletada
+                // noop
             }
         });
     },

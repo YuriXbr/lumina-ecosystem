@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useUser } from '../../contexts/UserContext';
 import AppShell from '../../components/AppShell';
 import { ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { useT } from '../../i18n/LanguageContext.jsx';
 
 // Reutiliza as abas existentes do dashboard antigo
 import MetricsTab from '../dashboardPage/components/tabs/MetricsTab';
@@ -10,23 +11,26 @@ import GuildConfigTab from '../dashboardPage/components/tabs/GuildConfigTab';
 import ConsoleTab from '../dashboardPage/components/tabs/ConsoleTab';
 import LogsTab from '../dashboardPage/components/tabs/LogsTab';
 import NewsAdminTab from './components/NewsAdminTab';
+import AdminBadgesTab from './components/AdminBadgesTab';
 
 const ADMIN_TABS = [
-  { id: 'metrics', label: 'Métricas',     icon: '📊', permission: 'metrics' },
-  { id: 'users',   label: 'Usuários',     icon: '👥', permission: 'user-management' },
-  { id: 'guilds',  label: 'Guildas',      icon: '🏰', permission: 'guild-config' },
-  { id: 'news',    label: 'Novidades',    icon: '📰', permission: 'guild-config' },
-  { id: 'logs',    label: 'Logs',         icon: '📋', permission: 'console' },
-  { id: 'console', label: 'Console',      icon: '💻', permission: 'console' },
+  { id: 'metrics', labelKey: 'admin.tabs.metrics',     icon: '📊', permission: 'metrics' },
+  { id: 'users',   labelKey: 'admin.tabs.users',       icon: '👥', permission: 'user-management' },
+  { id: 'guilds',  labelKey: 'admin.tabs.guilds',      icon: '🏰', permission: 'guild-config' },
+  { id: 'badges',  labelKey: 'admin.tabs.badges',      icon: '🎖️', permission: 'guild-config' },
+  { id: 'news',    labelKey: 'admin.tabs.news',        icon: '📰', permission: 'guild-config' },
+  { id: 'logs',    labelKey: 'admin.tabs.logs',        icon: '📋', permission: 'console' },
+  { id: 'console', labelKey: 'admin.tabs.console',     icon: '💻', permission: 'console' },
 ];
 
 export default function AdminPage() {
+  const t = useT();
   const { user, loading, hasPermission, isAdmin } = useUser();
   const [activeTab, setActiveTab] = useState('metrics');
 
   if (loading) {
     return (
-      <AppShell title="Painel Administrativo">
+      <AppShell title={t("admin.title")}>
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
         </div>
@@ -36,14 +40,14 @@ export default function AdminPage() {
 
   if (!user || !isAdmin()) {
     return (
-      <AppShell title="Acesso restrito">
+      <AppShell title={t("common.accessDenied")}>
         <div className="bg-white border border-gray-200 rounded-lg p-12 text-center max-w-md mx-auto">
           <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
             <ShieldCheckIcon className="h-6 w-6 text-red-600" />
           </div>
-          <h3 className="text-base font-semibold text-gray-900">Acesso restrito</h3>
+          <h3 className="text-base font-semibold text-gray-900">{t("apiError.insufficientPermission")}</h3>
           <p className="text-sm text-gray-600 mt-1">
-            Você não tem permissão para acessar o painel administrativo.
+            {t("apiError.insufficientPermission")}
           </p>
         </div>
       </AppShell>
@@ -57,6 +61,7 @@ export default function AdminPage() {
       case 'metrics': return <MetricsTab />;
       case 'users':   return <UserManagementTab />;
       case 'guilds':  return <GuildConfigTab />;
+      case 'badges':  return <AdminBadgesTab />;
       case 'news':    return <NewsAdminTab />;
       case 'logs':    return <LogsTab />;
       case 'console': return <ConsoleTab />;
@@ -65,7 +70,7 @@ export default function AdminPage() {
   };
 
   return (
-    <AppShell maxWidth="max-w-7xl" title="Painel Administrativo" subtitle="Gerencie o bot, usuários e configurações do sistema">
+    <AppShell maxWidth="max-w-7xl" title={t("admin.title")} subtitle={t("admin.subtitle")}>
       <div className="space-y-6">
         {/* Tabs (subheader visual) */}
         <div className="bg-white border border-gray-200 rounded-xl p-1 flex gap-1 overflow-x-auto">
@@ -80,7 +85,7 @@ export default function AdminPage() {
                 }`}
               >
                 <span>{tab.icon}</span>
-                {tab.label}
+                {t(tab.labelKey)}
               </button>
             );
           })}

@@ -10,7 +10,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const { Client, Collection, GatewayIntentBits, Partials } = require('discord.js');
 const c = require('./src/utils/colorCodes.js');
 const botConfigService = require('./src/utils/services/EncryptionService.js');
 
@@ -19,13 +19,17 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildVoiceStates,
         GatewayIntentBits.GuildMessages,
+		GatewayIntentBits.DirectMessages,
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.MessageContent,
     ],
+	 partials: [Partials.Channel]
 });
 
 client.commands = new Collection();
+client.events = new Collection();
+client._cooldowns = new Collection();
 
 process.on('unhandledRejection', (reason) => {
     console.error('[UNHANDLED REJECTION]', reason);

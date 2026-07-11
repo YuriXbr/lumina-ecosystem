@@ -1,13 +1,16 @@
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { useT } from '../i18n/LanguageContext.jsx';
 
 /**
  * Banner no topo da Área de Membros mostrando o perfil do usuário.
+ * Inclui banner do Discord (ou gradiente), avatar, nome e badges de status.
  *
- * Usa o banner real do Discord (se disponível) com fallback para gradiente roxo.
- * O texto do nome/username usa text-shadow para garantir legibilidade sobre
- * qualquer cor de fundo do banner.
+ * Layout: o avatar fica em um wrapper com `relative z-10` para garantir que
+ * aparece acima do banner quando sobrepõe. O conteúdo abaixo do banner tem
+ * padding-top suficiente para acomodar o avatar sem overlap.
  */
 export default function DiscordBanner({ user }) {
+  const t = useT();
   if (!user) return null;
 
   const discordId = user.id || user.discordOauth2Id;
@@ -16,29 +19,23 @@ export default function DiscordBanner({ user }) {
     ? `https://cdn.discordapp.com/avatars/${discordId}/${avatarHash}.png?size=128`
     : null;
 
-  // Banner do Discord — retornado por discordInfo.js
   const bannerHash = user.discordBanner || user.banner;
   const bannerUrl = discordId && bannerHash
     ? `https://cdn.discordapp.com/banners/${discordId}/${bannerHash}.png?size=1024`
     : null;
 
-  // Accent color do Discord (int → hex)
-  const accentInt = user.discordAccentColor || user.accentColor;
-  const accentColor = accentInt ? `#${accentInt.toString(16).padStart(6, '0')}` : '#7C3AED';
+  const accentColor = user.discordAccentColor || '#7C3AED';
 
+  // Nome de exibição: prioriza displayName, depois nome completo, depois username
   const displayName = user.displayName
-    || user.globalName
     || `${user.firstName || ''} ${user.lastName || ''}`.trim()
     || user.username
     || user.email?.split('@')[0]
-    || 'Usuário';
-
-  // Texto sempre branco com sombra para legibilidade sobre qualquer fundo
-  const textShadow = '0 1px 3px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.5)';
+    || t('common.user');
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-      {/* Banner do Discord ou gradiente */}
+      {/* Banner — altura fixa, sem conteúdo sobreposto */}
       <div
         className="h-28 sm:h-36 relative"
         style={bannerUrl
@@ -46,15 +43,13 @@ export default function DiscordBanner({ user }) {
           : { background: `linear-gradient(135deg, ${accentColor}, #A855F7)` }
         }
       >
-        {/* Gradiente escuro no topo para o nome ser visível */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
       </div>
 
-      {/* Conteúdo: avatar + info */}
+      {/* Conteúdo: avatar + info, lado a lado, com padding-top para não sobrepor o banner */}
       <div className="px-4 sm:px-6 pb-4 sm:pb-5">
         <div className="flex items-end gap-4 -mt-12 sm:-mt-14">
-          {/* Avatar */}
+          {/* Avatar — wrapper com z-10 para garantir que aparece acima de qualquer elemento */}
           <div className="flex-shrink-0 relative z-10">
             {avatarUrl ? (
               <img
@@ -75,7 +70,7 @@ export default function DiscordBanner({ user }) {
             </div>
           </div>
 
-          {/* Nome + badges — relative z-10 para garantir visibilidade */}
+          {/* Nome + badges — relative z-10 para garantir que aparece acima do banner */}
           <div className="flex-1 min-w-0 pb-1 relative z-10">
             <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">{displayName}</h1>
             {user.username && (
@@ -84,16 +79,16 @@ export default function DiscordBanner({ user }) {
             <div className="flex flex-wrap gap-1 mt-1.5">
               {user.emailVerified ? (
                 <span className="inline-flex items-center gap-1 text-[10px] text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                  <CheckCircleIcon className="h-3 w-3" /> Email verificado
+                  <CheckCircleIcon className="h-3 w-3" /> {t("common.verified")}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 text-[10px] text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
-                  <XCircleIcon className="h-3 w-3" /> Email não verificado
+                  <XCircleIcon className="h-3 w-3" /> {t("common.notVerified")}
                 </span>
               )}
               {discordId && (
                 <span className="inline-flex items-center gap-1 text-[10px] text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
-                  Discord vinculado
+                  {t("settings.account.discordConnected")}
                 </span>
               )}
             </div>

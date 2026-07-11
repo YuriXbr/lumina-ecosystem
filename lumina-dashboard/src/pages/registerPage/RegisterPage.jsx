@@ -7,11 +7,14 @@ import {
 import Header from '../../components/Header';
 import { parseApiError, statusFallbackMessage, isNetworkError } from '../../utils/apiError';
 import { getCsrfToken } from '../../utils/apiFetch';
+import { useT } from '../../i18n/LanguageContext.jsx';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const TOTAL_STEPS = 4; // 1: conta, 2: username, 3: revisão, 4: done
 
 export default function RegisterPage() {
+  const t = useT();
   const navigate = useNavigate();
 
   // ─── Estado global do formulário ─────────────────────────────────────────
@@ -82,28 +85,28 @@ export default function RegisterPage() {
   // ─── Validação por step ──────────────────────────────────────────────────
   const validateStep1 = () => {
     const e = {};
-    if (!form.firstName.trim()) e.firstName = 'Nome é obrigatório.';
-    if (!form.lastName.trim()) e.lastName = 'Sobrenome é obrigatório.';
-    if (!form.email.trim()) e.email = 'Email é obrigatório.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Email inválido.';
-    if (!form.password) e.password = 'Senha é obrigatória.';
-    else if (form.password.length < 8) e.password = 'Mínimo 8 caracteres.';
+    if (!form.firstName.trim()) e.firstName = t('auth.register.firstNameRequired');
+    if (!form.lastName.trim()) e.lastName = t('auth.register.lastNameRequired', { defaultValue: 'Last name is required.' });
+    if (!form.email.trim()) e.email = t('auth.register.emailRequired', { defaultValue: 'Email is required.' });
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = t('auth.register.emailInvalid');
+    if (!form.password) e.password = t('auth.register.passwordRequired');
+    else if (form.password.length < 8) e.password = t('auth.register.passwordMin');
     else if (!/[A-Z]/.test(form.password) || !/[a-z]/.test(form.password) || !/\d/.test(form.password))
-      e.password = 'Precisa de maiúscula, minúscula e número.';
-    if (form.password !== form.confirmPassword) e.confirmPassword = 'As senhas não coincidem.';
+      e.password = t('auth.register.passwordComplex');
+    if (form.password !== form.confirmPassword) e.confirmPassword = t('auth.register.passwordsDontMatch');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const validateStep2 = () => {
     const e = {};
-    if (!form.username) e.username = 'Username é obrigatório.';
-    else if (form.username.length < 4 || form.username.length > 16) e.username = '4-16 caracteres.';
-    else if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(form.username)) e.username = 'Letras, números e _. Deve começar com letra.';
-    else if (form.username.includes('__')) e.username = 'Não pode conter __ .';
-    else if (usernameStatus !== 'available') e.username = 'Username indisponível.';
-    if (!form.displayName.trim()) e.displayName = 'Display name é obrigatório.';
-    else if (form.displayName.length > 32) e.displayName = 'Máx 32 caracteres.';
+    if (!form.username) e.username = t('auth.register.usernameRequired', { defaultValue: 'Username is required.' });
+    else if (form.username.length < 4 || form.username.length > 16) e.username = t('auth.register.usernameLength');
+    else if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(form.username)) e.username = t('auth.register.usernameFormat', { defaultValue: 'Letters, numbers, and _. Must start with a letter.' });
+    else if (form.username.includes('__')) e.username = t('auth.register.usernameNoUnderscore', { defaultValue: 'Cannot contain __ .' });
+    else if (usernameStatus !== 'available') e.username = t('auth.register.usernameUnavailable');
+    if (!form.displayName.trim()) e.displayName = t('auth.register.displayNameRequired');
+    else if (form.displayName.length > 32) e.displayName = t('auth.register.displayNameMax');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -150,8 +153,8 @@ export default function RegisterPage() {
     } catch (err) {
       setErrors({
         _form: isNetworkError(err)
-          ? 'Erro de conexão. Verifique sua internet.'
-          : 'Erro inesperado. Tente novamente.',
+          ? t('auth.register.connectionError')
+          : t('auth.register.unexpectedError'),
       });
     } finally {
       setSubmitting(false);
@@ -168,15 +171,19 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Language switcher — canto superior direito, para usuários não-logados */}
+      <div className="absolute top-4 right-4 z-10">
+        <LanguageSwitcher compact />
+      </div>
       <Header />
 
       <div className="flex-1 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-lg">
           {/* Header do form */}
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Criar sua conta</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t("auth.register.createTitle")}</h1>
             <p className="text-sm text-gray-500 mt-1">
-              {step < 4 ? `Passo ${step} de ${TOTAL_STEPS - 1}` : 'Tudo pronto!'}
+              {step < 4 ? t('auth.register.step', { current: step, total: TOTAL_STEPS - 1 }) : t('auth.register.allReady')}
             </p>
           </div>
 
@@ -242,7 +249,7 @@ export default function RegisterPage() {
                     className="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
                   >
                     <ArrowLeftIcon className="h-4 w-4" />
-                    Voltar
+                    {t('common.back')}
                   </button>
                 )}
                 <button
@@ -254,16 +261,16 @@ export default function RegisterPage() {
                   {submitting ? (
                     <>
                       <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Criando conta...
+                      {t('auth.register.creating')}
                     </>
                   ) : step === 3 ? (
                     <>
                       <CheckIcon className="h-4 w-4" />
-                      Criar conta
+                      {t('auth.register.create')}
                     </>
                   ) : (
                     <>
-                      Continuar
+                      {t('common.continue')}
                       <ArrowRightIcon className="h-4 w-4" />
                     </>
                   )}
@@ -274,9 +281,9 @@ export default function RegisterPage() {
 
           {step < 4 && (
             <p className="text-center text-xs text-gray-500 mt-4">
-              Já tem uma conta?{' '}
+              {t('auth.register.hasAccount')}{' '}
               <Link to="/login" className="text-purple-600 hover:text-purple-700 font-medium">
-                Entrar
+                {t('auth.register.loginButton')}
               </Link>
             </p>
           )}
@@ -288,47 +295,48 @@ export default function RegisterPage() {
 
 // ─── Step 1: Conta (email + senha + nome) ────────────────────────────────────
 function Step1Account({ form, errors, updateField, showPassword, setShowPassword }) {
+    const t = useT();
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
         <KeyIcon className="h-5 w-5 text-purple-600" />
-        <h2 className="text-base font-semibold text-gray-900">Dados de acesso</h2>
+        <h2 className="text-base font-semibold text-gray-900">{t("auth.register.accessData")}</h2>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <Field
-          label="Nome"
+          label={t("auth.register.firstName")}
           value={form.firstName}
           onChange={v => updateField('firstName', v)}
           error={errors.firstName}
-          placeholder="João"
+          placeholder={t('auth.register.firstNamePlaceholder')}
           autoComplete="given-name"
           required
         />
         <Field
-          label="Sobrenome"
+          label={t("auth.register.firstName")}
           value={form.lastName}
           onChange={v => updateField('lastName', v)}
           error={errors.lastName}
-          placeholder="Silva"
+          placeholder={t('auth.register.lastNamePlaceholder')}
           autoComplete="family-name"
           required
         />
       </div>
 
       <Field
-        label="Email"
+        label={t("auth.register.email")}
         type="email"
         value={form.email}
         onChange={v => updateField('email', v)}
         error={errors.email}
-        placeholder="voce@email.com"
+        placeholder={t('auth.register.emailPlaceholder')}
         autoComplete="email"
         required
       />
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Senha</label>
+        <label className="block text-xs font-medium text-gray-700 mb-1">{t('common.password')}</label>
         <div className="relative">
           <input
             type={showPassword ? 'text' : 'password'}
@@ -337,7 +345,7 @@ function Step1Account({ form, errors, updateField, showPassword, setShowPassword
             className={`w-full px-3 py-2 pr-10 text-sm border rounded-md focus:ring-2 focus:outline-none ${
               errors.password ? 'border-red-400 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-500'
             }`}
-            placeholder="Mín. 8 caracteres"
+            placeholder={t('auth.register.passwordPlaceholder')}
             autoComplete="new-password"
             required
           />
@@ -350,16 +358,16 @@ function Step1Account({ form, errors, updateField, showPassword, setShowPassword
           </button>
         </div>
         {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password}</p>}
-        <p className="text-xs text-gray-500 mt-1">Maiúscula, minúscula e número. Mínimo 8 caracteres.</p>
+        <p className="text-xs text-gray-500 mt-1">{t('auth.register.passwordHint')}</p>
       </div>
 
       <Field
-        label="Confirmar senha"
+        label={t("auth.register.confirmPassword")}
         type={showPassword ? 'text' : 'password'}
         value={form.confirmPassword}
         onChange={v => updateField('confirmPassword', v)}
         error={errors.confirmPassword}
-        placeholder="Repita a senha"
+        placeholder={t('auth.register.confirmPasswordPlaceholder')}
         autoComplete="new-password"
         required
       />
@@ -369,25 +377,25 @@ function Step1Account({ form, errors, updateField, showPassword, setShowPassword
 
 // ─── Step 2: Username + displayName ──────────────────────────────────────────
 function Step2Username({ form, errors, updateField, usernameStatus }) {
+    const t = useT();
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
         <IdentificationIcon className="h-5 w-5 text-purple-600" />
-        <h2 className="text-base font-semibold text-gray-900">Sua identidade</h2>
+        <h2 className="text-base font-semibold text-gray-900">{t('auth.register.identityTitle')}</h2>
       </div>
 
       <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-xs text-purple-800">
         <div className="flex items-start gap-2">
           <SparklesIcon className="h-4 w-4 flex-shrink-0 mt-0.5" />
           <span>
-            Seu username será o endereço do seu perfil público: <code className="bg-purple-100 px-1 rounded">/u/seu_username</code>.
-            Escolha com cuidado — só pode ser alterado a cada 30 dias.
+            {t('auth.register.usernameInfo')}
           </span>
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Username</label>
+        <label className="block text-xs font-medium text-gray-700 mb-1">{t('common.username')}</label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
           <input
@@ -399,7 +407,7 @@ function Step2Username({ form, errors, updateField, usernameStatus }) {
               usernameStatus === 'available' ? 'border-green-400 focus:ring-green-500' :
               'border-gray-300 focus:ring-purple-500'
             }`}
-            placeholder="seu_username"
+            placeholder={t('settings.account.usernamePlaceholder')}
             minLength={4}
             maxLength={16}
             required
@@ -410,41 +418,42 @@ function Step2Username({ form, errors, updateField, usernameStatus }) {
           {(usernameStatus === 'taken' || usernameStatus === 'invalid') && <ExclamationTriangleIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />}
         </div>
         {errors.username && <p className="text-xs text-red-600 mt-1">{errors.username}</p>}
-        <p className="text-xs text-gray-500 mt-1">4-16 caracteres. Letras, números e _. Deve começar com letra.</p>
+        <p className="text-xs text-gray-500 mt-1">{t('auth.register.usernameFormat')}</p>
       </div>
 
       <Field
-        label="Nome de exibição"
+        label={t('settings.identity.displayName')}
         value={form.displayName}
         onChange={v => updateField('displayName', v)}
         error={errors.displayName}
-        placeholder="Como você quer ser chamado"
+        placeholder={t("settings.account.displayNamePlaceholder")}
         maxLength={32}
         required
       />
-      <p className="text-xs text-gray-500 -mt-2">Pode conter espaços e acentos. Alterável a cada 24h.</p>
+      <p className="text-xs text-gray-500 -mt-2">{t('auth.register.displayNameShortHint')}</p>
     </div>
   );
 }
 
 // ─── Step 3: Revisão ─────────────────────────────────────────────────────────
 function Step3Review({ form }) {
+    const t = useT();
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
         <UserIcon className="h-5 w-5 text-purple-600" />
-        <h2 className="text-base font-semibold text-gray-900">Revise seus dados</h2>
+        <h2 className="text-base font-semibold text-gray-900">{t('auth.register.reviewTitle')}</h2>
       </div>
 
       <div className="bg-gray-50 border border-gray-200 rounded-lg divide-y divide-gray-200">
-        <ReviewRow label="Nome" value={`${form.firstName} ${form.lastName}`} />
-        <ReviewRow label="Email" value={form.email} />
-        <ReviewRow label="Username" value={`@${form.username}`} />
-        <ReviewRow label="Nome de exibição" value={form.displayName} />
+        <ReviewRow label={t("auth.register.firstName")} value={`${form.firstName} ${form.lastName}`} />
+        <ReviewRow label={t("auth.register.email")} value={form.email} />
+        <ReviewRow label={t('common.username')} value={`@${form.username}`} />
+        <ReviewRow label={t('settings.identity.displayName')} value={form.displayName} />
       </div>
 
       <p className="text-xs text-gray-500">
-        Ao continuar, você concorda com os termos de uso e a política de privacidade do Lumina Bot.
+        {t('auth.register.termsAgreement')}
       </p>
     </div>
   );
@@ -452,21 +461,22 @@ function Step3Review({ form }) {
 
 // ─── Step 4: Sucesso ─────────────────────────────────────────────────────────
 function Step4Done({ form, navigate }) {
+    const t = useT();
   return (
     <div className="text-center py-6">
       <div className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
         <CheckIcon className="h-8 w-8 text-green-600" />
       </div>
-      <h2 className="text-xl font-bold text-gray-900">Conta criada!</h2>
+      <h2 className="text-xl font-bold text-gray-900">{t("auth.register.accountCreated")}</h2>
       <p className="text-sm text-gray-600 mt-2 max-w-sm mx-auto">
-        Bem-vindo ao Lumina, <strong>{form.displayName}</strong>!
-        Seu perfil está acessível em <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">/u/{form.username}</code>.
+        {t('auth.register.welcomeTo', { name: form.displayName })}{' '}
+        {t('auth.register.welcomeDesc', { username: form.username })}
       </p>
       <button
         onClick={() => navigate('/login')}
         className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700"
       >
-        Fazer login
+        {t('auth.register.loginButton')}
         <ArrowRightIcon className="h-4 w-4" />
       </button>
     </div>

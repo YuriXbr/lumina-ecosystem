@@ -9,7 +9,7 @@ const {
 } = require('../utils/logger/logger.js');
 const permissionsService = require('../utils/services/PermissionsService.js');
 const botConfigService   = require('../utils/services/EncryptionService.js');
-const CommandGuard       = require('../utils/services/CommandGuard.js');
+const i18n               = require('../utils/i18n/index.js');
 
 module.exports = {
     name: Events.InteractionCreate,
@@ -18,12 +18,19 @@ module.exports = {
         if (!interaction.isChatInputCommand()) return;
         const { client } = interaction;
 
+        // ── Resolve translator antes de qualquer reply ──────────────────────
+        // O locale vem do cliente do Discord (interaction.locale) — não precisa
+        // de roundtrip ao banco. Se por algum motivo não estiver disponível,
+        // usamos interaction.guildLocale. Caso nenhum exista, fallback en-US.
+        const locale = i18n.resolveFromInteraction(interaction);
+        const t = i18n.getTranslator(locale);
+
         const command = client.commands.get(interaction.commandName);
         if (!command) {
             await commandErrorWarning(
                 interaction,
-                new Error(`Comando /${interaction.commandName} não encontrado na coleção do bot.`),
-                'Este comando não foi encontrado. Tente novamente ou contate um administrador.',
+                new Error(`Command /${interaction.commandName} not found in bot collection.`),
+                t('common.commandNotFound'),
             );
             return;
         }
@@ -42,29 +49,43 @@ module.exports = {
         if (!await permissionsService.isBotStaff(interaction.user.id, 'moderator') && command.permission === 'moderator')
             return noPermission(command, interaction, 'InteractionCreate');
 
-        // ── Guard de configuração da guilda (com cache por TTL) ───────────────
-        // Moderation commands get a 60s TTL; everything else gets 5 min.
-        // Returns { allowed: boolean, reason?: string } — if blocked, the
-        // reason is shown to the user as an ephemeral reply.
-        const guardResult = await CommandGuard.check(interaction, command);
-        if (!guardResult.allowed) {
-            // Avoid crashing if the interaction was somehow already ack'd.
-            const payload = {
-                content: guardResult.reason ?? 'Você não pode usar este comando aqui.',
-                ephemeral: true,
-            };
-            if (interaction.deferred || interaction.replied) {
-                return interaction.followUp(payload);
-            }
-            return interaction.reply(payload);
-        }
-
         // ── Execução com tracking de métricas ─────────────────────────────────
+        // O translator `t` é injetado como segundo argumento para que os comandos
+        // possam traduzir strings sem precisar resolver locale eles mesmos.
+        // Comandos que ainda não aceitam `t` simplesmente o ignoram (JS não reclama
+        // de params extras).
         const startedAt = Date.now();
         let execError   = null;
 
+        // CommandGuard: check per-guild config (blocked users, disabled commands, etc.)
+        const CommandGuard = require('../utils/services/CommandGuard.js');
+        const guardResult = await CommandGuard.check(interaction, command);
+        if (!guardResult.allowed) {
+            if (guardResult.reason) {
+                return interaction.editReply({ content: guardResult.reason, ephemeral: true });
+            }
+            return; // Silent rejection
+        }
+
+        // Cooldown check (B-C5): per-user-per-command cooldown
+        if (command.cooldown && command.cooldown > 0) {
+            const cooldownKey = `${interaction.user.id}:${command.data.name}`;
+            const now = Date.now();
+            if (interaction.client._cooldowns?.has(cooldownKey)) {
+                const expires = interaction.client._cooldowns.get(cooldownKey);
+                if (now < expires) {
+                    const remaining = Math.ceil((expires - now) / 1000);
+                    return interaction.editReply({ content: `⏳ Wait ${remaining}s before using this command again.`, ephemeral: true });
+                }
+            }
+            if (!interaction.client._cooldowns) interaction.client._cooldowns = new Map();
+            interaction.client._cooldowns.set(cooldownKey, now + command.cooldown * 1000);
+            // Auto-clean after expiry
+            setTimeout(() => interaction.client._cooldowns?.delete(cooldownKey), command.cooldown * 1000 + 1000);
+        }
+
         try {
-            await command.execute(interaction);
+            await command.execute(interaction, t);
         } catch (error) {
             execError = error;
         }
@@ -72,7 +93,6 @@ module.exports = {
         const durationMs = Date.now() - startedAt;
 
         // Registra a métrica com o contexto completo da interação
-        // (inclui opções/parâmetros, usuário, guild, canal, duração, erro)
         commandMetrics.record(interaction, durationMs, execError);
 
         if (execError) {
@@ -87,7 +107,7 @@ module.exports = {
             await commandErrorWarning(
                 interaction,
                 execError,
-                'Ocorreu um erro ao executar o comando. Nossa equipe foi notificada.',
+                t('common.commandError'),
                 execError.apiContext ?? null,
             );
         } else {

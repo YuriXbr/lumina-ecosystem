@@ -99,13 +99,14 @@ const { isAllowedOrigin } = require('./src/config/allowedOrigins');
 
 app.use(cors({
   origin: function(origin, callback) {
+    // Allow requests with no Origin header (curl, server-to-server, bot)
+    // For browser requests, validate against allow-list
     if (!origin || isAllowedOrigin(origin)) {
       return callback(null, true);
-    } else {
-      return callback(new Error('Origin não permitida por CORS: ' + origin), false);
     }
+    return callback(new Error('Origin not allowed by CORS: ' + origin), false);
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   credentials: true
 }));
 
@@ -136,12 +137,9 @@ const loadRoutes = (dir) => {
             if (route.apiKeyNeeded) {
                 if (_isDev) console.log(`Rota ${route.route} precisa de apiKey`);
                 middlewares.push((req, res, next) => {
-                    const apiKey = req.query.apiKey || '';
-                    const expectedKey = encodeURIComponent(process.env.LUMINA_API_KEY || '');
-                    // CORREÇÃO: comparação com !== vaza o tamanho/posição do primeiro
-                    // byte divergente através do tempo de execução (timing attack).
-                    // Usamos o mesmo padrão de crypto.timingSafeEqual já usado em
-                    // auth.js (internalKeyCheck) para as demais chaves da API.
+                    // Accept API key from query param (legacy) or X-Lumina-API-Key header
+                    const apiKey = req.query.apiKey || req.headers['x-lumina-api-key'] || '';
+                    const expectedKey = process.env.LUMINA_API_KEY || '';
                     const a = Buffer.from(String(apiKey));
                     const b = Buffer.from(String(expectedKey));
                     const valid = expectedKey.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b);
@@ -293,101 +291,22 @@ function escapeHtml(unsafe) {
          .replace(/'/g, "&#039;");
 }
 
-app.get('/', (req, res) => {
-    const apiRoutes = routes.filter(route => route.route.startsWith('/api/')).map(route => `
-        <tr>
-            <td>${escapeHtml(route.method.toUpperCase())}</td>
-            <td>${escapeHtml(route.route)}</td>
-            <td>${escapeHtml(route.description || 'No description provided')}</td>
-        </tr>
-    `).join('');
-
-    const expApiRoutes = routes.filter(route => route.route.startsWith('/expapi/')).map(route => `
-        <tr>
-            <td>${escapeHtml(route.method.toUpperCase())}</td>
-            <td>${escapeHtml(route.route)}</td>
-            <td>${escapeHtml(route.description || 'No description provided')}</td>
-        </tr>
-    `).join('');
-
-    const html = `
-        <html>
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Lumina API - Endpoints</title>
-                <style>
-                    body {
-                        background-color: black;
-                        color: white;
-                        font-family: Arial, sans-serif;
-                        margin: 20px;
-                    }
-                    table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin-bottom: 20px;
-                    }
-                    th, td {
-                        border: 1px solid white;
-                        padding: 8px;
-                        text-align: left;
-                        word-break: break-word;
-                    }
-                    th {
-                        background-color: #333;
-                    }
-                    h1, h2 {
-                        color: #fff;
-                    }
-                </style>
-            </head>
-            <body>
-                <h1>Lumina API - Endpoints Disponíveis</h1>
-                <h2>PRODUCTION API</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Método</th>
-                            <th>Endpoint</th>
-                            <th>Descrição</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${apiRoutes}
-                    </tbody>
-                </table>
-                <h2>EXPERIMENTAL API</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Método</th>
-                            <th>Endpoint</th>
-                            <th>Descrição</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${expApiRoutes}
-                    </tbody>
-                </table>
-                <footer style="margin-top: 40px; color: #666; font-size: 12px;">
-                    <p>Lumina Bot API</p>
-                </footer>
-            </body>
-        </html>
-    `;
-
-    res.status(200).send(html);
-});
+// Root endpoint removed for security (S-M5) — endpoint enumeration was possible
+app.get('/', (req, res) => res.status(204).send());
 
 app.all('*', (req, res) => {
     res.status(404).send('Endpoint Not found.');
 });
 
 app.use((err, req, res, next) => {
+    // Define safeUrl locally — redact sensitive query params from logs
+    const safeUrl = req.originalUrl
+        ? req.originalUrl.replace(/([?&])(apiKey|internal-key|token|password|secret|api_key)=([^&]*)/gi, '$1$2=***REDACTED***')
+        : req.path || '';
+
     // Erro específico do csurf quando o token CSRF é inválido/ausente
     if (err.code === 'EBADCSRFTOKEN') {
-        console.warn(`[${new Date().toLocaleString('pt-BR')}] CSRF inválido em ${req.method} ${req.originalUrl}`);
+        console.warn(`[${new Date().toLocaleString('pt-BR')}] CSRF inválido em ${req.method} ${safeUrl}`);
         return res.status(403).json({ error: 'Sessão expirada, tente novamente.', code: 'CSRF_INVALID' });
     }
 
@@ -396,13 +315,13 @@ app.use((err, req, res, next) => {
     const status = err.status || err.statusCode || 500;
     return routeError({
         res, error: err,
-        route: `${req.method} ${req.originalUrl}`,
+        route: `${req.method} ${safeUrl}`,
         errorCode: err.code || 'UNHANDLED_ERROR',
         userMsg: 'Erro interno do servidor.',
         status,
         extra: {
             '🌐 Método': req.method,
-            '🛣️ Rota': req.originalUrl,
+            '🛣️ Rota': safeUrl,
             '🔑 IP': req.ip || 'desconhecido',
         },
     });

@@ -12,7 +12,6 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import SetPasswordModal from '../SetPasswordModal.jsx';
-import ErrorBanner from '../../../../components/ui/ErrorBanner';
 
 function SettingsSkeleton() {
   return (
@@ -59,7 +58,6 @@ export default function SettingsTab() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -122,13 +120,12 @@ export default function SettingsTab() {
 
   const handleSaveSettings = async () => {
     setSaving(true);
-    setError(null);
     try {
       // Buscar token CSRF
-      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/csrf-token`, { credentials: 'include' })
+      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, { credentials: 'include' })
       const { csrfToken } = await csrfResponse.json();
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/user/profile`, { credentials: 'include' })
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/profile`, { credentials: 'include' })
 
       if (response.ok) {
         alert('Configurações salvas com sucesso!');
@@ -136,11 +133,11 @@ export default function SettingsTab() {
         await refreshUser();
       } else {
         const error = await response.json();
-        setError(`Erro ao salvar configurações: ${error.error}`);
+        alert(`Erro ao salvar configurações: ${error.error}`);
       }
     } catch (error) {
       console.error('Erro ao salvar configurações:', error);
-      setError('Erro ao salvar configurações');
+      alert('Erro ao salvar configurações');
     } finally {
       setSaving(false);
     }
@@ -148,24 +145,23 @@ export default function SettingsTab() {
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-    setError(null);
     
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setError('As senhas não coincidem');
+      alert('As senhas não coincidem');
       return;
     }
 
     if (passwordData.newPassword.length < 8) {
-      setError('A nova senha deve ter pelo menos 8 caracteres');
+      alert('A nova senha deve ter pelo menos 8 caracteres');
       return;
     }
 
     try {
       // Buscar token CSRF
-      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/csrf-token`, { credentials: 'include' })
+      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, { credentials: 'include' })
       const { csrfToken } = await csrfResponse.json();
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/user/set-password`, { credentials: 'include' })
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/set-password`, { credentials: 'include' })
 
       if (response.ok) {
         alert('Senha alterada com sucesso!');
@@ -176,11 +172,11 @@ export default function SettingsTab() {
         });
       } else {
         const error = await response.json();
-        setError(`Erro ao alterar senha: ${error.error}`);
+        alert(`Erro ao alterar senha: ${error.error}`);
       }
     } catch (error) {
       console.error('Erro ao alterar senha:', error);
-      setError('Erro ao alterar senha');
+      alert('Erro ao alterar senha');
     }
   };
 
@@ -233,11 +229,6 @@ export default function SettingsTab() {
 
   return (
     <div className="space-y-6 sm:space-y-8 max-w-4xl">
-      {/* Erro de mutação (salvar configs / alterar senha) */}
-      {error && (
-        <ErrorBanner error={error} />
-      )}
-
       {/* Configurações de Notificação */}
       <div className="bg-white shadow-lg rounded-lg border border-gray-100">
         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 bg-gray-50 rounded-t-lg">

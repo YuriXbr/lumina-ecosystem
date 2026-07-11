@@ -13,12 +13,13 @@ module.exports = class LuminaApiService {
             throw new Error('Configuração incompleta: verifique API_BASE_URL, INTERNAL_API_KEY e LUMINA_API_KEY.');
         }
 
-        this.baseApiKey = `?apiKey=${encodeURIComponent(process.env.LUMINA_API_KEY)}`;
+        this.luminaApiKey = process.env.LUMINA_API_KEY;
         this.api = axios.create({
             baseURL: process.env.API_BASE_URL,
             headers: {
                 'Content-Type': 'application/json',
                 'internal-key': process.env.INTERNAL_API_KEY,
+                'X-Lumina-API-Key': this.luminaApiKey || '',
                 ...headers,
             },
         });
@@ -34,7 +35,7 @@ module.exports = class LuminaApiService {
      */
     async _request(method, endpoint, { data, params, apiKey = true } = {}) {
         const calledAt = new Date().toISOString();
-        const url = endpoint + (apiKey ? this.baseApiKey : '');
+        const url = endpoint;
 
         try {
             const response = await this.api[method](url, method === 'get' ? { params } : data, method === 'get' ? undefined : { params });
@@ -51,12 +52,15 @@ module.exports = class LuminaApiService {
                 apiCode:  error.response?.data?.code  ?? null,
             };
 
-            // Loga o erro no console imediatamente com o contexto completo
-            const ts = new Date().toLocaleString('pt-BR').replace(',', '');
-            console.error(`[LuminaApiService] ${ts} | ${method.toUpperCase()} ${endpoint} → HTTP ${apiError.status ?? 'ERR'}`);
-            console.error(`  Params: ${JSON.stringify(apiError.params)}`);
-            console.error(`  API Error: ${apiError.apiError} [${apiError.apiCode ?? 'N/A'}]`);
-            if (error.stack) console.error(`  Stack: ${error.stack.split('\n').slice(0,4).join('\n')}`);
+            // Suprime logs para 404 em fetchguilddata (guilda não registrada é normal)
+            const isFetchGuild404 = endpoint === '/expapi/internal/fetchguilddata' && apiError.status === 404;
+            if (!isFetchGuild404) {
+                const ts = new Date().toLocaleString('pt-BR').replace(',', '');
+                console.error(`[LuminaApiService] ${ts} | ${method.toUpperCase()} ${endpoint} → HTTP ${apiError.status ?? 'ERR'}`);
+                console.error(`  Params: ${JSON.stringify(apiError.params)}`); // Keys are now in headers, not URL
+                console.error(`  API Error: ${apiError.apiError} [${apiError.apiCode ?? 'N/A'}]`);
+                if (error.stack) console.error(`  Stack: ${error.stack.split('\n').slice(0,4).join('\n')}`);
+            }
 
             // Anexa o contexto ao erro para que o catch do comando passe ao commandErrorWarning
             error.apiContext = apiError;

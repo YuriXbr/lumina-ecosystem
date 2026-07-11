@@ -1,169 +1,171 @@
 import HomeNavBar from '../components/homeNavBar/HomeNavBar'
+import { useT } from '../../i18n/LanguageContext.jsx'
 
 export default function CommandsPage() {
+  const t = useT();
   const commandCategories = [
     {
-      name: "League of Legends",
-      description: "Comandos relacionados ao League of Legends",
+      name: t("commands.categories.league"),
+      description: t("commands.categoryDesc.league"),
       icon: "🎮",
       color: "from-blue-500 to-purple-600",
       commands: [
         {
           name: "/leagueprofile",
-          description: "Exibe o perfil de um jogador do League of Legends",
-          usage: "/leagueprofile <região> <servidor> <nome> <tag>",
+          description: t("commands.leagueCmd.profile.desc"),
+          usage: t("commands.leagueCmd.profile.usage"),
           example: "/leagueprofile americas br1 Faker T1"
         },
         {
           name: "/leaguematchhistory",
-          description: "Mostra o histórico de partidas de um jogador",
-          usage: "/leaguematchhistory <região> <servidor> <nome> <tag>",
+          description: t("commands.leagueCmd.matchHistory.desc"),
+          usage: t("commands.leagueCmd.matchHistory.usage"),
           example: "/leaguematchhistory americas br1 Faker T1"
         },
         {
           name: "/leaguemastery",
-          description: "Mostra a maestria de campeões de um jogador",
-          usage: "/leaguemastery <região> <nome> <tag>",
+          description: t("commands.leagueCmd.mastery.desc"),
+          usage: t("commands.leagueCmd.mastery.usage"),
           example: "/leaguemastery americas Faker T1"
         },
         {
           name: "/leaguechampionrotation",
-          description: "Mostra os campeões em rotação gratuita",
-          usage: "/leaguechampionrotation",
+          description: t("commands.leagueCmd.rotation.desc"),
+          usage: t("commands.leagueCmd.rotation.usage"),
           example: "/leaguechampionrotation"
         },
         {
           name: "/leaguequeuesearch",
-          description: "Busca por filas ranqueadas baseado em elo e divisão",
-          usage: "/leaguequeuesearch <servidor> <elo> <divisão>",
+          description: t("commands.leagueCmd.queuesearch.desc"),
+          usage: t("commands.leagueCmd.queuesearch.usage"),
           example: "/leaguequeuesearch br1 gold II"
         }
       ]
     },
     {
-      name: "Moderação",
-      description: "Comandos para moderação do servidor",
+      name: t("commands.categories.moderation"),
+      description: t("commands.categoryDesc.moderation"),
       icon: "🛡️",
       color: "from-red-500 to-orange-600",
       commands: [
         {
           name: "/ban",
-          description: "Bane um usuário do servidor",
-          usage: "/ban <usuário> [motivo] [tempo]",
+          description: t("commands.moderationCmd.ban.desc"),
+          usage: t("commands.moderationCmd.ban.usage"),
           example: "/ban @usuario spam 7d"
         },
         {
           name: "/mute",
-          description: "Silencia um usuário no servidor",
-          usage: "/mute <usuário> [motivo] [tempo]",
+          description: t("commands.moderationCmd.mute.desc"),
+          usage: t("commands.moderationCmd.mute.usage"),
           example: "/mute @usuario comportamento inadequado 1h"
         },
         {
           name: "/warn",
-          description: "Aplica uma advertência a um usuário",
-          usage: "/warn <usuário> [motivo] [tempo]",
+          description: t("commands.moderationCmd.warn.desc"),
+          usage: t("commands.moderationCmd.warn.usage"),
           example: "/warn @usuario linguagem inapropriada"
         },
         {
           name: "/unban",
-          description: "Remove o banimento de um usuário",
-          usage: "/unban <usuário>",
+          description: t("commands.moderationCmd.unban.desc"),
+          usage: t("commands.moderationCmd.unban.usage"),
           example: "/unban @usuario"
         },
         {
           name: "/unmute",
-          description: "Remove o silenciamento de um usuário",
-          usage: "/unmute <usuário>",
+          description: t("commands.moderationCmd.unmute.desc"),
+          usage: t("commands.moderationCmd.unmute.usage"),
           example: "/unmute @usuario"
         },
         {
           name: "/unwarn",
-          description: "Remove uma advertência de um usuário",
-          usage: "/unwarn <usuário>",
+          description: t("commands.moderationCmd.unwarn.desc"),
+          usage: t("commands.moderationCmd.unwarn.usage"),
           example: "/unwarn @usuario"
         }
       ]
     },
     {
-      name: "Sistema de Skins",
-      description: "Comandos para o sistema de coleta de skins",
+      name: t("commands.categories.chests"),
+      description: t("commands.categoryDesc.chests"),
       icon: "💎",
       color: "from-purple-500 to-pink-600",
       commands: [
         {
           name: "/openchest",
-          description: "Abre baús para obter skins do League of Legends",
-          usage: "/openchest",
+          description: t("commands.chestsCmd.openchest.desc"),
+          usage: t("commands.chestsCmd.openchest.usage"),
           example: "/openchest"
         },
         {
           name: "/daily",
-          description: "Resgata sua recompensa diária: 3 Baús Hextech + 1 Chave (também disponível no dashboard)",
-          usage: "/daily",
+          description: t("commands.chestsCmd.daily.desc"),
+          usage: t("commands.chestsCmd.daily.usage"),
           example: "/daily"
         },
         {
           name: "/inventory",
-          description: "Mostra seu inventário de skins (via dashboard)",
-          usage: "Acesse /inventory no navegador",
+          description: t("commands.chestsCmd.inventory.desc"),
+          usage: t("commands.chestsCmd.inventory.usage"),
           example: "https://bot.luminasink.com/inventory"
         }
       ]
     },
     {
-      name: "Configuração",
-      description: "Comandos para configurar o bot no servidor",
+      name: t("commands.categories.setup"),
+      description: t("commands.categoryDesc.setup"),
       icon: "⚙️",
       color: "from-green-500 to-teal-600",
       commands: [
         {
           name: "/setuproles",
-          description: "Configura cargos de moderação e canal de logs",
-          usage: "/setuproles [cargo_mute] [cargo_ban] [canal_moderação]",
+          description: t("commands.setupCmd.setuproles.desc"),
+          usage: t("commands.setupCmd.setuproles.usage"),
           example: "/setuproles @Muted @Banned #moderation"
         },
         {
           name: "/serversettings",
-          description: "Visualiza e modifica configurações do servidor",
-          usage: "/serversettings",
+          description: t("commands.setupCmd.serversettings.desc"),
+          usage: t("commands.setupCmd.serversettings.usage"),
           example: "/serversettings"
         }
       ]
     },
     {
-      name: "Utilidades",
-      description: "Comandos úteis e informativos",
+      name: t("commands.categories.utility"),
+      description: t("commands.categoryDesc.utility"),
       icon: "🔧",
       color: "from-gray-500 to-slate-600",
       commands: [
         {
           name: "/ping",
-          description: "Verifica a latência do bot",
-          usage: "/ping",
+          description: t("commands.utilityCmd.ping.desc"),
+          usage: t("commands.utilityCmd.ping.usage"),
           example: "/ping"
         },
         {
           name: "/server",
-          description: "Mostra informações sobre o servidor",
-          usage: "/server",
+          description: t("commands.utilityCmd.server.desc"),
+          usage: t("commands.utilityCmd.server.usage"),
           example: "/server"
         },
         {
           name: "/user",
-          description: "Mostra informações sobre um usuário",
-          usage: "/user [usuário]",
+          description: t("commands.utilityCmd.user.desc"),
+          usage: t("commands.utilityCmd.user.usage"),
           example: "/user @usuario"
         },
         {
           name: "/help",
-          description: "Mostra a lista de comandos disponíveis",
-          usage: "/help",
+          description: t("commands.utilityCmd.help.desc"),
+          usage: t("commands.utilityCmd.help.usage"),
           example: "/help"
         },
         {
           name: "/dashboard",
-          description: "Fornece o link para o dashboard web",
-          usage: "/dashboard",
+          description: t("commands.utilityCmd.dashboard.desc"),
+          usage: t("commands.utilityCmd.dashboard.usage"),
           example: "/dashboard"
         }
       ]
@@ -179,10 +181,10 @@ export default function CommandsPage() {
           {/* Header */}
           <div className="text-center mb-16">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-              Comandos do <span className="text-indigo-600">Lumina Bot</span>
+              {t('commands.title')} <span className="text-indigo-600">Lumina Bot</span>
             </h1>
             <p className="mt-6 text-xl leading-8 text-gray-600 max-w-3xl mx-auto">
-              Explore todos os comandos disponíveis do Lumina Bot. Cada comando foi projetado para melhorar sua experiência no Discord.
+              {t('commands.subtitle')}
             </p>
           </div>
 
@@ -221,7 +223,7 @@ export default function CommandsPage() {
                         <div className="space-y-4">
                           {/* Sintaxe */}
                           <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-gray-300">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Sintaxe</p>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t("commands.syntax")}</p>
                             <code className="text-sm text-gray-800 font-mono break-all">
                               {command.usage}
                             </code>
@@ -231,7 +233,7 @@ export default function CommandsPage() {
                           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border-l-4 border-indigo-400">
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-indigo-500">⚡</span>
-                              <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Exemplo</p>
+                              <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">{t("commands.example")}</p>
                             </div>
                             <div className="bg-white/70 rounded-md p-3 border border-indigo-200/50">
                               <code className="text-sm text-indigo-800 font-mono break-all">
@@ -257,23 +259,23 @@ export default function CommandsPage() {
           <div className="mt-16 text-center">
             <div className="bg-white rounded-2xl shadow-lg p-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                Pronto para usar o Lumina Bot?
+                {t('commands.ready')}
               </h3>
               <p className="text-gray-600 mb-6">
-                Adicione o bot ao seu servidor e comece a usar todos esses comandos incríveis!
+                {t('commands.readyDesc')}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <a
-                  href={`https://discord.com/oauth2/authorize?client_id=${import.meta.env.VITE_DISCORD_CLIENT_ID}&permissions=8&scope=bot+applications.commands`}
+                  href={`https://discord.com/oauth2/authorize?client_id=${import.meta.env.VITE_DISCORD_CLIENT_ID}`}
                   className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-6 py-3 text-lg font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
                 >
-                  🔗 Adicionar ao Discord
+                  🔗 {t('commands.addBot')}
                 </a>
                 <a
                   href="/members"
                   className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-6 py-3 text-lg font-semibold text-gray-900 shadow-sm hover:bg-gray-50 transition-colors"
                 >
-                  📊 Área de Membros
+                  📊 {t('commands.membersArea')}
                 </a>
               </div>
             </div>

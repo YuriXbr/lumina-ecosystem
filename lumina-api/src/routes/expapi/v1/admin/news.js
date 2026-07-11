@@ -23,16 +23,16 @@ module.exports = {
     method: 'both_delete', // POST e DELETE
 
     async execute(req, res) {
-        // Auth manual (JWT no header Authorization) — agora com checagem de conta
+        // Auth manual (JWT no header Authorization)
         const { verifyRequestAuthWithAccountCheck } = require('../../../../utils/authHelpers');
-        const { user: decoded, account, error: authError } = await verifyRequestAuthWithAccountCheck(req);
+        const { user: decoded, account: adminAccount, error: authError } = await verifyRequestAuthWithAccountCheck(req);
         if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
+            if (!adminAccount) return res.status(404).json({ error: 'Conta não encontrada.', code: 'ACCOUNT_NOT_FOUND' });
+            if (adminAccount.banned || adminAccount.blocked) return res.status(403).json({ error: 'Conta suspensa.', code: 'ACCOUNT_SUSPENDED' });
 
         try {
+            const account = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
             if (!account) return res.status(404).json({ error: 'Conta não encontrada.', code: 'ACCOUNT_NOT_FOUND' });
-            // Audit #4: bloqueia contas suspensas de usar rotas admin
-            if (account.banned || account.blocked)
-                return res.status(403).json({ error: 'Conta suspensa.', code: 'ACCOUNT_SUSPENDED' });
 
             if ((ACCESS_LEVELS[account.accessType] || 0) < 7)
                 return res.status(403).json({ error: 'Permissão insuficiente.', code: 'INSUFFICIENT_PERMISSION' });

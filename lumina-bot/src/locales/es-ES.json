@@ -1,0 +1,491 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "yes": "Sí",
+    "no": "No",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "none": "Ninguno",
+    "permanent": "Permanente",
+    "notProvided": "No proporcionado",
+    "noPermission": "No tienes permiso para usar este comando.",
+    "commandError": "Ocurrió un error al ejecutar el comando. Nuestro equipo ha sido notificado.",
+    "commandNotFound": "Este comando no fue encontrado. Intenta de nuevo o contacta a un administrador.",
+    "botMissingPermission": "No tengo permiso para hacer esto.",
+    "apiTimeout": "La API tardó demasiado en responder. Intenta de nuevo en unos momentos.",
+    "apiAuthError": "Error de autenticación interna de la API. Notifica a un administrador.",
+    "insufficientResources": "No tienes suficientes llaves o cofres para esto.",
+    "comingSoon": "Próximamente"
+  },
+  "logModal": {
+    "noPermissionTitle": "🚫 Sin permiso",
+    "noPermissionDesc": "No tienes permiso para usar el comando",
+    "fieldUser": "👤 Usuario",
+    "fieldGuild": "🏠 Servidor",
+    "fieldEvent": "📣 Evento",
+    "fieldTime": "🕐 Hora",
+    "errorTitle": "❌ ¡Ups, algo salió mal!",
+    "errorDefault": "Ocurrió un error al ejecutar el comando.",
+    "fieldCommand": "⚔️ Comando",
+    "fieldDuration": "⏱️ Duración",
+    "fieldError": "❌ Error",
+    "fieldLocale": "🌐 Idioma"
+  },
+  "cmd": {
+    "ping": {
+      "title": "🏓 ¡Pong!",
+      "description": "Latencia: **{latency}ms**\nLatencia de API: **{apiLatency}ms**"
+    },
+    "daily": {
+      "title": "🎁 ¡Recompensa diaria reclamada!",
+      "description": "¡Recibiste **{chests} Cofre(s) Hextech** y **{keys} Llave(s)**!\nUsa `/openchest` para abrir tus cofres.",
+      "streakField": "Racha",
+      "streakValue_one": "🔥 {count} día consecutivo",
+      "streakValue_other": "🔥 {count} días consecutivos",
+      "footer": "¡Vuelve en 24 horas para reclamar de nuevo!",
+      "alreadyClaimedTitle": "⏳ Diaria ya reclamada",
+      "alreadyClaimedDesc": "Ya reclamaste tu recompensa diaria hoy.\nDisponible nuevamente {relative} ({full}).",
+      "currentStreakField": "Racha actual"
+    },
+    "openchest": {
+      "inventoryTitle": "🎁 Inventario de Cofres",
+      "keysField": "🔑 Llaves",
+      "hextechField": "📦 Cofres Hextech",
+      "masterworkField": "🏆 Cofres de Maestro Artesano",
+      "footerCanOpen": "Elige un cofre abajo para abrirlo.",
+      "footerCannotOpen": "Necesitas llaves y cofres para abrir. ¡Usa `/daily` para reclamar tu recompensa diaria!",
+      "loadingTitle": "Abriendo cofre...",
+      "loadingDesc": "Sorteando tu skin, espera un momento.",
+      "resultTitle": "¡Cofre abierto!",
+      "resultDesc": "Recibiste:",
+      "championField": "Campeón",
+      "rarityField": "Rareza",
+      "remainingField": "Restante",
+      "notYourChest": "No puedes interactuar con el cofre de otra persona.",
+      "timedOut": "Tiempo agotado — usa `/openchest` de nuevo cuando quieras.",
+      "somethingWrong": "❌ Algo salió mal",
+      "chestInfo": {
+        "hextech": {
+          "label": "Cofre Hextech",
+          "description": "Cualquier rareza posible"
+        },
+        "masterwork": {
+          "label": "Cofre de Maestro Artesano",
+          "description": "Garantiza rareza épica o superior"
+        }
+      },
+      "rarity": {
+        "legacy": "Legado",
+        "epic": "Épica",
+        "legendary": "Legendaria",
+        "ultimate": "Definitiva",
+        "mythic": "Mítica",
+        "transcendent": "Trascendente"
+      }
+    },
+    "help": {
+      "title": "📖 Lista de Comandos",
+      "description": "Aquí están todos los comandos disponibles organizados por categoría.",
+      "categoryField": "Categoría",
+      "commandsField": "Comandos",
+      "footer": "Usa /<comando> para ejecutar cualquier comando."
+    },
+    "server": {
+      "title": "🏠 Información del Servidor",
+      "nameField": "Nombre",
+      "idField": "ID",
+      "ownerField": "Dueño",
+      "membersField": "Miembros",
+      "channelsField": "Canales",
+      "rolesField": "Roles",
+      "createdField": "Creado el",
+      "boostLevelField": "Nivel de Boost"
+    },
+    "user": {
+      "title": "👤 Información del Usuario",
+      "usernameField": "Nombre de usuario",
+      "idField": "ID",
+      "joinedField": "Se unió el",
+      "accountCreatedField": "Cuenta creada el",
+      "rolesField": "Roles",
+      "permissionsField": "Permisos principales"
+    },
+    "warn": {
+      "title": "⚠️ Advertencia Aplicada",
+      "description": "Advertiste a **{user}** exitosamente.",
+      "reasonField": "Motivo",
+      "durationField": "Duración",
+      "noPermission": "No tienes permiso para advertir usuarios.",
+      "botCannotWarn": "No se pudo advertir al usuario (faltan permisos del bot).",
+      "defaultReason": "Sin motivo proporcionado."
+    },
+    "unwarn": {
+      "title": "✅ Advertencia Eliminada",
+      "description": "Eliminaste una advertencia de **{user}** exitosamente.",
+      "noPermission": "No tienes permiso para eliminar advertencias.",
+      "botCannotUnwarn": "No se pudo eliminar la advertencia (faltan permisos del bot).",
+      "noWarnings": "Este usuario no tiene advertencias."
+    },
+    "mute": {
+      "title": "🔇 Silenciado",
+      "description": "Silenciaste a **{user}** exitosamente.",
+      "reasonField": "Motivo",
+      "durationField": "Duración",
+      "noPermission": "No tienes permiso para silenciar usuarios.",
+      "botCannotMute": "No se pudo silenciar al usuario (faltan permisos del bot).",
+      "defaultReason": "Sin motivo proporcionado."
+    },
+    "unmute": {
+      "title": "🔊 Desilenciado",
+      "description": "Desilenciaste a **{user}** exitosamente.",
+      "noPermission": "No tienes permiso para desilenciar usuarios.",
+      "botCannotUnmute": "No se pudo desilenciar al usuario (faltan permisos del bot).",
+      "notMuted": "Este usuario no está silenciado."
+    },
+    "ban": {
+      "title": "🔨 Ban Aplicado",
+      "description": "Baneaste a **{user}** exitosamente.",
+      "reasonField": "Motivo",
+      "durationField": "Duración",
+      "noPermission": "No tienes permiso para banear usuarios.",
+      "botCannotBan": "No se pudo banear al usuario (faltan permisos del bot).",
+      "defaultReason": "Sin motivo proporcionado."
+    },
+    "unban": {
+      "title": "✅ Ban Eliminado",
+      "description": "Desbaneaste a **{user}** exitosamente.",
+      "noPermission": "No tienes permiso para desbanear usuarios.",
+      "botCannotUnban": "No se pudo desbanear al usuario (faltan permisos del bot).",
+      "notBanned": "Este usuario no está baneado."
+    },
+    "give": {
+      "title": "🎁 Item Entregado",
+      "description": "Le diste **{amount}x {item}** a **{user}**.",
+      "noPermission": "No tienes permiso para dar items.",
+      "invalidItem": "Item inválido.",
+      "items": {
+        "hextech": "Cofre Hextech",
+        "masterwork": "Cofre de Maestro Artesano",
+        "key": "Llave"
+      }
+    },
+    "dashboard": {
+      "title": "🌐 Dashboard",
+      "description": "Accede al dashboard en: {url}"
+    },
+    "reload": {
+      "title": "🔄 Recargar",
+      "description": "Recargado {type} **{name}** exitosamente.",
+      "noPermission": "No tienes permiso para recargar.",
+      "notFound": "{type} **{name}** no encontrado.",
+      "typeCommand": "comando",
+      "typeEvent": "evento"
+    },
+    "stop": {
+      "title": "🛑 Deteniendo bot",
+      "description": "El bot se está apagando...",
+      "noPermission": "No tienes permiso para detener el bot."
+    },
+    "setupRoles": {
+      "title": "⚙️ Configuración de Roles",
+      "description": "Roles y canal de moderación configurados exitosamente.",
+      "muteRoleField": "Rol de Silencio",
+      "banRoleField": "Rol de Ban",
+      "moderationChannelField": "Canal de Moderación",
+      "noPermission": "No tienes permiso para configurar roles.",
+      "missingFields": "Por favor, proporciona todas las opciones requeridas."
+    },
+    "serverSettings": {
+      "title": "⚙️ Configuración del Servidor",
+      "description": "Configuración actual de este servidor.",
+      "noSettings": "No se encontró configuración para este servidor.",
+      "updatedTitle": "✅ Configuración Actualizada",
+      "updatedDesc": "La configuración del servidor se ha actualizado exitosamente.",
+      "noPermission": "No tienes permiso para ver la configuración del servidor."
+    },
+    "leagueProfile": {
+      "loadingTitle": "Cargando perfil...",
+      "loadingDesc": "Buscando información del jugador en la API de Riot.",
+      "notFound": "Jugador no encontrado. Verifica la región, nombre y tag.",
+      "apiError": "Error al buscar datos del jugador. Intenta de nuevo más tarde.",
+      "summonerField": "Invocador",
+      "levelField": "Nivel",
+      "rankField": "Rango",
+      "winrateField": "Tasa de Victorias",
+      "lpField": "LP",
+      "championsField": "Mejores Campeones",
+      "taglineTooLong": "La etiqueta debe tener un máximo de 5 caracteres.",
+      "taglineFormat": "Debes insertar solo los números de la etiqueta. No insertes \"#\"",
+      "accountError": "Ocurrió un error al intentar obtener la información de la cuenta.",
+      "summonerNotFound": "El invocador que ingresaste no existe. Verifica el nombre de la cuenta y el servidor.",
+      "summonerError": "Ocurrió un error al intentar obtener la información del invocador.",
+      "queueError": "Ocurrió un error al intentar obtener la información de la cola.",
+      "masteryError": "Ocurrió un error al intentar obtener la información de maestría.",
+      "ddragonError": "Ocurrió un error al intentar obtener la versión de DDragon.",
+      "summonerTitle": "Nombre del invocador: {name}#{tag}",
+      "levelDesc": "Nivel: {level}",
+      "rankValue": "Rango: {tier} {rank} {lp} LP\nVictorias: {wins}\nDerrotas: {losses}\nTasa de victorias: {winrate}%"
+    },
+    "leagueMastery": {
+      "loadingTitle": "Cargando maestría...",
+      "loadingDesc": "Buscando datos de maestría de campeones.",
+      "notFound": "Jugador no encontrado.",
+      "apiError": "Error al buscar datos de maestría.",
+      "championField": "Campeón",
+      "levelField": "Nivel de Maestría",
+      "pointsField": "Puntos de Maestría"
+    },
+    "leagueMatchHistory": {
+      "loadingAccount": "Accediendo a la información de la cuenta del usuario",
+      "loadingMatches": "Analizando estadísticas para la partida",
+      "loadingStats": "Calculando estadísticas",
+      "loadingChart": "Generando gráfico",
+      "notFound": "Jugador no encontrado.",
+      "apiError": "Error al buscar historial de partidas.",
+      "title": "Historial de Partidas",
+      "winrateField": "Tasa de Victorias",
+      "kdaField": "KDA",
+      "matchesField": "Partidas Recientes",
+      "accountError": "Ocurrió un error al obtener la información de la cuenta.",
+      "historyError": "Ocurrió un error al obtener el historial de partidas.",
+      "championError": "Ocurrió un error al obtener los datos del campeón.",
+      "ddragonError": "Ocurrió un error al obtener la versión de DDragon.",
+      "matchError": "Ocurrió un error al analizar las estadísticas de la partida {number}.",
+      "success": "Historial de partidas analizado exitosamente.",
+      "victory": "Victoria",
+      "defeat": "Derrota",
+      "matchHeader": "Partida {number} | hora: {time}",
+      "gameDuration": "Duración de la Partida: {min}m {sec}s",
+      "kills": "Asesinatos",
+      "deaths": "Muertes",
+      "assists": "Asistencias",
+      "kda": "KDA",
+      "damageDealt": "Daño Infligido a Campeones",
+      "damageTaken": "Daño Recibido",
+      "goldEarned": "Oro Ganado",
+      "visionScore": "Puntuación de Visión",
+      "wardsPlaced": "Wards Colocadas",
+      "creepScore": "Creep Score",
+      "csPerMin": "Creep Score por Minuto",
+      "accessingAccount": "Accediendo a la información de la cuenta del usuario",
+      "accessingHistory": "Accediendo al historial de partidas",
+      "analyzingMatch": "Analizando estadísticas para la partida {number}",
+      "generatingChart": "Generando gráfico",
+      "viewOverview": "Resumen",
+      "viewDamageDealt": "Daño Infligido",
+      "viewDamageTaken": "Daño Recibido",
+      "viewHeal": "Curación",
+      "viewFarm": "Farm",
+      "viewObjectives": "Objetivos",
+      "viewWards": "Wards",
+      "viewKda": "KDA",
+      "teamLabelDamageDealt": "Daño a Campeones",
+      "teamLabelDamageTaken": "Daño Recibido",
+      "teamLabelHeal": "Curación Total",
+      "teamLabelFarm": "CS Total",
+      "teamLabelObjectives": "Daño a Objetivos",
+      "teamLabelWards": "Wards Colocadas",
+      "teamLabelKda": "KDA",
+      "statKills": "Asesinatos",
+      "statDeaths": "Muertes",
+      "statAssists": "Asistencias",
+      "statKDA": "KDA",
+      "statGold": "Oro",
+      "statVision": "Visión",
+      "statWards": "Wards",
+      "statDamageDealt": "Daño Infligido",
+      "statDamageTaken": "Daño Recibido",
+      "statCS": "CS",
+      "statCSPerMin": "CS/min",
+      "statTotalDamageChamps": "Daño Total a Campeones",
+      "statPhysicalDamage": "Daño Físico",
+      "statMagicDamage": "Daño Mágico",
+      "statTrueDamage": "Daño Verdadero",
+      "statDamageObjectives": "Daño a Objetivos",
+      "statDamageTurrets": "Daño a Torres",
+      "statDamageEpicMonsters": "Daño a Monstruos Épicos",
+      "statTotalDamage": "Daño Total",
+      "statTotalDamageTaken": "Daño Total Recibido",
+      "statPhysicalDamageTaken": "Daño Físico Recibido",
+      "statMagicDamageTaken": "Daño Mágico Recibido",
+      "statTrueDamageTaken": "Daño Verdadero Recibido",
+      "statDamageMitigated": "Daño Mitigado",
+      "statTotalHeal": "Curación Total",
+      "statHealTeammates": "Curación a Aliados",
+      "statShieldTeammates": "Escudo a Aliados",
+      "statCSTotal": "CS Total",
+      "statNeutralMonsters": "Monstruos Neutrales",
+      "statGoldEarned": "Oro Ganado",
+      "statGoldSpent": "Oro Gastado",
+      "statTurretsDestroyed": "Torres Destruidas",
+      "statInhibitorsDestroyed": "Inhibidores Destruidos",
+      "statBarons": "Barons",
+      "statDragons": "Dragones",
+      "statHeralds": "Heraldos",
+      "statObjectivesStolen": "Objetivos Robados",
+      "statWardsPlaced": "Wards Colocadas",
+      "statWardsKilled": "Wards Destruidas",
+      "statVisionScore": "Puntuación de Visión",
+      "statDetectorWards": "Wards de Control",
+      "statVisionWardsBought": "Wards de Visión Compradas",
+      "statSightWardsBought": "Wards de Visión (Sight)",
+      "statDoubleKills": "Double Kills",
+      "statTripleKills": "Triple Kills",
+      "statQuadraKills": "Quadra Kills",
+      "statPentaKills": "Penta Kills",
+      "statKillingSprees": "Killing Sprees",
+      "statLargestKillingSpree": "Mayor Killing Spree",
+      "statFirstBlood": "First Blood",
+      "firstBloodKill": "Asesinato",
+      "firstBloodAssist": "Asistencia",
+      "firstBloodNo": "No",
+      "matchOf": "Partida {current}/{total}",
+      "duration": "Duración",
+      "teamMode": "Modo Comparación de Equipo",
+      "viewLabel": "Vista",
+      "btnPrevious": "Anterior",
+      "btnNext": "Siguiente",
+      "btnTeamMode": "Modo Equipo",
+      "btnCompareTeam": "Comparar Equipo",
+      "btnMatchPrev": "Partida Anterior",
+      "btnMatchNext": "Próxima Partida",
+      "btnLoading": "Cargando...",
+      "btnMatchOf": "Partida {current}/{total}",
+      "loadingHistory": "Buscando historial de partidas...",
+      "loadingProcessingMatch": "Procesando partida {current} de {total}...",
+      "loadingMatch": "Cargando partida {current}/{total}...",
+      "loadingTitle": "CARGANDO",
+      "errorProcessing": "Ocurrió un error al analizar las estadísticas de la partida.",
+      "errorCollector": "Ocurrió un error al procesar tu acción. Intenta de nuevo.",
+      "noMatches": "Ocurrió un error al buscar el historial de partidas, o no se encontraron partidas."
+    },
+    "leagueChampionRotation": {
+      "loadingTitle": "Cargando rotación...",
+      "loadingDesc": "Buscando rotación actual de campeones.",
+      "title": "🔄 Rotación de Campeones",
+      "description": "Campeones actualmente en rotación gratuita.",
+      "apiError": "Error al buscar rotación de campeones."
+    },
+    "leagueQueueSearch": {
+      "loadingTitle": "Buscando colas...",
+      "loadingDesc": "Buscando partidas clasificatorias en {elo} {division}.",
+      "title": "Resultados de Búsqueda de Colas",
+      "noResults": "No se encontraron colas para el elo/división especificado.",
+      "apiError": "Error al buscar colas.",
+      "loading": "Obteniendo datos, por favor espera...",
+      "fetchError": "Ocurrió un error al buscar las colas clasificatorias.",
+      "description": "Encontradas {count} colas clasificatorias.",
+      "pageFooter": "Página {current} de {total}",
+      "summonerField": "Invocador: {name}",
+      "statsValue": "LP: {lp}\nVictorias: {wins}\nDerrotas: {losses}\nTasa de victorias: {winrate}%",
+      "previous": "Anterior",
+      "next": "Siguiente"
+    },
+    "test": {
+      "nsfwRequired": "⚠️ Este comando solo puede usarse en canales NSFW.\\nUsa un canal apropiado e intenta de nuevo.",
+      "noImages": "No se encontraron imágenes para estas etiquetas.",
+      "notYourButton": "¡Solo quien ejecutó el comando puede usar estos botones!",
+      "noImagesFilter": "No se encontraron imágenes con este filtro.",
+      "noContent": "No se encontró contenido para {type}.",
+      "timedOut": "¡Tiempo agotado! Usa el comando de nuevo para continuar navegando.",
+      "fetchError": "Ocurrió un error al buscar las imágenes.",
+      "loading": "Cargando...",
+      "loadingMore": "Cargando más imágenes...",
+      "all": "Todos",
+      "imagesOnly": "Solo Imágenes",
+      "videosOnly": "Solo Videos",
+      "aiDisabled": "IA Desactivada",
+      "aiEnabled": "IA Activada"
+    },
+    "event": {
+      "emitted": "Evento {event} emitido con datos: {data}",
+      "error": "Hubo un error al emitir el evento: {error}"
+    },
+    "redeem": {
+      "title": "¡Insignia Canjeada!",
+      "description": "Recibiste: **{name}**",
+      "rarityField": "Rareza",
+      "codeField": "Código",
+      "footer": "Ve tus insignias en /members",
+      "noCode": "Debes proporcionar un código de insignia.",
+      "notLinked": "Tu cuenta de Discord no está vinculada a Lumina. Vincúlala en el dashboard primero."
+    },
+    "createbadge": {
+      "title": "¡Insignia Creada!",
+      "description": "La insignia **{code}** ha sido creada exitosamente.",
+      "noPermission": "No tienes permiso para crear insignias.",
+      "missingFields": "Debes proporcionar al menos un código y nombre.",
+      "error": "Error al crear la insignia."
+    },
+    "social": {
+      "hug": {
+        "description": "¡Abraza a alguien!",
+        "userOption": "El usuario para abrazar",
+        "actionText": "{author} abraza a {target} 💕"
+      },
+      "kiss": {
+        "description": "¡Besa a alguien!",
+        "userOption": "El usuario para besar",
+        "actionText": "{author} besa a {target} 💋"
+      },
+      "punch": {
+        "description": "¡Golpea a alguien!",
+        "userOption": "El usuario para golpear",
+        "actionText": "{author} golpea a {target} 👊"
+      },
+      "dance": {
+        "description": "¡Baila con alguien!",
+        "userOption": "El usuario para bailar",
+        "actionText": "{author} baila con {target} 💃"
+      },
+      "wave": {
+        "description": "¡Saluda a alguien!",
+        "userOption": "El usuario para saludar",
+        "actionText": "{author} saluda a {target} 👋"
+      },
+      "cry": {
+        "description": "¡Llora por alguien!",
+        "userOption": "El usuario que te hizo llorar",
+        "actionText": "{author} está llorando por {target} 😢"
+      },
+      "smile": {
+        "description": "¡Sonríe a alguien!",
+        "userOption": "El usuario para sonreír",
+        "actionText": "{author} sonríe a {target} 😊"
+      },
+      "laugh": {
+        "description": "¡Ríete de alguien!",
+        "userOption": "El usuario para reírse",
+        "actionText": "{author} se ríe de {target} 😂"
+      }
+    },
+    "invite": {
+      "description": "Añade Lumina Bot a otro servidor",
+      "title": "🔗 Invita a Lumina Bot",
+      "descriptionText": "¡Haz clic en el botón de abajo para añadir Lumina Bot a tu servidor!",
+      "button": "Añadir al Servidor"
+    }
+  },
+  "event": {
+    "dropChest": "¡{username}, recibiste un cofre de maestro artesano!",
+    "dropChestFooter": "¡Usa /openchest para abrir el cofre!",
+    "dropKey": "¡{username}, recibiste una llave Hextech!",
+    "dropKeyFooter": "¡Usa /openchest para abrir tus cofres!"
+  },
+  "embed": {
+    "loadingTitle": "CARGANDO",
+    "loadingDesc": "Espera un momento, estoy procesando tu solicitud.",
+    "errorTitle": "ERROR",
+    "errorDesc": "Ocurrió un error al procesar tu solicitud.",
+    "successTitle": "ÉXITO",
+    "successDesc": "La solicitud se procesó exitosamente."
+  }
+}

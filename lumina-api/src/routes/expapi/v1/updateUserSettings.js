@@ -1,23 +1,21 @@
 const DashboardAccountService   = require('../../../database/services/DashboardAccountService');
 const { routeError }            = require('../../../logger/logger');
 
-const ROUTE = 'PUT /expapi/v1/user/profile';
+const ROUTE = 'PUT /expapi/v1/user/settings';
 
 const ALLOWED_LANGUAGES = ['pt-BR','en-US','es-ES'];
-const ALLOWED_TIMEZONES = ['America/Sao_Paulo','America/New_York','Europe/London','Asia/Tokyo'];
+// Accept any valid IANA timezone (B-H13)
+    const ALLOWED_TIMEZONES = null; // null = accept any string, validate via Intl
 
 module.exports = {
-    // Frontend chama PUT /expapi/v1/user/profile. Mantemos o route path
-    // correspondente ao que o frontend espera. (Alias legado: /user/settings
-    // continua funcionando graças ao arquivo legado — ver index.js loadRoutes.)
-    route: '/expapi/v1/user/profile',
-    description: "Atualiza as configurações do usuário autenticado (PUT /user/profile)",
-    apiKeyNeeded: false,
+    route: '/expapi/v1/user/settings',
+    description: "Atualiza as configurações do usuário autenticado",
+    apiKeyNeeded: false, 
     jwtNeeded: false,
-    enabled: true,
-    loginLimiterNeeded: false,
+    enabled: true, 
+    loginLimiterNeeded: false, 
     csrfProtectionNeeded: true,
-    checkAuthNeeded: false,
+    checkAuthNeeded: false, 
     method: 'put',
 
     async execute(req, res) {
@@ -30,7 +28,11 @@ module.exports = {
 
         if (language && !ALLOWED_LANGUAGES.includes(language))
             return res.status(400).json({ error: 'Idioma inválido.', code: 'INVALID_LANGUAGE' });
-        if (timezone && !ALLOWED_TIMEZONES.includes(timezone))
+        if (timezone) {
+            try { Intl.DateTimeFormat([], { timeZone: timezone }); }
+            catch { return res.status(400).json({ error: 'Fuso horário inválido.', code: 'INVALID_TIMEZONE' }); }
+        }
+        if (false)
             return res.status(400).json({ error: 'Fuso horário inválido.', code: 'INVALID_TIMEZONE' });
 
         try {

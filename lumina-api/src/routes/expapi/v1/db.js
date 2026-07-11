@@ -8,6 +8,7 @@ module.exports = {
     route: '/expapi/v1/db',
     description: 'Get DataBase connection status',
     apiKeyNeeded: false,
+    internalKeyNeeded: true,
     jwtNeeded: false,
     enabled: true,
     loginLimiterNeeded: false,

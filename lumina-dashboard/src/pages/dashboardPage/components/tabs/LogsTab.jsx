@@ -2,10 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   MagnifyingGlassIcon, FunnelIcon, ArrowPathIcon,
   ChevronLeftIcon, ChevronRightIcon, XMarkIcon,
-  DocumentArrowDownIcon
+  DocumentArrowDownIcon, ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import ErrorState from '../../../../components/ui/ErrorState';
-import ErrorBanner from '../../../../components/ui/ErrorBanner';
 import { SkeletonRow } from '../../../../components/ui/Skeleton';
 
 const API = import.meta.env.VITE_API_BASE_URL;
@@ -299,7 +298,18 @@ export default function LogsTab() {
         )}
 
         {error && logs.length > 0 && (
-          <ErrorBanner error={`Falha ao atualizar: ${error}`} onRetry={load} />
+          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-red-700">
+              <ExclamationTriangleIcon className="h-4 w-4 flex-shrink-0" />
+              <span>Falha ao atualizar: {error}</span>
+            </div>
+            <button
+              onClick={load}
+              className="text-xs font-medium text-red-700 hover:text-red-900 underline"
+            >
+              Tentar novamente
+            </button>
+          </div>
         )}
       </div>
 

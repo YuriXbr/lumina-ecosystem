@@ -7,11 +7,11 @@ module.exports = {
     route: '/expapi/v1/unlink-discord',
     description: "Remove a vinculação da conta Discord do usuário",
     apiKeyNeeded: false, 
-    jwtNeeded: true,
+    jwtNeeded: false,
     enabled: true, 
     loginLimiterNeeded: false, 
     csrfProtectionNeeded: true,
-    checkAuthNeeded: true, 
+    checkAuthNeeded: false, 
     method: 'post',
 
     async execute(req, res) {

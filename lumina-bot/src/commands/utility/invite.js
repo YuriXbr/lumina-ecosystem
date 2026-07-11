@@ -1,4 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const i18n = require('../../utils/i18n/index.js');
+const { loc } = require('../../utils/i18n/commandLocales.js');
 
 module.exports = {
     permission: 'everyone',
@@ -6,24 +8,32 @@ module.exports = {
     cooldown: 5,
     data: new SlashCommandBuilder()
         .setName('invite')
-        .setDescription('Adiciona o Lumina Bot em outro servidor'),
+        .setDescription('Adds Lumina Bot to another server')
+        .setDescriptionLocalizations(loc(
+            'Adiciona o Lumina Bot em outro servidor',
+            'Añade Lumina Bot a otro servidor'
+        )),
 
-    async execute(interaction) {
+    async execute(interaction, t) {
+        const translator = t || i18n.getTranslator(i18n.resolveFromInteraction(interaction));
         const clientId = process.env.DISCORD_CLIENT_ID || interaction.client.user.id;
-        // Administrator permissions = 8
         const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot+applications.commands`;
 
         const embed = new EmbedBuilder()
-            .setTitle('✨ Adicione o Lumina Bot em outro servidor!')
-            .setDescription(`Clique [aqui](${inviteUrl}) para adicionar o Lumina Bot em um servidor onde você tem permissão de gerenciar.`)
+            .setTitle(translator('cmd.invite.title'))
+            .setDescription(translator('cmd.invite.descriptionText'))
             .setColor('#7C3AED')
-            .addFields(
-                { name: '🔗 Link direto', value: `[Convidar Bot](${inviteUrl})`, inline: false },
-                { name: '💡 Dica', value: 'Você precisa ter permissão de **Gerenciar Servidor** no servidor de destino.', inline: false },
-            )
             .setFooter({ text: 'Lumina Bot', iconURL: interaction.client.user.displayAvatarURL() })
             .setTimestamp();
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setLabel(translator('cmd.invite.button'))
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(inviteUrl)
+            );
+
+        await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
     },
 };

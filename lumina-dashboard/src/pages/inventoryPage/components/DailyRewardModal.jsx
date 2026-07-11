@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useT } from '../../../i18n/LanguageContext.jsx';
 
 /**
  * Lê o corpo de uma resposta de erro com segurança. O backend nem sempre
@@ -26,10 +27,10 @@ async function readErrorMessage(response, fallback) {
  * obrigatório aqui) e devolve o token que deve ser ecoado de volta no
  * header X-CSRF-Token nas próximas requisições que mudam estado.
  */
-async function fetchCsrfToken(baseUrl) {
+async function fetchCsrfToken(baseUrl, t) {
     const response = await fetch(`${baseUrl}expapi/v1/csrf-token`, { credentials: 'include' })
     if (!response.ok) {
-        throw new Error('Não foi possível iniciar a sessão de segurança. Tente novamente.');
+        throw new Error(t('inventory.openChest.securityError'));
     }
     const data = await response.json();
     return data.csrfToken;
@@ -67,6 +68,7 @@ export default function DailyRewardModal({
     loginWithDiscord,
     onRewardClaimed,
 }) {
+  const t = useT();
     const [status, setStatus] = useState(null);
     const [statusLoading, setStatusLoading] = useState(false);
     const [statusError, setStatusError] = useState(null);
@@ -82,11 +84,12 @@ export default function DailyRewardModal({
         setStatusLoading(true);
         setStatusError(null);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/myinventory`, {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/myinventory`, {
+                headers: { Authorization: `Bearer ${token}` },
                 credentials: 'include',
             });
             if (!response.ok) {
-                const message = await readErrorMessage(response, 'Não foi possível carregar sua diária');
+                const message = await readErrorMessage(response, t('inventory.daily.loadError'));
                 throw new Error(message);
             }
             const data = await response.json();
@@ -122,16 +125,16 @@ export default function DailyRewardModal({
     const handleClaim = async () => {
         setClaiming(true);
         setClaimError(null);
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || '/';
+        const baseUrl = import.meta.env.VITE_API_BASE_URL;
         try {
-            const csrfToken = await fetchCsrfToken(baseUrl);
+            const csrfToken = await fetchCsrfToken(baseUrl, t);
 
             const response = await fetch(`${baseUrl}expapi/v1/dailyreward`, { credentials: 'include' })
 
             if (!response.ok) {
                 const message = await readErrorMessage(
                     response,
-                    'Não foi possível resgatar sua diária agora.'
+                    t('inventory.daily.claimError')
                 );
                 throw new Error(message);
             }
@@ -168,12 +171,12 @@ export default function DailyRewardModal({
                 <div className="bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-5 flex items-center justify-between">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <span className="text-2xl">🎁</span>
-                        Recompensa diária
+                        {t('inventory.daily.title')}
                     </h2>
                     <button
                         onClick={handleClose}
                         className="text-white/80 hover:text-white transition-colors"
-                        aria-label="Fechar"
+                        aria-label={t("common.close")}
                     >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -185,20 +188,20 @@ export default function DailyRewardModal({
                     {!isLoggedIn ? (
                         <EmptyState
                             emoji="🔒"
-                            title="Faça login para continuar"
-                            description="Você precisa estar logado no dashboard para resgatar sua diária."
+                            title={t("inventory.daily.loginRequired")}
+                            description={t("inventory.daily.loginRequiredDesc")}
                         />
                     ) : discordError ? (
                         <EmptyState
                             emoji="🔗"
-                            title="Conecte sua conta Discord"
-                            description="Resgatar a diária pelo dashboard exige que sua conta esteja vinculada ao Discord, já que seu inventário vive lá. Você também pode resgatar usando /daily direto no Discord."
+                            title={t("inventory.connectDiscord")}
+                            description={t('inventory.daily.discordRequiredModal')}
                             action={
                                 <button
                                     onClick={loginWithDiscord}
                                     className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
                                 >
-                                    Conectar Discord
+                                    {t('inventory.connectDiscord')}
                                 </button>
                             }
                         />
@@ -247,11 +250,12 @@ function StatusView({
     onClaim,
     onRetry,
 }) {
+    const t = useT();
     if (statusLoading) {
         return (
             <div className="flex flex-col items-center py-10">
                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-600 mb-3"></div>
-                <span className="text-gray-600">Carregando sua diária...</span>
+                <span className="text-gray-600">{t("inventory.daily.loading")}</span>
             </div>
         );
     }
@@ -260,14 +264,14 @@ function StatusView({
         return (
             <EmptyState
                 emoji="⚠️"
-                title="Erro ao carregar"
+                title={t("common.loadError")}
                 description={statusError}
                 action={
                     <button
                         onClick={onRetry}
                         className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
                     >
-                        Tentar novamente
+                        {t('common.tryAgain')}
                     </button>
                 }
             />
@@ -283,12 +287,11 @@ function StatusView({
             <div className="text-center mb-6">
                 <div className="text-5xl mb-3">📦🔑</div>
                 <p className="text-gray-700">
-                    Resgate <span className="font-semibold">3 Baús Hextech</span> e{' '}
-                    <span className="font-semibold">1 Chave</span> grátis todos os dias!
+                    {t('inventory.daily.claimDescription')}
                 </p>
                 {status.dailyRewardStreak > 0 && (
                     <p className="text-sm text-amber-600 font-medium mt-2">
-                        🔥 Sequência atual: {status.dailyRewardStreak} dia{status.dailyRewardStreak !== 1 ? 's' : ''}
+                        🔥 {t('inventory.daily.currentStreak', { count: status.dailyRewardStreak })}
                     </p>
                 )}
             </div>
@@ -301,7 +304,7 @@ function StatusView({
 
             {countdown && (
                 <p className="text-center text-sm text-gray-500 mb-4">
-                    Próxima diária disponível em{' '}
+                    {t('inventory.daily.nextDaily')}{' '}
                     <span className="font-mono font-semibold">{countdown}</span>
                 </p>
             )}
@@ -318,12 +321,12 @@ function StatusView({
                 {claiming ? (
                     <span className="flex items-center justify-center gap-2">
                         <span className="inline-block h-5 w-5 border-b-2 border-white rounded-full animate-spin"></span>
-                        Resgatando...
+                        {t("inventory.daily.claiming")}
                     </span>
                 ) : canClaim ? (
-                    'Resgatar diária'
+                    t('inventory.daily.claim')
                 ) : (
-                    'Já resgatada hoje'
+                    t('inventory.daily.alreadyClaimed')
                 )}
             </button>
         </>
@@ -331,21 +334,19 @@ function StatusView({
 }
 
 function ClaimedView({ result }) {
+    const t = useT();
     return (
         <div className="text-center py-4 animate-[fadeIn_0.4s_ease-out]">
             <div className="text-6xl mb-4">🎉</div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Diária resgatada!</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">{t("inventory.daily.claimed")}</h3>
             <p className="text-gray-600 mb-4">
-                Você recebeu{' '}
-                <span className="font-semibold">{result.reward.hextechChests} Baú(s) Hextech</span> e{' '}
-                <span className="font-semibold">{result.reward.keys} Chave(s)</span>.
+                {t('inventory.daily.received', { chests: result.reward.hextechChests, keys: result.reward.keys })}
             </p>
             <p className="text-sm text-amber-600 font-medium mb-6">
-                🔥 Sequência: {result.streak} dia{result.streak !== 1 ? 's' : ''} consecutivo{result.streak !== 1 ? 's' : ''}
+                🔥 {t('inventory.daily.streak', { count: result.streak })}
             </p>
             <p className="text-xs text-gray-400">
-                Use <span className="font-mono">/openchest</span> no Discord ou o botão &quot;Abrir baú&quot; aqui no
-                dashboard pra abrir seus baús.
+                {t('inventory.daily.useOpenChest')}
             </p>
         </div>
     );

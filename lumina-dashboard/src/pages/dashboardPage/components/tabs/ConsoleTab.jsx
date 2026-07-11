@@ -4,11 +4,11 @@ import {
   PlayIcon,
   PauseIcon,
   ArrowPathIcon,
-  TrashIcon
+  TrashIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import ErrorBanner from '../../../../components/ui/ErrorBanner';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 export default function ConsoleTab() {
   const [logs, setLogs] = useState([]);
@@ -219,7 +219,19 @@ export default function ConsoleTab() {
 
       {/* Aviso de erro de WebSocket (não bloqueia o console, apenas informa) */}
       {wsError && (
-        <ErrorBanner error={wsError} onRetry={reconnect} variant="warning" />
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 flex items-start justify-between gap-3">
+          <div className="flex items-start gap-2 text-sm text-yellow-800">
+            <ExclamationTriangleIcon className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <span>{wsError}</span>
+          </div>
+          <button
+            onClick={reconnect}
+            className="inline-flex items-center gap-1 text-xs font-medium text-yellow-800 hover:text-yellow-900"
+          >
+            <ArrowPathIcon className="h-3.5 w-3.5" />
+            Tentar novamente
+          </button>
+        </div>
       )}
 
       {/* Console Output */}
@@ -337,10 +349,18 @@ export default function ConsoleTab() {
           )}
 
           {!systemInfoLoading && systemInfoError && (
-            <ErrorBanner
-              error={`Erro ao carregar informações do sistema: ${systemInfoError}`}
-              onRetry={loadSystemInfo}
-            />
+            <div className="flex items-center justify-between gap-3 bg-red-50 border border-red-200 rounded-md px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-red-700">
+                <ExclamationTriangleIcon className="h-4 w-4" />
+                <span>Erro ao carregar informações do sistema: {systemInfoError}</span>
+              </div>
+              <button
+                onClick={loadSystemInfo}
+                className="text-xs font-medium text-red-700 hover:text-red-900 underline"
+              >
+                Tentar novamente
+              </button>
+            </div>
           )}
 
           {!systemInfoLoading && !systemInfoError && systemInfo && (

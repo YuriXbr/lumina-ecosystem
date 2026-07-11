@@ -54,8 +54,8 @@ const CHEST_CATEGORIES = new Set(['chests']);
  */
 const DEFAULT_CONFIG = {
     commandsEnabled: {},     // e.g. { 'league.profile': true, 'moderation.ban': false }
-    gachaEnabled: false,
-    gachaChestsEnabled: false,
+    gachaEnabled: true,      // Default: enabled (matches DB schema default)
+    gachaChestsEnabled: true, // Default: enabled (matches DB schema default)
     blockedUsers: [],        // array of Discord user IDs
     blockedRoles: [],        // array of Discord role IDs
 };
@@ -146,13 +146,18 @@ class CommandGuard {
         }
 
         // ── 2. Gacha / chest gates ───────────────────────────────────────
+        // `gachaEnabled` is the master switch for the entire gacha subsystem.
+        // `gachaChestsEnabled` is a finer-grained toggle for the chest
+        // subsystem (daily, openchest). Chest commands are part of the
+        // gacha subsystem, so they require BOTH flags to be `true` — if
+        // gacha is globally off, chest commands must be blocked too.
         if (GACHA_CATEGORIES.has(command.category) && !merged.gachaEnabled) {
             return {
                 allowed: false,
                 reason: 'Os comandos de gacha estão desativados neste servidor.',
             };
         }
-        if (CHEST_CATEGORIES.has(command.category) && !merged.gachaChestsEnabled) {
+        if (CHEST_CATEGORIES.has(command.category) && (!merged.gachaEnabled || !merged.gachaChestsEnabled)) {
             return {
                 allowed: false,
                 reason: 'A abertura de baús está desativada neste servidor.',

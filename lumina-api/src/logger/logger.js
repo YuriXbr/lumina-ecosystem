@@ -236,7 +236,12 @@ function requestLogger() {
             const level      = status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info';
             const rid        = req.id || '';
 
-            const entry = `[${timestamp()}] [API<request>] [${rid}] ${req.method} ${req.originalUrl} → ${status} (${durationMs.toFixed(1)}ms)`;
+            // Sanitiza a URL antes de logar — remove query params sensíveis
+            const safeUrl = req.originalUrl
+                ? req.originalUrl.replace(/([?&])(apiKey|internal-key|token|password|secret)=([^&]*)/gi, '$1$2=***REDACTED***')
+                : req.path || '';
+
+            const entry = `[${timestamp()}] [API<request>] [${rid}] ${req.method} ${safeUrl} → ${status} (${durationMs.toFixed(1)}ms)`;
             if (status >= 400) console.log(entry);
 
             // Métricas em memória
@@ -248,7 +253,7 @@ function requestLogger() {
             if (ls) {
                 ls.write({
                     level, type: 'API', action: 'request',
-                    message: `${req.method} ${req.originalUrl} → ${status} (${durationMs.toFixed(1)}ms)`,
+                    message: `${req.method} ${safeUrl} → ${status} (${durationMs.toFixed(1)}ms)`,
                     requestId: rid,
                     route,
                     method:     req.method,

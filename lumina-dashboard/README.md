@@ -2,7 +2,7 @@
 
 > Interface web moderna e responsiva para gerenciamento do Lumina Bot e visualização de dados de League of Legends.
 
-[![Version](https://img.shields.io/badge/version-0.0.0-blue.svg)](https://github.com/YuriXbr/lumina-dashboard)
+[![Version](https://img.shields.io/badge/version-0.0.0-blue.svg)](https://github.com/YuriXbr/lumina-ecosystem)
 [![React](https://img.shields.io/badge/react-18.3.1-blue.svg)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/vite-5.4.9-purple.svg)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/tailwindcss-3.4.14-blue.svg)](https://tailwindcss.com/)
@@ -65,7 +65,7 @@ O Lumina Dashboard é uma aplicação web moderna construída com **React** e **
 ### 1. Clone e instale
 
 ```bash
-git clone https://github.com/YuriXbr/lumina-dashboard.git
+git clone https://github.com/YuriXbr/lumina-ecosystem.git
 cd lumina-dashboard
 npm install
 ```
@@ -486,9 +486,9 @@ Este projeto está licenciado sob a **Licença ISC**. Veja [LICENSE](LICENSE) pa
 
 ### Onde Buscar Ajuda
 
-- **📋 Issues**: [GitHub Issues](https://github.com/YuriXbr/lumina-dashboard/issues)
+- **📋 Issues**: [GitHub Issues](https://github.com/YuriXbr/lumina-ecosystem/issues)
 - **💬 Discord**: [Servidor da Comunidade](https://discord.gg/lumina)
-- **📖 Docs**: [Documentação Completa](https://github.com/YuriXbr/lumina/wiki)
+- **📖 Docs**: [Documentação Completa](https://github.com/YuriXbr/lumina-ecosystem/wiki)
 
 ### Problemas Comuns
 

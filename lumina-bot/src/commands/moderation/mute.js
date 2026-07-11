@@ -1,5 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionsBitField } = require('discord.js');
 const LuminaApiService = require('../../utils/services/LuminaApiService');
+const i18n = require('../../utils/i18n/index.js');
+const { loc } = require('../../utils/i18n/commandLocales.js');
 const api = new LuminaApiService();
 
 module.exports = {
@@ -9,14 +11,27 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('mute')
         .setDescription('Mute a user.')
-        .addUserOption(option => option.setName('user').setDescription('The user to mute.').setRequired(true))
-        .addStringOption(option => option.setName('reason').setDescription('The reason for the mute.'))
-        .addStringOption(option => option.setName('time').setDescription('The time for the mute.')),
-    async execute(interaction) {
+        .setDescriptionLocalizations(loc('Silencia um usuário.', 'Silencia a un usuario.'))
+        .addUserOption(option => option
+            .setName('user')
+            .setDescription('The user to mute.')
+            .setDescriptionLocalizations(loc('O usuário para silenciar.', 'El usuario para silenciar.'))
+            .setRequired(true))
+        .addStringOption(option => option
+            .setName('reason')
+            .setDescription('The reason for the mute.')
+            .setDescriptionLocalizations(loc('O motivo do silenciamento.', 'El motivo del silencio.')))
+        .addStringOption(option => option
+            .setName('time')
+            .setDescription('The time for the mute.')
+            .setDescriptionLocalizations(loc('O tempo do silenciamento.', 'El tiempo del silencio.'))),
+
+    async execute(interaction, t) {
+        const translator = t || i18n.getTranslator(i18n.resolveFromInteraction(interaction));
         await interaction.deferReply();
 
         const user = interaction.options.getUser('user');
-        const reason = interaction.options.getString('reason') || 'No reason provided.';
+        const reason = interaction.options.getString('reason') || translator('cmd.mute.defaultReason');
         const target = interaction.guild.members.cache.get(user.id);
         const staff = interaction.guild.members.cache.get(interaction.user.id);
         const time = interaction.options.getString('time');
@@ -27,45 +42,33 @@ module.exports = {
         if (timeMatch) {
             const muteTime = parseInt(timeMatch[1]);
             const unit = timeMatch[2];
-            let muteDuration;
-            switch(unit) {
-                case 'd':
-                    muteDuration = muteTime * 24 * 60 * 60 * 1000;
-                    break;
-                case 'h':
-                    muteDuration = muteTime * 60 * 60 * 1000;
-                    break;
-                case 'm':
-                    muteDuration = muteTime * 60 * 1000;
-                    break;
-                case 's':
-                    muteDuration = muteTime * 1000;
-                    break;
-                default:
-                    muteDuration = 0;
-            }
-            muteEndDate = Date.now() + muteDuration;
+            const ms = { d: 86400000, h: 3600000, m: 60000, s: 1000 }[unit] ?? 0;
+            muteEndDate = Date.now() + muteTime * ms;
         }
-        
+
         if (!staff.permissions.has(PermissionsBitField.Flags.MuteMembers) && !staff.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return interaction.editReply({ content: 'You do not have permission to do that.', ephemeral: true });
+            return interaction.editReply({ content: translator('cmd.mute.noPermission'), ephemeral: true });
         }
-        
-        // Supondo que guildData já tenha sido obtido previamente (p. ex. via outro middleware)
-        const guildData = { muteRoleId: 'ID_DO_CARGO_MUTADO' }; // ajuste conforme necessário
-        if (!guildData || !guildData.muteRoleId) {
-            // Chamaria a função promptSetup se a guilda não estiver configurada
-            return interaction.editReply({ content: 'Servidor não configurado.', ephemeral: true });
-        }
-        const mutedRoleId = guildData.muteRoleId;
-        
+
+        // Fetch guild data from API to get the configured muteRoleId
+        const LuminaApiService = require('../../utils/services/LuminaApiService');
+        const muteApi = new LuminaApiService();
+        let guildData;
         try {
-            await target.roles.add(mutedRoleId, reason);
-        } catch (err) {
-            return interaction.editReply({ content: 'I cannot mute this user.', ephemeral: true });
+            guildData = await muteApi.post('/expapi/internal/fetchguilddata', { guildId: interaction.guild.id });
+        } catch (e) {
+            guildData = null;
         }
-        
-        // Registra a punição de mute via API
+        if (!guildData || !guildData.muteRoleId) {
+            return interaction.editReply({ content: translator('cmd.setupRoles.missingFields'), ephemeral: true });
+        }
+
+        try {
+            await target.roles.add(guildData.muteRoleId, reason);
+        } catch (err) {
+            return interaction.editReply({ content: translator('cmd.mute.botCannotMute'), ephemeral: true });
+        }
+
         try {
             await api.post('/expapi/internal/newpunishrecord', {
                 type: 'mute',
@@ -73,111 +76,21 @@ module.exports = {
                 targetId: user.id,
                 staffId: interaction.user.id,
                 reason,
-                endTime: muteEndDate
+                endTime: muteEndDate,
             });
         } catch (error) {
             console.error(error);
         }
-        
-        await interaction.editReply({ content: `Successfully muted ${user.tag} with reason: ${reason}`, ephemeral: false });
-    }
+
+        const embed = new EmbedBuilder()
+            .setTitle(translator('cmd.mute.title'))
+            .setDescription(translator('cmd.mute.description', { user: user.tag }))
+            .addFields(
+                { name: translator('cmd.mute.reasonField'),   value: reason, inline: true },
+                { name: translator('cmd.mute.durationField'), value: time ?? translator('common.permanent'), inline: true },
+            )
+            .setColor('Green');
+
+        await interaction.editReply({ embeds: [embed] });
+    },
 };
-
-async function promptSetup(interaction) {
-    const embed = new EmbedBuilder()
-        .setTitle('Configuração Necessária')
-        .setDescription('O servidor não está configurado. Por favor, execute o comando /setuproles para configurar.')
-        .setColor('Red');
-
-    await interaction.editReply({ embeds: [embed], ephemeral: true });
-}
-
-function hasPermission(staff) {
-    return staff.permissions.has(PermissionsBitField.Flags.MuteMembers) || staff.permissions.has(PermissionsBitField.Flags.Administrator);
-}
-
-function calculateMuteEndDate(timeMatch) {
-    if (!timeMatch) return null;
-
-    const muteTime = parseInt(timeMatch[1]);
-    const muteUnit = timeMatch[2];
-    let muteDuration;
-
-    switch (muteUnit) {
-        case 'd':
-            muteDuration = muteTime * 24 * 60 * 60 * 1000;
-            break;
-        case 'h':
-            muteDuration = muteTime * 60 * 60 * 1000;
-            break;
-        case 'm':
-            muteDuration = muteTime * 60 * 1000;
-            break;
-        case 's':
-            muteDuration = muteTime * 1000;
-            break;
-        default:
-            muteDuration = 0;
-    }
-
-    return Date.now() + muteDuration;
-}
-
-async function muteUser(interaction, target, mutedRole, user, reason, muteEndDate, time) {
-    try {
-        await target.roles.add(mutedRole);
-    } catch (err) {
-        return interaction.editReply({ content: `Eu não tenho permissão para adicionar cargos ao usuário, punição não aplicada`, ephemeral: true });
-    }
-
-    await addMute(interaction.guild.id, user.id, interaction.user.id, reason, muteEndDate);
-    await interaction.editReply({ content: `Successfully muted ${user.tag} with reason: ${reason} ${time ? `for: ${time}` : 'permanently'}.`, ephemeral: false });
-}
-
-async function sendStaffNotification(interaction, user, reason, time) {
-    const embed = new EmbedBuilder()
-        .setTitle('Mute Applied')
-        .setDescription(`You have successfully muted ${user.tag}.`)
-        .addFields(
-            { name: 'Reason', value: reason, inline: true },
-            { name: 'Duration', value: time ? time : 'Permanent', inline: true }
-        )
-        .setColor('Green');
-
-    await interaction.followUp({ embeds: [embed], ephemeral: true });
-}
-
-async function sendAnnouncement(interaction, user, reason, time, moderationChannelId) {
-    const announcementChannel = interaction.guild.channels.cache.get(moderationChannelId);
-    if (!announcementChannel) return;
-
-    const embed = new EmbedBuilder()
-        .setTitle('User Muted')
-        .setDescription(`${user.tag} has been muted.`)
-        .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-        .addFields(
-            { name: 'Reason', value: reason, inline: true },
-            { name: 'Duration', value: time ? time : 'Permanent', inline: true },
-            { name: 'Muted By', value: interaction.user.tag, inline: true }
-        )
-        .setColor('Red');
-
-    await announcementChannel.send({ embeds: [embed] });
-}
-
-function scheduleUnmute(guild, userId, mutedRole, muteEndDate) {
-    setTimeout(async () => {
-        const updatedGuildData = await getGuildData(guild.id);
-        try {
-            if (updatedGuildData) {
-                const member = guild.members.cache.get(userId);
-                if (member) {
-                    await member.roles.remove(mutedRole);
-                    await updateMute(guild.id, userId, { endTime: new Date() });
-                }
-            }
-        } catch (error) {
-            console.error(error);
-        }
-    }, muteEndDate - Date.now());
-}

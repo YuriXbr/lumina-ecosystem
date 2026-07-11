@@ -66,12 +66,6 @@ const guilds= {
     gachaRolls: { type: Object, default: {} },
     gachaMaxRolls: { type: Number, default: 8 },
     gachaGameMode: { type: String, default: 'personal' },
-    gachaEnabled: { type: Boolean, default: true },
-    gachaChestsEnabled: { type: Boolean, default: true },
-    commandsEnabled: { type: Object, default: {} },
-    autoMessages: { type: Array, default: [] },
-    blockedUsers: { type: Array, default: [] },
-    blockedRoles: { type: Array, default: [] },
     guildOwnerId: { type: String, required: true },
     prefix: { type: String, default: 'l!' },
     blockedChannels: { type: Object, default: [] },
@@ -316,7 +310,7 @@ const dashboardAccounts= {
     // Exibido sempre com a capitalizacao original escolhida pelo usuario.
     // Resolvido em /u/:identifier (identifier = UUID, Discord ID ou username).
     username: { type: String, required: false, default: '', unique: true, sparse: true },
-    usernameLower: { type: String, required: false, default: '', unique: true, sparse: true },
+    usernameLower: { type: String, required: false, default: '', index: true },
     usernameChangedAt: { type: Date, default: null },
 
     // displayName: nome de exibicao livre (1-32 chars), nao unico.
@@ -343,6 +337,38 @@ const newsPosts = {
     authorName:  { type: String, default: '' },
 }
 
+// ─── Sistema de Badges ─────────────────────────────────────────────────────
+// Badges são medalhas resgatáveis via código. Cada badge tem:
+//   - raridade (common, rare, epic, legendary, mythic)
+//   - janela de resgate (availableFrom → expiresAt)
+//   - limite de usuários que podem resgatar
+//   - requisito de cargo (accessType mínimo)
+//   - cor de destaque para exibição no perfil
+const badges = {
+    code:            { type: String, required: true, unique: true },  // código único de resgate (ex: "BETA2025")
+    name:            { type: String, required: true },
+    description:     { type: String, default: '' },
+    imageUrl:        { type: String, default: '' },                   // URL da imagem da badge
+    rarity:          { type: String, default: 'common' },             // common|rare|epic|legendary|mythic
+    highlightColor:  { type: String, default: '#8B5CF6' },            // cor de destaque (hex)
+    availableFrom:   { type: Date, default: Date.now },               // quando o código fica ativo
+    expiresAt:       { type: Date, default: null },                   // null = não expira (dura para sempre)
+    maxRedemptions:  { type: Number, default: 0 },                    // 0 = ilimitado
+    minAccessLevel:  { type: String, default: 'user' },               // accessType mínimo para resgatar
+    createdBy:       { type: String, default: '' },                   // email do admin que criou
+    createdAt:       { type: Date, default: Date.now },
+    updatedAt:       { type: Date, default: Date.now },
+    active:          { type: Boolean, default: true },                // desativar sem deletar
+}
+
+// Registro de quem resgatou qual badge (N:N)
+const userBadges = {
+    userEmail:    { type: String, required: true },   // quem resgatou
+    badgeCode:    { type: String, required: true },   // qual badge
+    redeemedAt:   { type: Date, default: Date.now },
+    redeemedVia:  { type: String, default: 'dashboard' }, // dashboard|bot
+}
+
 const mongoSchema = {
     bot,
     inventory,
@@ -356,6 +382,8 @@ const mongoSchema = {
     universes,
     dashboardAccounts,
     newsPosts,
+    badges,
+    userBadges,
 
     // Logs de todas as requisições/eventos da API (rastreabilidade total)
     // TTL gerenciado via índice { expiresAt: 1 } no MongoDB (30 dias)

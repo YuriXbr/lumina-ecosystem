@@ -1,5 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionsBitField } = require('discord.js');
 const LuminaApiService = require('../../utils/services/LuminaApiService');
+const i18n = require('../../utils/i18n/index.js');
+const { loc } = require('../../utils/i18n/commandLocales.js');
 const api = new LuminaApiService();
 
 module.exports = {
@@ -9,14 +11,27 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('warn')
         .setDescription('Warn a user.')
-        .addUserOption(option => option.setName('user').setDescription('The user to warn.').setRequired(true))
-        .addStringOption(option => option.setName('reason').setDescription('The reason for the warn.'))
-        .addStringOption(option => option.setName('time').setDescription('The time for the warn.')),
-    async execute(interaction) {
+        .setDescriptionLocalizations(loc('Adverte um usuário.', 'Advierte a un usuario.'))
+        .addUserOption(option => option
+            .setName('user')
+            .setDescription('The user to warn.')
+            .setDescriptionLocalizations(loc('O usuário para advertir.', 'El usuario para advertir.'))
+            .setRequired(true))
+        .addStringOption(option => option
+            .setName('reason')
+            .setDescription('The reason for the warn.')
+            .setDescriptionLocalizations(loc('O motivo da advertência.', 'El motivo de la advertencia.')))
+        .addStringOption(option => option
+            .setName('time')
+            .setDescription('The time for the warn.')
+            .setDescriptionLocalizations(loc('O tempo da advertência.', 'El tiempo de la advertencia.'))),
+
+    async execute(interaction, t) {
+        const translator = t || i18n.getTranslator(i18n.resolveFromInteraction(interaction));
         await interaction.deferReply();
 
         const user = interaction.options.getUser('user');
-        const reason = interaction.options.getString('reason') || 'No reason provided.';
+        const reason = interaction.options.getString('reason') || translator('cmd.warn.defaultReason');
         const staff = interaction.guild.members.cache.get(interaction.user.id);
         const time = interaction.options.getString('time');
         const timeRegex = /(\d+)([dhms])/;
@@ -26,31 +41,14 @@ module.exports = {
         if (timeMatch) {
             const warnTime = parseInt(timeMatch[1]);
             const unit = timeMatch[2];
-            let warnDuration;
-            switch(unit) {
-                case 'd':
-                    warnDuration = warnTime * 24 * 60 * 60 * 1000;
-                    break;
-                case 'h':
-                    warnDuration = warnTime * 60 * 60 * 1000;
-                    break;
-                case 'm':
-                    warnDuration = warnTime * 60 * 1000;
-                    break;
-                case 's':
-                    warnDuration = warnTime * 1000;
-                    break;
-                default:
-                    warnDuration = 0;
-            }
-            warnEndDate = Date.now() + warnDuration;
+            const ms = { d: 86400000, h: 3600000, m: 60000, s: 1000 }[unit] ?? 0;
+            warnEndDate = Date.now() + warnTime * ms;
         }
-        
+
         if (!staff.permissions.has(PermissionsBitField.Flags.KickMembers) && !staff.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return interaction.editReply({ content: 'You do not have permission to do that.', ephemeral: true });
+            return interaction.editReply({ content: translator('cmd.warn.noPermission'), ephemeral: true });
         }
-        
-        // Registra o warn via API
+
         try {
             await api.post('/expapi/internal/newpunishrecord', {
                 type: 'warn',
@@ -58,101 +56,21 @@ module.exports = {
                 targetId: user.id,
                 staffId: interaction.user.id,
                 reason,
-                endTime: warnEndDate
+                endTime: warnEndDate,
             });
         } catch (error) {
             console.error(error);
         }
-        
-        await interaction.editReply({ content: `Warned ${user.tag} with reason: ${reason}`, ephemeral: false });
-    }
+
+        const embed = new EmbedBuilder()
+            .setTitle(translator('cmd.warn.title'))
+            .setDescription(translator('cmd.warn.description', { user: user.tag }))
+            .addFields(
+                { name: translator('cmd.warn.reasonField'),   value: reason, inline: true },
+                { name: translator('cmd.warn.durationField'), value: time ?? translator('common.permanent'), inline: true },
+            )
+            .setColor('Yellow');
+
+        await interaction.editReply({ embeds: [embed] });
+    },
 };
-
-async function promptSetup(interaction) {
-    const embed = new EmbedBuilder()
-        .setTitle('Configuração Necessária')
-        .setDescription('O servidor não está configurado. Por favor, execute o comando /setuproles para configurar.')
-        .setColor('Red');
-
-    await interaction.editReply({ embeds: [embed], ephemeral: true });
-}
-
-function hasPermission(staff) {
-    return staff.permissions.has(PermissionsBitField.Flags.KickMembers) || staff.permissions.has(PermissionsBitField.Flags.Administrator);
-}
-
-function calculateWarnEndDate(timeMatch) {
-    if (!timeMatch) return null;
-
-    const warnTime = parseInt(timeMatch[1]);
-    const warnUnit = timeMatch[2];
-    let warnDuration;
-
-    switch (warnUnit) {
-        case 'd':
-            warnDuration = warnTime * 24 * 60 * 60 * 1000;
-            break;
-        case 'h':
-            warnDuration = warnTime * 60 * 60 * 1000;
-            break;
-        case 'm':
-            warnDuration = warnTime * 60 * 1000;
-            break;
-        case 's':
-            warnDuration = warnTime * 1000;
-            break;
-        default:
-            warnDuration = 0;
-    }
-
-    return Date.now() + warnDuration;
-}
-
-async function warnUser(interaction, target, user, reason, warnEndDate, time) {
-    await addWarn(interaction.guild.id, user.id, interaction.user.id, reason, warnEndDate);
-    await interaction.editReply({ content: `Successfully warned ${user.tag} with reason: ${reason} ${time ? `for: ${time}` : 'permanently'}.`, ephemeral: false });
-}
-
-async function sendStaffNotification(interaction, user, reason, time) {
-    const embed = new EmbedBuilder()
-        .setTitle('Warn Applied')
-        .setDescription(`You have successfully warned ${user.tag}.`)
-        .addFields(
-            { name: 'Reason', value: reason, inline: true },
-            { name: 'Duration', value: time ? time : 'Permanent', inline: true }
-        )
-        .setColor('Green');
-
-    await interaction.followUp({ embeds: [embed], ephemeral: true });
-}
-
-async function sendAnnouncement(interaction, user, reason, time, moderationChannelId) {
-    const announcementChannel = interaction.guild.channels.cache.get(moderationChannelId);
-    if (!announcementChannel) return;
-
-    const embed = new EmbedBuilder()
-        .setTitle('User Warned')
-        .setDescription(`${user.tag} has been warned.`)
-        .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-        .addFields(
-            { name: 'Reason', value: reason, inline: true },
-            { name: 'Duration', value: time ? time : 'Permanent', inline: true },
-            { name: 'Warned By', value: interaction.user.tag, inline: true }
-        )
-        .setColor('Yellow');
-
-    await announcementChannel.send({ embeds: [embed] });
-}
-
-function scheduleUnwarn(guild, userId, warnEndDate) {
-    setTimeout(async () => {
-        const updatedGuildData = await getGuildData(guild.id);
-        try {
-            if (updatedGuildData) {
-                await removeWarn(guild.id, userId);
-            }
-        } catch (error) {
-            console.error(error);
-        }
-    }, warnEndDate - Date.now());
-}

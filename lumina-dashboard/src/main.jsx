@@ -2,8 +2,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { UserProvider } from './contexts/UserContext';
+import { LanguageProvider } from './i18n/LanguageContext.jsx';
+import ConsentModal from './components/ConsentModal.jsx';
 import withAuth from './withAuth';
-import ConsentBanner from './components/ConsentBanner';
 import './index.css';
 import RegisterPage from './pages/registerPage/RegisterPage.jsx';
 import LoginPage from './pages/loginPage/LoginPage.jsx';
@@ -32,8 +33,9 @@ export const ServerSettingsWithAuth = withAuth(ServerSettingsPage);
 export function AppRoutes() {
   return (
     <UserProvider>
-      <Router>
-        <Routes>
+      <LanguageProvider>
+        <Router>
+          <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path='/register' element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -62,8 +64,9 @@ export function AppRoutes() {
           <Route path="/404" element={<NotFoundPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
-        <ConsentBanner />
-      </Router>
+        </Router>
+      <ConsentModal />
+      </LanguageProvider>
     </UserProvider>
   );
 }

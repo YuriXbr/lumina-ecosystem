@@ -8,38 +8,43 @@ const {
 } = require('discord.js');
 const axios = require('axios');
 const gems = require('../../assets/rarityGem');
+const i18n = require('../../utils/i18n/index.js');
+const { loc } = require('../../utils/i18n/commandLocales.js');
 
 // ─── Configuração ────────────────────────────────────────────────────────────
 
 const COLLECTOR_TIME_MS = 3 * 60 * 1000; // 3 minutos
 const REQUEST_TIMEOUT_MS = 10_000;
 
+// Metadata traduzida via i18n (os labels/descrições são resolvidos em runtime
+// dentro das funções de build, que recebem o translator `t`).
 const CHEST_INFO = {
     hextechChests: {
         customId: 'openchest_hextech',
-        label: 'Baú Hextech',
+        labelKey: 'cmd.openchest.chestInfo.hextech.label',
+        descKey:  'cmd.openchest.chestInfo.hextech.description',
         emoji: '📦',
-        description: 'Qualquer raridade possível',
+        fieldKey: 'cmd.openchest.hextechField',
     },
     masterWorkChests: {
         customId: 'openchest_masterwork',
-        label: 'Baú do Mestre Artesão',
+        labelKey: 'cmd.openchest.chestInfo.masterwork.label',
+        descKey:  'cmd.openchest.chestInfo.masterwork.description',
         emoji: '🏆',
-        description: 'Garante raridade épica ou superior',
+        fieldKey: 'cmd.openchest.masterworkField',
     },
 };
 
-// Chaves correspondem ao campo `rarity` retornado por /expapi/internal/rollskin
-// (categoria do sorteio: legacy, epic, legendary, ultimate, transcendent, mythic).
-const RARITY_INFO = {
-    legacy:       { label: 'Legado',        color: 0xB45309 },
-    epic:         { label: 'Épica',         color: 0xA855F7 },
-    legendary:    { label: 'Lendária',      color: 0xF97316 },
-    ultimate:     { label: 'Ultimate',      color: 0x06B6D4 },
-    mythic:       { label: 'Mítica',        color: 0xF43F5E },
-    transcendent: { label: 'Transcendente', color: 0xE879F9 },
+// Cores por raridade (não traduzidas — são valores hex)
+const RARITY_COLORS = {
+    legacy:       0xB45309,
+    epic:         0xA855F7,
+    legendary:    0xF97316,
+    ultimate:     0x06B6D4,
+    mythic:       0xF43F5E,
+    transcendent: 0xE879F9,
 };
-const DEFAULT_RARITY_INFO = { label: 'Desconhecida', color: 0x6B7280 };
+const DEFAULT_RARITY_COLOR = 0x6B7280;
 
 const CHEST_THUMBNAIL =
     'https://conteudo.imguol.com.br/c/entretenimento/f7/2022/01/21/cblol-2022-drop-bau-lol-league-of-legends-1642796580165_v2_1x1.png';
@@ -70,46 +75,45 @@ async function rollSkin(userId, chestType) {
 }
 
 /**
- * Traduz erros de axios/API em mensagens compreensíveis para o usuário,
- * em vez de sempre mostrar um genérico "tente novamente mais tarde".
+ * Traduz erros de axios/API em mensagens compreensíveis para o usuário.
  */
-function describeApiError(error, fallback) {
+function describeApiError(error, t, fallback) {
     const status = error?.response?.status;
     const apiMessage = typeof error?.response?.data === 'string'
         ? error.response.data
         : error?.response?.data?.error;
 
     if (status === 400) {
-        return apiMessage || 'Você não possui chaves ou baús suficientes para isso.';
+        return apiMessage || t('common.insufficientResources');
     }
     if (status === 401) {
-        return 'Erro de autenticação interna da API. Avise um administrador.';
+        return t('common.apiAuthError');
     }
     if (error?.code === 'ECONNABORTED') {
-        return 'A API demorou demais para responder. Tente novamente em alguns instantes.';
+        return t('common.apiTimeout');
     }
     return fallback;
 }
 
 // ─── Helpers de UI ───────────────────────────────────────────────────────────
 
-function buildInventoryEmbed(interaction, inventory) {
+function buildInventoryEmbed(interaction, inventory, t) {
     return new EmbedBuilder()
-        .setTitle('🎁 Inventário de Baús')
+        .setTitle(t('cmd.openchest.inventoryTitle'))
         .setColor('Gold')
         .setAuthor({
             name: interaction.user.username,
             iconURL: interaction.user.displayAvatarURL(),
         })
         .addFields(
-            { name: '🔑 Chaves', value: `${inventory.keys}`, inline: true },
-            { name: '📦 Baús Hextech', value: `${inventory.hextechChests}`, inline: true },
-            { name: '🏆 Baús do Mestre Artesão', value: `${inventory.masterWorkChests}`, inline: true },
+            { name: t('cmd.openchest.keysField'),         value: `${inventory.keys}`, inline: true },
+            { name: t('cmd.openchest.hextechField'),      value: `${inventory.hextechChests}`, inline: true },
+            { name: t('cmd.openchest.masterworkField'),   value: `${inventory.masterWorkChests}`, inline: true },
         )
         .setThumbnail(CHEST_THUMBNAIL)
         .setFooter({ text: hasAnyChestToOpen(inventory)
-            ? 'Escolha um baú abaixo para abrir.'
-            : 'Você precisa de chaves e baús para abrir. Use /daily para resgatar sua recompensa diária!' })
+            ? t('cmd.openchest.footerCanOpen')
+            : t('cmd.openchest.footerCannotOpen') })
         .setTimestamp();
 }
 
@@ -121,17 +125,13 @@ function canOpen(inventory, chestType) {
     return inventory.keys > 0 && inventory[chestType] > 0;
 }
 
-/**
- * @param {object} inventory
- * @param {boolean} forceDisabled Desabilita os dois botões independente do inventário (ex: enquanto um roll está em andamento).
- */
-function buildChestButtons(inventory, forceDisabled = false) {
+function buildChestButtons(inventory, t, forceDisabled = false) {
     const row = new ActionRowBuilder();
     for (const [chestType, info] of Object.entries(CHEST_INFO)) {
         row.addComponents(
             new ButtonBuilder()
                 .setCustomId(info.customId)
-                .setLabel(`Abrir ${info.label}`)
+                .setLabel(t(info.labelKey))
                 .setEmoji(info.emoji)
                 .setStyle(ButtonStyle.Primary)
                 .setDisabled(forceDisabled || !canOpen(inventory, chestType)),
@@ -140,39 +140,40 @@ function buildChestButtons(inventory, forceDisabled = false) {
     return row;
 }
 
-function buildResultEmbed(interaction, skin, chestType, inventoryAfter) {
-    const rarity = RARITY_INFO[skin.rarity] || DEFAULT_RARITY_INFO;
+function buildResultEmbed(interaction, skin, chestType, inventoryAfter, t) {
+    const rarityColor = RARITY_COLORS[skin.rarity] || DEFAULT_RARITY_COLOR;
+    const rarityLabel = t(`cmd.openchest.rarity.${skin.rarity}`) || skin.rarity;
     const skinNumber = skin.skinId?.toString().slice(-3).replace(/^0+/, '') || '0';
     const splashUrl = `https://ddragon.leagueoflegends.com/cdn/img/champion/centered/${encodeURIComponent(skin.championId)}_${skinNumber}.jpg`;
 
     return new EmbedBuilder()
-        .setTitle(`${CHEST_INFO[chestType].emoji} Baú aberto!`)
-        .setColor(rarity.color)
+        .setTitle(`${CHEST_INFO[chestType].emoji} ${t('cmd.openchest.resultTitle')}`)
+        .setColor(rarityColor)
         .setAuthor({
             name: interaction.user.username,
             iconURL: interaction.user.displayAvatarURL(),
         })
-        .setDescription(`Você recebeu **${skin.skinName}**!`)
+        .setDescription(`${t('cmd.openchest.resultDesc')} **${skin.skinName}**!`)
         .addFields(
-            { name: 'Campeão', value: skin.championName, inline: true },
-            { name: 'Raridade', value: rarity.label, inline: true },
-            { name: 'Restante', value: `🔑 ${inventoryAfter.keys} · 📦 ${inventoryAfter.hextechChests} · 🏆 ${inventoryAfter.masterWorkChests}`, inline: true },
+            { name: t('cmd.openchest.championField'),  value: skin.championName, inline: true },
+            { name: t('cmd.openchest.rarityField'),    value: rarityLabel, inline: true },
+            { name: t('cmd.openchest.remainingField'), value: `🔑 ${inventoryAfter.keys} · 📦 ${inventoryAfter.hextechChests} · 🏆 ${inventoryAfter.masterWorkChests}`, inline: true },
         )
         .setImage(splashUrl)
         .setThumbnail(gems[skin.rarity] || gems.default || null)
         .setTimestamp();
 }
 
-function buildLoadingEmbed(interaction, chestType) {
+function buildLoadingEmbed(interaction, chestType, t) {
     return new EmbedBuilder()
-        .setTitle(`${CHEST_INFO[chestType].emoji} Abrindo ${CHEST_INFO[chestType].label}...`)
+        .setTitle(`${CHEST_INFO[chestType].emoji} ${t('cmd.openchest.loadingTitle')}`)
         .setColor('Grey')
-        .setDescription('Sorteando sua skin, aguarde um instante.');
+        .setDescription(t('cmd.openchest.loadingDesc'));
 }
 
-function buildErrorEmbed(message) {
+function buildErrorEmbed(message, t) {
     return new EmbedBuilder()
-        .setTitle('❌ Algo deu errado')
+        .setTitle(t('cmd.openchest.somethingWrong'))
         .setColor('Red')
         .setDescription(message);
 }
@@ -184,9 +185,14 @@ module.exports = {
     category: 'chests',
     data: new SlashCommandBuilder()
         .setName('openchest')
-        .setDescription('Abra um baú e tente sua sorte por uma nova skin.'),
+        .setDescription('Open a chest and try your luck for a new skin.')
+        .setDescriptionLocalizations(loc(
+            'Abra um baú e tente sua sorte por uma nova skin.',
+            'Abre un cofre y prueba tu suerte por una nueva skin.'
+        )),
 
-    async execute(interaction) {
+    async execute(interaction, t) {
+        const translator = t || i18n.getTranslator(i18n.resolveFromInteraction(interaction));
         await interaction.deferReply();
 
         let inventory;
@@ -195,18 +201,15 @@ module.exports = {
         } catch (error) {
             console.error('[openchest] Erro ao buscar inventário do usuário:', error);
             return interaction.editReply({
-                embeds: [buildErrorEmbed(describeApiError(error, 'Não foi possível buscar seu inventário. Tente novamente mais tarde.'))],
+                embeds: [buildErrorEmbed(describeApiError(error, translator, translator('cmd.openchest.somethingWrong')), translator)],
             });
         }
 
         const reply = await interaction.editReply({
-            embeds: [buildInventoryEmbed(interaction, inventory)],
-            components: [buildChestButtons(inventory)],
+            embeds: [buildInventoryEmbed(interaction, inventory, translator)],
+            components: [buildChestButtons(inventory, translator)],
         });
 
-        // Coletor preso a esta mensagem específica — evita que cliques em
-        // outro /openchest aberto no mesmo canal (mesmos customId) acabem
-        // sendo capturados pelo coletor errado.
         const collector = reply.createMessageComponentCollector({
             componentType: ComponentType.Button,
             time: COLLECTOR_TIME_MS,
@@ -217,7 +220,7 @@ module.exports = {
         collector.on('collect', async (buttonInteraction) => {
             if (buttonInteraction.user.id !== interaction.user.id) {
                 return buttonInteraction.reply({
-                    content: 'Você não pode interagir com o baú de outra pessoa.',
+                    content: translator('cmd.openchest.notYourChest'),
                     ephemeral: true,
                 });
             }
@@ -228,11 +231,9 @@ module.exports = {
 
             await buttonInteraction.deferUpdate();
 
-            // Trava os dois botões enquanto o roll está em andamento, evitando
-            // cliques duplicados/duas requisições simultâneas pro mesmo usuário.
             await buttonInteraction.editReply({
-                embeds: [buildLoadingEmbed(interaction, chestType)],
-                components: [buildChestButtons(inventory, true)],
+                embeds: [buildLoadingEmbed(interaction, chestType, translator)],
+                components: [buildChestButtons(inventory, translator, true)],
             });
 
             try {
@@ -247,8 +248,8 @@ module.exports = {
                 chestsRemaining = hasAnyChestToOpen(inventory);
 
                 await buttonInteraction.editReply({
-                    embeds: [buildResultEmbed(interaction, skin, chestType, inventory)],
-                    components: [buildChestButtons(inventory)],
+                    embeds: [buildResultEmbed(interaction, skin, chestType, inventory, translator)],
+                    components: [buildChestButtons(inventory, translator)],
                 });
 
                 if (!chestsRemaining) {
@@ -257,8 +258,6 @@ module.exports = {
             } catch (error) {
                 console.error('[openchest] Erro ao abrir o baú:', error);
 
-                // Re-sincroniza com a API em caso de erro, pra não deixar os
-                // botões com um estado que não reflete mais a realidade.
                 try {
                     inventory = await fetchUserInventory(interaction.user.id);
                 } catch {
@@ -266,24 +265,23 @@ module.exports = {
                 }
 
                 await buttonInteraction.editReply({
-                    embeds: [buildErrorEmbed(describeApiError(error, 'Erro ao abrir o baú. Tente novamente mais tarde.'))],
-                    components: [buildChestButtons(inventory)],
+                    embeds: [buildErrorEmbed(describeApiError(error, translator, translator('cmd.openchest.somethingWrong')), translator)],
+                    components: [buildChestButtons(inventory, translator)],
                 });
             }
         });
 
         collector.on('end', async (collected, reason) => {
-            if (reason === 'no_chests_left') return; // já tratado acima
+            if (reason === 'no_chests_left') return;
 
             try {
                 if (collected.size === 0) {
                     await interaction.editReply({
-                        embeds: [buildInventoryEmbed(interaction, inventory).setFooter({ text: 'Tempo esgotado — use /openchest novamente quando quiser.' })],
-                        components: [buildChestButtons(inventory, true)],
+                        embeds: [buildInventoryEmbed(interaction, inventory, translator).setFooter({ text: translator('cmd.openchest.timedOut') })],
+                        components: [buildChestButtons(inventory, translator, true)],
                     });
                 } else {
-                    // Apenas desabilita os botões da última mensagem, mantendo o embed do último resultado.
-                    await interaction.editReply({ components: [buildChestButtons(inventory, true)] });
+                    await interaction.editReply({ components: [buildChestButtons(inventory, translator, true)] });
                 }
             } catch (error) {
                 console.error('[openchest] Erro ao finalizar coletor:', error);

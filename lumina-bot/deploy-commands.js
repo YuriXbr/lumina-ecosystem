@@ -28,7 +28,7 @@ if (!process.env.DISCORD_CLIENT_ID) {
     process.exit(1); // Exit the process if the client ID is not defined
 }
 
-if (!process.env.API_BASE_URL || !process.env.INTERNAL_API_KEY || !process.env.LUMINA_API_kEY) {
+if (!process.env.API_BASE_URL || !process.env.INTERNAL_API_KEY || !process.env.LUMINA_API_KEY) {
     console.error(c.error + " One or more API environment variables are not defined. Please set them up in the .env file.");
     process.exit(1);
 }
@@ -78,13 +78,23 @@ async function deployCommands() {
             const filePath = path.join(commandsPath, file);
             const command = require(filePath);
             if ('data' in command && 'execute' in command) {
+                const cmdJson = command.data.toJSON();
+
+                // Comandos que funcionam em DM (GUILD=0, BOT_DM=1, PRIVATE_CHANNEL=2)
+                const DM_CATEGORIES = ['social', 'chests', 'league'];
+                if (DM_CATEGORIES.includes(command.category)) {
+                    cmdJson.contexts = [0, 1, 2];
+                    cmdJson.integration_types = [0, 1];
+                }
+
                 if (folder === 'admin') {
-                    localCommands.push(command.data.toJSON());
+                    localCommands.push(cmdJson);
                     console.log(c.arrow + c.alerta(`[WARNING] The command ${command.data.name} is admin only.`));
                     console.log(c.arrow + c.verdebold(`[SUCCESS] The command ${command.data.name} was added to the LOCAL commands.`));
                 } else {
-                    globalCommands.push(command.data.toJSON());
-                    console.log(c.arrow + c.verdebold(`[SUCCESS] The command ${command.data.name} was added to the GLOBAL commands.`));
+                    globalCommands.push(cmdJson);
+                    const dmInfo = cmdJson.contexts ? ' [DM+Guild]' : '';
+                    console.log(c.arrow + c.verdebold(`[SUCCESS] The command ${command.data.name} was added to the GLOBAL commands.${dmInfo}`));
                 }
             } else {
                 console.log(c.arrow + c.alerta(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`));
@@ -109,17 +119,30 @@ const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
     try {
         console.log(c.arrow + c.verde('Started refreshing application (/) commands.'));
 
-        if (process.env.ENV != 'production') {
+        if (process.env.NODE_ENV !== 'production') {
+
+            // Em desenvolvimento: registra comandos de DM como GLOBAIS (necessário
+            // para aparecerem em DMs) e o resto como GUILD (propagação instantânea).
+            const dmCommands = globalCommands.filter(c => c.contexts);
+            const nonDmCommands = globalCommands.filter(c => !c.contexts);
+
+            if (dmCommands.length > 0) {
+                await rest.put(
+                    Routes.applicationCommands(process.env.DISCORD_CLIENT_ID),
+                    { body: dmCommands },
+                );
+                console.log(c.arrow + c.verde(`Successfully deployed ${dmCommands.length} GLOBAL (DM) commands.`));
+            }
 
             for (const guildId of deployGuilds) {
                 await rest.put(
                     Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, guildId),
-                    { body: [...localCommands, ...globalCommands] },
+                    { body: [...localCommands, ...nonDmCommands] },
                 );
                 console.log(c.arrow + c.verde(`Successfully reloaded application (/) commands for guild ${guildId}.`));
             }
         } else {
-            // Deploy new global commands without removing existing ones
+            // Produção: todos os comandos como globais
             await rest.put(
                 Routes.applicationCommands(process.env.DISCORD_CLIENT_ID),
                 { body: globalCommands },

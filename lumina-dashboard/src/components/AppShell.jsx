@@ -3,6 +3,7 @@ import {
   Cog6ToothIcon, ShieldCheckIcon, UserIcon, ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import Header from './Header';
+import { useT } from '../i18n/LanguageContext.jsx';
 
 /**
  * AppShell — subheader abaixo do Header principal.
@@ -19,6 +20,7 @@ import Header from './Header';
  *   - /members  → NÃO mostra subheader (MembersAreaPage tem seu próprio layout)
  */
 export default function AppShell({ children, maxWidth = 'max-w-7xl', title, subtitle, backTo, backLabel }) {
+  const t = useT();
   const location = useLocation();
 
   const isAdmin = location.pathname.startsWith('/admin');
@@ -41,7 +43,7 @@ export default function AppShell({ children, maxWidth = 'max-w-7xl', title, subt
                     className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-purple-700"
                   >
                     <ArrowLeftIcon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{backLabel || 'Voltar'}</span>
+                    <span className="hidden sm:inline">{backLabel || t('common.back')}</span>
                   </Link>
                 )}
                 {title && (

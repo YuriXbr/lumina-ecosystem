@@ -84,9 +84,9 @@ async function verifyRequestAuthWithAccountCheck(req) {
     let account = null;
     try {
         account = await DashboardAccountService.getDashboardAccountByEmail(user.email);
-    } catch {
-        // Erro de DB não deve bloquear a requisição — apenas retorna sem account.
-        return { user, account: null, error: null };
+    } catch (dbErr) {
+        // DB error should NOT silently pass — return 503 so the caller can handle it
+        return { user: null, account: null, error: { status: 503, code: 'DB_UNAVAILABLE', message: 'Database temporarily unavailable.' } };
     }
 
     if (!account) {

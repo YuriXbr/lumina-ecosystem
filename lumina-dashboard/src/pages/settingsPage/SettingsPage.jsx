@@ -8,20 +8,22 @@ import {
   TrashIcon, XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useUser } from '../../contexts/UserContext';
+import { useT, useI18n } from '../../i18n/LanguageContext.jsx';
+import { translateApiError } from '../../i18n/apiErrors.js';
 import AppShell from '../../components/AppShell';
 import SetPasswordModal from '../dashboardPage/components/SetPasswordModal';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const TABS = [
-  { id: 'profile',       label: 'Perfil',         icon: UserIcon },
-  { id: 'identity',      label: 'Identidade',     icon: IdentificationIcon },
-  { id: 'notifications', label: 'Notificações',   icon: BellIcon },
-  { id: 'privacy',       label: 'Privacidade',    icon: ShieldCheckIcon },
-  { id: 'regional',      label: 'Regional',       icon: GlobeAltIcon },
-  { id: 'security',      label: 'Segurança',      icon: KeyIcon },
-  { id: 'discord',       label: 'Discord',        icon: LinkIcon },
-  { id: 'danger',        label: 'Conta',          icon: TrashIcon },
+  { id: 'profile',       labelKey: 'settings.tabs.profile',       icon: UserIcon },
+  { id: 'identity',      labelKey: 'settings.tabs.identity',      icon: IdentificationIcon },
+  { id: 'notifications', labelKey: 'settings.tabs.notifications', icon: BellIcon },
+  { id: 'privacy',       labelKey: 'settings.tabs.privacy',       icon: ShieldCheckIcon },
+  { id: 'regional',      labelKey: 'settings.tabs.regional',      icon: GlobeAltIcon },
+  { id: 'security',      labelKey: 'settings.tabs.security',      icon: KeyIcon },
+  { id: 'discord',       labelKey: 'settings.tabs.discord',       icon: LinkIcon },
+  { id: 'danger',        labelKey: 'settings.tabs.account',       icon: TrashIcon },
 ];
 
 function SettingsSkeleton() {
@@ -38,14 +40,11 @@ function SettingsSkeleton() {
 }
 
 export default function SettingsPage() {
+  const t = useT();
+  const { setLocale } = useI18n();
   const { user, refreshUser, loading, error: userError, isAdmin } = useUser();
   const [activeTab, setActiveTab] = useState('profile');
-  const [settings, setSettings] = useState({
-    firstName: '', lastName: '', email: '',
-    emailNotifications: true, discordNotifications: true,
-    botActivityAlerts: false, publicProfile: false,
-    showOnlineStatus: true, language: 'pt-BR', timezone: 'America/Sao_Paulo',
-  });
+  const [settings, setSettings] = useState({});
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null);
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -95,13 +94,47 @@ export default function SettingsPage() {
 
   const handleSettingChange = (key, value) => setSettings(prev => ({ ...prev, [key]: value }));
 
+  // Language change is special: save immediately to API + update UI instantly.
+  // Other settings (name, notifications, etc.) require clicking "Save".
+  const handleLanguageChange = async (newLang) => {
+    handleSettingChange('language', newLang);
+    // Instant preview — UI switches language before the API call completes
+    setLocale(newLang);
+    try {
+      const csrfRes = await fetch(`${API_BASE}expapi/v1/csrf-token`, { credentials: 'include' });
+      const { csrfToken } = await csrfRes.json();
+      const res = await fetch(`${API_BASE}expapi/v1/user/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        credentials: 'include',
+        body: JSON.stringify({ language: newLang }),
+      });
+      if (res.ok) {
+        setSaveMsg({ type: 'success', text: t('common.saveSuccess') });
+        await refreshUser();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setSaveMsg({ type: 'error', text: err?.code ? translateApiError(err, t) : (err?.error || t('common.saveError')) });
+        // Revert locale on failure
+        setLocale(user?.language || 'pt-BR');
+        handleSettingChange('language', user?.language || 'pt-BR');
+      }
+    } catch {
+      setSaveMsg({ type: 'error', text: t('apiError.generic') });
+      setLocale(user?.language || 'pt-BR');
+      handleSettingChange('language', user?.language || 'pt-BR');
+    } finally {
+      setTimeout(() => setSaveMsg(null), 4000);
+    }
+  };
+
   const handleSaveSettings = async () => {
     setSaving(true);
     setSaveMsg(null);
     try {
       const csrfRes = await fetch(`${API_BASE}expapi/v1/csrf-token`, { credentials: 'include' });
       const { csrfToken } = await csrfRes.json();
-      const res = await fetch(`${API_BASE}expapi/v1/user/profile`, {
+      const res = await fetch(`${API_BASE}expapi/v1/user/settings`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -111,14 +144,14 @@ export default function SettingsPage() {
         body: JSON.stringify(settings),
       });
       if (res.ok) {
-        setSaveMsg({ type: 'success', text: 'Configurações salvas com sucesso!' });
+        setSaveMsg({ type: 'success', text: t('common.saveSuccess') });
         await refreshUser();
       } else {
         const err = await res.json().catch(() => ({}));
-        setSaveMsg({ type: 'error', text: err.error || 'Erro ao salvar configurações' });
+        setSaveMsg({ type: 'error', text: err?.code ? translateApiError(err, t) : (err?.error || t('common.saveError')) });
       }
     } catch {
-      setSaveMsg({ type: 'error', text: 'Erro de conexão. Tente novamente.' });
+      setSaveMsg({ type: 'error', text: t('apiError.generic') });
     } finally {
       setSaving(false);
       setTimeout(() => setSaveMsg(null), 4000);
@@ -128,11 +161,11 @@ export default function SettingsPage() {
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setSaveMsg({ type: 'error', text: 'As senhas não coincidem' });
+      setSaveMsg({ type: 'error', text: t('settings.security.passwordsDontMatch') });
       return;
     }
     if (passwordData.newPassword.length < 8) {
-      setSaveMsg({ type: 'error', text: 'A nova senha deve ter pelo menos 8 caracteres' });
+      setSaveMsg({ type: 'error', text: t('settings.security.passwordTooShort') });
       return;
     }
     try {
@@ -151,14 +184,14 @@ export default function SettingsPage() {
         }),
       });
       if (res.ok) {
-        setSaveMsg({ type: 'success', text: 'Senha alterada com sucesso!' });
+        setSaveMsg({ type: 'success', text: t('settings.security.passwordChanged') });
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       } else {
         const err = await res.json().catch(() => ({}));
-        setSaveMsg({ type: 'error', text: err.error || 'Erro ao alterar senha' });
+        setSaveMsg({ type: 'error', text: err.error || t('settings.security.passwordChangeError') });
       }
     } catch {
-      setSaveMsg({ type: 'error', text: 'Erro de conexão' });
+      setSaveMsg({ type: 'error', text: t('common.connectionError') });
     }
   };
 
@@ -196,7 +229,7 @@ export default function SettingsPage() {
       if (identityForm.displayName !== (user.displayName || '')) body.displayName = identityForm.displayName;
 
       if (Object.keys(body).length === 0) {
-        setSaveMsg({ type: 'info', text: 'Nenhuma alteração para salvar.' });
+        setSaveMsg({ type: 'info', text: t('settings.identity.noChanges') });
         return;
       }
 
@@ -211,14 +244,14 @@ export default function SettingsPage() {
       });
 
       if (res.ok) {
-        setSaveMsg({ type: 'success', text: 'Identidade atualizada!' });
+        setSaveMsg({ type: 'success', text: t('settings.identity.identityUpdated') });
         await refreshUser();
       } else {
         const err = await res.json().catch(() => ({}));
         setSaveMsg({ type: 'error', text: err.error || `HTTP ${res.status}` });
       }
     } catch {
-      setSaveMsg({ type: 'error', text: 'Erro de conexão' });
+      setSaveMsg({ type: 'error', text: t('common.connectionError') });
     } finally {
       setSavingIdentity(false);
       setTimeout(() => setSaveMsg(null), 4000);
@@ -236,7 +269,7 @@ export default function SettingsPage() {
   };
 
   const handleUnlinkDiscord = async () => {
-    if (!confirm('Tem certeza que deseja desvincular sua conta Discord?')) return;
+    if (!confirm(t('settings.discord.unlinkConfirm'))) return;
     setDiscordUnlinking(true);
     try {
       const csrfRes = await fetch(`${API_BASE}expapi/v1/csrf-token`, { credentials: 'include' });
@@ -251,13 +284,13 @@ export default function SettingsPage() {
       });
       if (res.ok) {
         await refreshUser();
-        setSaveMsg({ type: 'success', text: 'Discord desvinculado' });
+        setSaveMsg({ type: 'success', text: t('settings.discord.unlinked') });
       } else {
         const err = await res.json().catch(() => ({}));
-        setSaveMsg({ type: 'error', text: err.error || 'Erro ao desvincular Discord' });
+        setSaveMsg({ type: 'error', text: err.error || t('settings.discord.unlinkError') });
       }
     } catch {
-      setSaveMsg({ type: 'error', text: 'Erro de conexão' });
+      setSaveMsg({ type: 'error', text: t('common.connectionError') });
     } finally {
       setDiscordUnlinking(false);
     }
@@ -265,8 +298,8 @@ export default function SettingsPage() {
 
   // ─── Account closure ──────────────────────────────────────────────────────
   const handleRequestClosure = async () => {
-    if (closureConfirmText !== 'EXCLUIR') {
-      setSaveMsg({ type: 'error', text: 'Digite EXCLUIR para confirmar' });
+    if (closureConfirmText !== t('settings.account.deletePlaceholder')) {
+      setSaveMsg({ type: 'error', text: t('settings.account.typeDeleteError') });
       return;
     }
     setClosureLoading(true);
@@ -290,10 +323,10 @@ export default function SettingsPage() {
         await refreshUser();
       } else {
         const err = await res.json().catch(() => ({}));
-        setSaveMsg({ type: 'error', text: err.error || 'Erro ao agendar fechamento' });
+        setSaveMsg({ type: 'error', text: err.error || t('settings.account.scheduleCloseError') });
       }
     } catch {
-      setSaveMsg({ type: 'error', text: 'Erro de conexão' });
+      setSaveMsg({ type: 'error', text: t('common.connectionError') });
     } finally {
       setClosureLoading(false);
     }
@@ -313,14 +346,14 @@ export default function SettingsPage() {
         credentials: 'include',
       });
       if (res.ok) {
-        setSaveMsg({ type: 'success', text: 'Fechamento cancelado. Conta ativa.' });
+        setSaveMsg({ type: 'success', text: t('settings.account.cancelCloseSuccess') });
         await refreshUser();
       } else {
         const err = await res.json().catch(() => ({}));
-        setSaveMsg({ type: 'error', text: err.error || 'Erro ao cancelar' });
+        setSaveMsg({ type: 'error', text: err.error || t('settings.account.cancelCloseError') });
       }
     } catch {
-      setSaveMsg({ type: 'error', text: 'Erro de conexão' });
+      setSaveMsg({ type: 'error', text: t('common.connectionError') });
     } finally {
       setClosureLoading(false);
     }
@@ -342,14 +375,14 @@ export default function SettingsPage() {
           <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
             <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
           </div>
-          <h3 className="text-base font-semibold text-gray-900">Erro ao carregar configurações</h3>
-          <p className="text-sm text-gray-600 mt-1">{userError || 'Não foi possível carregar os dados.'}</p>
+          <h3 className="text-base font-semibold text-gray-900">{t("common.loadingError")}</h3>
+          <p className="text-sm text-gray-600 mt-1">{userError || t('common.loadingError')}</p>
           <button
             onClick={() => refreshUser()}
             className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700"
           >
             <ArrowPathIcon className="h-4 w-4" />
-            Tentar novamente
+            {t('common.tryAgain')}
           </button>
         </div>
       </AppShell>
@@ -368,7 +401,7 @@ export default function SettingsPage() {
   const displayNameOnCooldown = displayNameCooldown && new Date() < displayNameCooldown;
 
   return (
-    <AppShell maxWidth="max-w-5xl" title="Configurações" subtitle="Gerencie sua conta e preferências">
+    <AppShell maxWidth="max-w-5xl" title={t("settings.title")} subtitle={t("settings.subtitle")}>
       <div className="space-y-6">
         {/* Mensagem de save */}
         {saveMsg && (
@@ -386,16 +419,16 @@ export default function SettingsPage() {
         {user.deletionScheduledFor && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start justify-between gap-3">
             <div className="text-sm text-red-800">
-              <strong>Conta agendada para exclusão.</strong> Exclusão permanente em{' '}
-              <strong>{new Date(user.deletionScheduledFor).toLocaleDateString('pt-BR')}</strong>.
-              Faça login regularmente para cancelar automaticamente.
+              <strong>{t('settings.account.scheduledDeletion')}.</strong> {t('settings.account.permanentDeletion')}{' '}
+              <strong>{new Date(user.deletionScheduledFor).toLocaleDateString(undefined)}</strong>.
+              {t('settings.account.cancelByLogin')}
             </div>
             <button
               onClick={handleCancelClosure}
               disabled={closureLoading}
               className="flex-shrink-0 px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
             >
-              Cancelar exclusão
+              {t('settings.account.cancelDeletion')}
             </button>
           </div>
         )}
@@ -407,7 +440,7 @@ export default function SettingsPage() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-100 rounded-md hover:bg-purple-200 transition-colors"
           >
             <ShieldIcon className="h-4 w-4" />
-            Painel Admin
+            {t('settings.account.adminPanel')}
           </Link>
         )}
 
@@ -425,7 +458,7 @@ export default function SettingsPage() {
                 }`}
               >
                 <Icon className="h-4 w-4" />
-                {tab.label}
+                {t(tab.labelKey)}
               </button>
             );
           })}
@@ -435,12 +468,12 @@ export default function SettingsPage() {
         {activeTab === 'profile' && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
             <div>
-              <h3 className="text-base font-semibold text-gray-900">Informações pessoais</h3>
-              <p className="text-sm text-gray-500 mt-0.5">Seu nome e email de cadastro</p>
+              <h3 className="text-base font-semibold text-gray-900">{t("settings.profile.title")}</h3>
+              <p className="text-sm text-gray-500 mt-0.5">{t("settings.account.nameEmail")}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Nome</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t("auth.register.firstName")}</label>
                 <input
                   type="text"
                   value={settings.firstName}
@@ -449,7 +482,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Sobrenome</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t("auth.register.firstName")}</label>
                 <input
                   type="text"
                   value={settings.lastName}
@@ -458,19 +491,19 @@ export default function SettingsPage() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t("auth.register.email")}</label>
                 <input
                   type="email"
                   value={settings.email}
                   disabled
                   className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-50 text-gray-500"
                 />
-                <p className="text-[10px] text-gray-400 mt-1">O email não pode ser alterado.</p>
+                <p className="text-[10px] text-gray-400 mt-1">{t("settings.account.emailCannotChange")}</p>
               </div>
             </div>
 
             <div className="pt-4 border-t border-gray-100">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">ID da conta</h4>
+              <h4 className="text-sm font-medium text-gray-900 mb-2">{t("settings.account.accountId")}</h4>
               <div className="flex items-center gap-2">
                 <code className="flex-1 text-xs font-mono text-gray-600 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
                   {showAccountId ? user.accountId : '••••••••-••••-••••-••••-••••••••••••'}
@@ -478,15 +511,15 @@ export default function SettingsPage() {
                 <button
                   onClick={() => setShowAccountId(!showAccountId)}
                   className="p-2 text-gray-500 hover:text-gray-700"
-                  title={showAccountId ? 'Ocultar' : 'Mostrar'}
+                  title={showAccountId ? t('common.hide') : t('common.show')}
                 >
                   {showAccountId ? <EyeSlashIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
                 </button>
-                <button onClick={copyAccountId} className="p-2 text-gray-500 hover:text-gray-700" title="Copiar">
+                <button onClick={copyAccountId} className="p-2 text-gray-500 hover:text-gray-700" title={t("common.copy")}>
                   {copiedAccountId ? <CheckIcon className="h-4 w-4 text-green-600" /> : <ClipboardDocumentIcon className="h-4 w-4" />}
                 </button>
               </div>
-              <p className="text-[10px] text-gray-400 mt-1">Use este ID em solicitações de suporte.</p>
+              <p className="text-[10px] text-gray-400 mt-1">{t("settings.account.accountIdHint")}</p>
             </div>
 
             <button
@@ -495,7 +528,7 @@ export default function SettingsPage() {
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
             >
               {saving ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
-              Salvar alterações
+              {t("settings.account.saveChanges")}
             </button>
           </div>
         )}
@@ -504,19 +537,19 @@ export default function SettingsPage() {
         {activeTab === 'identity' && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
             <div>
-              <h3 className="text-base font-semibold text-gray-900">Identidade pública</h3>
-              <p className="text-sm text-gray-500 mt-0.5">Username único e nome de exibição para seu perfil público</p>
+              <h3 className="text-base font-semibold text-gray-900">{t("settings.tabs.identity")}</h3>
+              <p className="text-sm text-gray-500 mt-0.5">{t("settings.account.usernameDesc")}</p>
             </div>
 
             {/* Preview do perfil público */}
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 flex items-center gap-2 text-xs text-purple-800">
-              <span>Seu perfil público:</span>
+              <span>{t("settings.account.yourPublicProfile")}</span>
               <code className="bg-purple-100 px-2 py-0.5 rounded font-mono">
-                /u/{identityForm.username || 'seu_username'}
+                /u/{identityForm.username || t('settings.account.usernamePlaceholder')}
               </code>
               {identityForm.username && (
                 <Link to={`/u/${identityForm.username}`} className="ml-auto text-purple-600 hover:text-purple-700 underline">
-                  Ver perfil
+                  {t("common.viewProfile")}
                 </Link>
               )}
             </div>
@@ -524,10 +557,10 @@ export default function SettingsPage() {
             {/* Username */}
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Username
+                {t('common.username')}
                 {usernameOnCooldown && (
                   <span className="ml-2 text-[10px] text-yellow-700 bg-yellow-100 px-1.5 py-0.5 rounded">
-                    Bloqueado até {usernameCooldown.toLocaleDateString('pt-BR')}
+                    {t('settings.account.usernameBlocked', { date: usernameCooldown.toLocaleDateString(undefined) })}
                   </span>
                 )}
               </label>
@@ -546,7 +579,7 @@ export default function SettingsPage() {
                     usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'border-red-400 focus:ring-red-500' :
                     'border-gray-300 focus:ring-purple-500'
                   }`}
-                  placeholder="seu_username"
+                  placeholder={t("settings.account.usernamePlaceholder")}
                   minLength={4}
                   maxLength={16}
                 />
@@ -554,17 +587,17 @@ export default function SettingsPage() {
                 {usernameStatus === 'checking' && <div className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />}
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                4-16 caracteres. Letras, números e _. Alterável a cada 30 dias.
+                {t("settings.account.usernameHint")}
               </p>
             </div>
 
             {/* DisplayName */}
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Nome de exibição
+                {t('settings.identity.displayName')}
                 {displayNameOnCooldown && (
                   <span className="ml-2 text-[10px] text-yellow-700 bg-yellow-100 px-1.5 py-0.5 rounded">
-                    Bloqueado até {displayNameCooldown.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    {t('settings.identity.blockedUntil', { date: displayNameCooldown.toLocaleString(undefined, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) })}
                   </span>
                 )}
               </label>
@@ -574,10 +607,10 @@ export default function SettingsPage() {
                 onChange={(e) => setIdentityForm(prev => ({ ...prev, displayName: e.target.value.slice(0, 32) }))}
                 disabled={displayNameOnCooldown}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
-                placeholder="Como você quer ser chamado"
+                placeholder={t("settings.account.displayNamePlaceholder")}
                 maxLength={32}
               />
-              <p className="text-xs text-gray-500 mt-1">1-32 caracteres. Pode conter espaços e acentos. Alterável a cada 24h.</p>
+              <p className="text-xs text-gray-500 mt-1">{t("settings.account.displayNameHint")}</p>
             </div>
 
             <button
@@ -586,7 +619,7 @@ export default function SettingsPage() {
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
             >
               {savingIdentity ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
-              Salvar identidade
+              {t('settings.identity.saveIdentity')}
             </button>
           </div>
         )}
@@ -595,15 +628,15 @@ export default function SettingsPage() {
         {activeTab === 'notifications' && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-900">Notificações</h3>
-              <p className="text-sm text-gray-500 mt-0.5">Escolha como deseja ser avisado</p>
+              <h3 className="text-base font-semibold text-gray-900">{t("settings.tabs.notifications")}</h3>
+              <p className="text-sm text-gray-500 mt-0.5">{t("settings.account.notificationsDesc")}</p>
             </div>
-            <ToggleRow label="Notificações por email" desc="Receber novidades e alertas por email" checked={settings.emailNotifications} onChange={(v) => handleSettingChange('emailNotifications', v)} />
-            <ToggleRow label="Notificações do Discord" desc="Receber DMs do bot para alertas importantes" checked={settings.discordNotifications} onChange={(v) => handleSettingChange('discordNotifications', v)} />
-            <ToggleRow label="Alertas de atividade do bot" desc="Ser avisado quando o bot ficar offline/online" checked={settings.botActivityAlerts} onChange={(v) => handleSettingChange('botActivityAlerts', v)} />
+            <ToggleRow label={t('settings.account.emailNotif')} desc={t('settings.account.emailNotifDesc')} checked={settings.emailNotifications} onChange={(v) => handleSettingChange('emailNotifications', v)} />
+            <ToggleRow label={t('settings.account.discordNotif')} desc={t('settings.account.discordNotifDesc')} checked={settings.discordNotifications} onChange={(v) => handleSettingChange('discordNotifications', v)} />
+            <ToggleRow label={t('settings.account.botActivity')} desc={t('settings.account.botActivityDesc')} checked={settings.botActivityAlerts} onChange={(v) => handleSettingChange('botActivityAlerts', v)} />
             <button onClick={handleSaveSettings} disabled={saving} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50">
               {saving ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
-              Salvar
+              {t('common.save')}
             </button>
           </div>
         )}
@@ -612,14 +645,14 @@ export default function SettingsPage() {
         {activeTab === 'privacy' && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-900">Privacidade</h3>
-              <p className="text-sm text-gray-500 mt-0.5">Controle sua visibilidade</p>
+              <h3 className="text-base font-semibold text-gray-900">{t("settings.tabs.privacy")}</h3>
+              <p className="text-sm text-gray-500 mt-0.5">{t("settings.account.privacyDesc")}</p>
             </div>
-            <ToggleRow label="Perfil público" desc="Permitir que outros usuários vejam seu perfil em /u/:username" checked={settings.publicProfile} onChange={(v) => handleSettingChange('publicProfile', v)} />
-            <ToggleRow label="Mostrar status online" desc="Exibir quando você está online no dashboard" checked={settings.showOnlineStatus} onChange={(v) => handleSettingChange('showOnlineStatus', v)} />
+            <ToggleRow label={t('settings.account.publicProfile')} desc={t('settings.account.publicProfileDesc')} checked={settings.publicProfile} onChange={(v) => handleSettingChange('publicProfile', v)} />
+            <ToggleRow label={t('settings.account.showOnline')} desc={t('settings.account.showOnlineDesc')} checked={settings.showOnlineStatus} onChange={(v) => handleSettingChange('showOnlineStatus', v)} />
             <button onClick={handleSaveSettings} disabled={saving} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50">
               {saving ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
-              Salvar
+              {t('common.save')}
             </button>
           </div>
         )}
@@ -628,15 +661,15 @@ export default function SettingsPage() {
         {activeTab === 'regional' && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-900">Regional</h3>
-              <p className="text-sm text-gray-500 mt-0.5">Idioma e fuso horário</p>
+              <h3 className="text-base font-semibold text-gray-900">{t("settings.regional.title")}</h3>
+              <p className="text-sm text-gray-500 mt-0.5">{t("settings.account.regionalDesc")}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Idioma</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t("settings.regional.language")}</label>
                 <select
                   value={settings.language}
-                  onChange={(e) => handleSettingChange('language', e.target.value)}
+                  onChange={(e) => handleLanguageChange(e.target.value)}
                   className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 >
                   <option value="pt-BR">Português (Brasil)</option>
@@ -645,7 +678,7 @@ export default function SettingsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Fuso horário</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t("settings.regional.timezone")}</label>
                 <select
                   value={settings.timezone}
                   onChange={(e) => handleSettingChange('timezone', e.target.value)}
@@ -660,7 +693,7 @@ export default function SettingsPage() {
             </div>
             <button onClick={handleSaveSettings} disabled={saving} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50">
               {saving ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
-              Salvar
+              {t('common.save')}
             </button>
           </div>
         )}
@@ -669,22 +702,22 @@ export default function SettingsPage() {
         {activeTab === 'security' && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-900">Alterar senha</h3>
-              <p className="text-sm text-gray-500 mt-0.5">Mantenha sua conta segura</p>
+              <h3 className="text-base font-semibold text-gray-900">{t("settings.security.password")}</h3>
+              <p className="text-sm text-gray-500 mt-0.5">{t("settings.account.securityDesc")}</p>
             </div>
             {showSetPassword && (
               <SetPasswordModal onSuccess={() => setShowSetPassword(false)} onSkip={() => setShowSetPassword(false)} />
             )}
             <form onSubmit={handlePasswordChange} className="space-y-4">
-              <PasswordInput label="Senha atual" value={passwordData.currentPassword} onChange={(v) => setPasswordData(p => ({ ...p, currentPassword: v }))} show={showPasswords.current} onToggle={() => setShowPasswords(s => ({ ...s, current: !s.current }))} placeholder="Sua senha atual" required />
-              <PasswordInput label="Nova senha" value={passwordData.newPassword} onChange={(v) => setPasswordData(p => ({ ...p, newPassword: v }))} show={showPasswords.new} onToggle={() => setShowPasswords(s => ({ ...s, new: !s.new }))} placeholder="Mínimo 8 caracteres, maiúscula, minúscula e número" required minLength={8} />
-              <PasswordInput label="Confirmar nova senha" value={passwordData.confirmPassword} onChange={(v) => setPasswordData(p => ({ ...p, confirmPassword: v }))} show={showPasswords.confirm} onToggle={() => setShowPasswords(s => ({ ...s, confirm: !s.confirm }))} placeholder="Repita a nova senha" required />
+              <PasswordInput label={t('settings.security.currentPassword')} value={passwordData.currentPassword} onChange={(v) => setPasswordData(p => ({ ...p, currentPassword: v }))} show={showPasswords.current} onToggle={() => setShowPasswords(s => ({ ...s, current: !s.current }))} placeholder={t('settings.security.currentPasswordPlaceholder')} required />
+              <PasswordInput label={t('settings.security.newPassword')} value={passwordData.newPassword} onChange={(v) => setPasswordData(p => ({ ...p, newPassword: v }))} show={showPasswords.new} onToggle={() => setShowPasswords(s => ({ ...s, new: !s.new }))} placeholder={t('settings.security.newPasswordPlaceholder')} required minLength={8} />
+              <PasswordInput label={t('settings.security.confirmPassword')} value={passwordData.confirmPassword} onChange={(v) => setPasswordData(p => ({ ...p, confirmPassword: v }))} show={showPasswords.confirm} onToggle={() => setShowPasswords(s => ({ ...s, confirm: !s.confirm }))} placeholder={t('settings.security.confirmPasswordPlaceholder')} required />
               {passwordData.newPassword && passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword && (
-                <p className="text-xs text-red-600">⚠ As senhas não coincidem</p>
+                <p className="text-xs text-red-600">⚠ {t('settings.security.passwordsDontMatch')}</p>
               )}
               <button type="submit" disabled={passwordData.newPassword !== passwordData.confirmPassword || !passwordData.currentPassword || !passwordData.newPassword} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50">
                 <KeyIcon className="h-4 w-4" />
-                Alterar senha
+                {t('settings.security.changePassword')}
               </button>
             </form>
           </div>
@@ -694,34 +727,34 @@ export default function SettingsPage() {
         {activeTab === 'discord' && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-900">Integração com Discord</h3>
-              <p className="text-sm text-gray-500 mt-0.5">Vincule sua conta para ver seus servidores</p>
+              <h3 className="text-base font-semibold text-gray-900">{t("settings.discord.title")}</h3>
+              <p className="text-sm text-gray-500 mt-0.5">{t("settings.account.discordConnectDesc")}</p>
             </div>
             {user.discordOauth2Id ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-green-700">
                   <CheckIcon className="h-5 w-5" />
-                  <span className="text-sm font-medium">Discord conectado</span>
+                  <span className="text-sm font-medium">{t("settings.account.discordConnected")}</span>
                 </div>
                 <div className="bg-gray-50 rounded-md p-3 border border-gray-200">
-                  <p className="text-xs text-gray-600">Discord ID</p>
+                  <p className="text-xs text-gray-600">{t("settings.account.discordId")}</p>
                   <code className="text-sm font-mono text-gray-900">{user.discordOauth2Id}</code>
                 </div>
                 <button onClick={handleUnlinkDiscord} disabled={discordUnlinking} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50">
                   <NoSymbolIcon className="h-4 w-4" />
-                  {discordUnlinking ? 'Desvinculando...' : 'Desvincular Discord'}
+                  {discordUnlinking ? t('settings.discord.unlinking') : t('settings.discord.unlink')}
                 </button>
               </div>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-yellow-700">
                   <ExclamationTriangleIcon className="h-5 w-5" />
-                  <span className="text-sm font-medium">Discord não conectado</span>
+                  <span className="text-sm font-medium">{t("settings.account.discordNotConnected")}</span>
                 </div>
-                <p className="text-sm text-gray-600">Conecte sua conta Discord para ver seus servidores na Área de Membros e gerenciar as configurações do bot em cada um deles.</p>
+                <p className="text-sm text-gray-600">{t('settings.account.discordConnectCta')}</p>
                 <button onClick={handleLinkDiscord} disabled={discordLinking} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50">
                   <LinkIcon className="h-4 w-4" />
-                  {discordLinking ? 'Conectando...' : 'Conectar Discord'}
+                  {discordLinking ? t('settings.discord.connecting') : t('settings.discord.connect')}
                 </button>
               </div>
             )}
@@ -733,14 +766,14 @@ export default function SettingsPage() {
           <div className="space-y-4">
             {user.deletionScheduledFor ? (
               <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-                <h3 className="text-base font-semibold text-red-900">Exclusão agendada</h3>
+                <h3 className="text-base font-semibold text-red-900">{t("settings.account.scheduledDeletionBadge")}</h3>
                 <p className="text-sm text-red-700 mt-1">
-                  Sua conta será permanentemente excluída em{' '}
-                  <strong>{new Date(user.deletionScheduledFor).toLocaleDateString('pt-BR')}</strong>.
-                  Todos os dados serão removidos após esse período.
+                  {t('settings.account.deletionScheduledIn')}{' '}
+                  <strong>{new Date(user.deletionScheduledFor).toLocaleDateString(undefined)}</strong>.
+                  {t('settings.account.dataRemovedAfterPeriod')}
                 </p>
                 <p className="text-xs text-red-600 mt-2">
-                  Para cancelar, basta fazer login regularmente ou clicar no botão abaixo.
+                  {t('settings.account.cancelByLoginOrButton')}
                 </p>
                 <button
                   onClick={handleCancelClosure}
@@ -748,21 +781,20 @@ export default function SettingsPage() {
                   className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
                 >
                   {closureLoading ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
-                  Cancelar exclusão
+                  {t('settings.account.cancelClose')}
                 </button>
               </div>
             ) : (
               <div className="bg-white border border-red-200 rounded-xl p-6">
-                <h3 className="text-base font-semibold text-red-900">Fechar conta</h3>
+                <h3 className="text-base font-semibold text-red-900">{t("settings.account.closeAccountButton")}</h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  Agende a exclusão da sua conta. A exclusão ocorrerá após 30 dias.
-                  Se você fizer login novamente antes desse período, a exclusão será cancelada automaticamente.
+                  {t('settings.account.scheduleCloseDesc')}
                 </p>
                 <ul className="text-xs text-gray-500 mt-3 space-y-1 list-disc pl-5">
-                  <li>Seus dados serão permanentemente removidos após 30 dias</li>
-                  <li>Seu username ficará reservado por 30 dias antes de ser liberado</li>
-                  <li>Itens do inventário e progresso serão perdidos</li>
-                  <li>Login a qualquer momento cancela a exclusão</li>
+                  <li>{t('settings.account.deletionWarning1')}</li>
+                  <li>{t('settings.account.deletionWarning2')}</li>
+                  <li>{t('settings.account.deletionWarning3')}</li>
+                  <li>{t('settings.account.deletionWarning4')}</li>
                 </ul>
 
                 {!closureConfirmOpen ? (
@@ -771,17 +803,17 @@ export default function SettingsPage() {
                     className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-md hover:bg-red-100"
                   >
                     <TrashIcon className="h-4 w-4" />
-                    Agendar fechamento
+                    {t('settings.account.scheduleClose')}
                   </button>
                 ) : (
                   <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md space-y-3">
-                    <p className="text-sm font-medium text-red-900">Confirmação final</p>
-                    <p className="text-xs text-red-700">Digite <strong>EXCLUIR</strong> para confirmar o agendamento:</p>
+                    <p className="text-sm font-medium text-red-900">{t("settings.account.finalConfirmation")}</p>
+                    <p className="text-xs text-red-700" dangerouslySetInnerHTML={{ __html: t('settings.account.typeDelete') }} />
                     <input
                       type="text"
                       value={closureConfirmText}
                       onChange={(e) => setClosureConfirmText(e.target.value)}
-                      placeholder="EXCLUIR"
+                      placeholder={t('settings.account.deletePlaceholder')}
                       className="w-full px-3 py-2 text-sm border border-red-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 uppercase tracking-wider"
                     />
                     <div className="flex gap-2">
@@ -790,15 +822,15 @@ export default function SettingsPage() {
                         disabled={closureLoading}
                         className="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
                       >
-                        Cancelar
+                        {t('common.cancel')}
                       </button>
                       <button
                         onClick={handleRequestClosure}
-                        disabled={closureLoading || closureConfirmText !== 'EXCLUIR'}
+                        disabled={closureLoading || closureConfirmText !== t('settings.account.deletePlaceholder')}
                         className="inline-flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
                       >
                         {closureLoading ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <TrashIcon className="h-4 w-4" />}
-                        Confirmar fechamento
+                        {t('settings.account.confirmClose')}
                       </button>
                     </div>
                   </div>

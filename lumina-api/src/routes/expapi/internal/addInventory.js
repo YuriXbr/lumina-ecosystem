@@ -17,7 +17,15 @@ module.exports = {
 
     async execute(req, res) {
         const { userId, item, amount } = req.body;
-        if (!userId || !item || !amount)
+        const ALLOWED_ITEMS = ['hextechChests', 'masterWorkChests', 'keys'];
+    if (!userId || !item || !amount)
+        return res.status(400).json({ error: 'Parâmetros userId, item e amount são obrigatórios.', code: 'MISSING_PARAMS' });
+    if (!ALLOWED_ITEMS.includes(item))
+        return res.status(400).json({ error: `Item inválido. Permitidos: ${ALLOWED_ITEMS.join(', ')}`, code: 'INVALID_ITEM' });
+    const qty = Number(amount);
+    if (!Number.isFinite(qty) || qty <= 0 || qty > 10000)
+        return res.status(400).json({ error: 'Quantidade deve ser um número entre 1 e 10000.', code: 'INVALID_AMOUNT' });
+    if (false)
             return res.status(400).json({ error: 'Parámetros userId, item e amount são obrigatórios.', code: 'MISSING_PARAMS' });
 
         try {

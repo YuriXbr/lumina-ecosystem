@@ -113,8 +113,14 @@ async function generateTeamComparisonChart(playerParticipant, allParticipants, s
     const label = statLabel || statKey;
 
     const playerTeamId = playerParticipant.teamId;
+    const playerPuuid = playerParticipant.puuid;
 
-    // Separa aliados e inimigos
+    // Separa aliados e inimigos.
+    // FIX: Em modos como Arena, o teamId pode ser 0/1 em vez de 100/200,
+    // e participantes podem não ter teamPosition. A comparação por teamId
+    // ainda funciona (aliados = mesmo teamId), mas para Arena onde
+    // teamId pode ser undefined para todos, usamos o puuid do jogador
+    // como fallback: aliado = mesmo teamId OU o próprio jogador.
     const allies = [];
     const enemies = [];
 
@@ -125,10 +131,17 @@ async function generateTeamComparisonChart(playerParticipant, allParticipants, s
             value: extractStatValue(p, statKey),
             teamId: p.teamId,
             teamPosition: p.teamPosition || '',
-            isPlayer: p.puuid === playerParticipant.puuid,
+            isPlayer: p.puuid === playerPuuid,
         };
-        if (p.teamId === playerTeamId) allies.push(entry);
-        else enemies.push(entry);
+        // Se o teamId do jogador é válido (não undefined), usa ele.
+        // Senão, só o próprio jogador é "aliado".
+        if (playerTeamId !== undefined && playerTeamId !== null) {
+            if (p.teamId === playerTeamId) allies.push(entry);
+            else enemies.push(entry);
+        } else {
+            if (p.puuid === playerPuuid) allies.push(entry);
+            else enemies.push(entry);
+        }
     });
 
     // Ordena cada grupo por lane (TOP→JUNGLE→MIDDLE→BOTTOM→UTILITY)
@@ -219,4 +232,172 @@ async function generateTeamComparisonChart(playerParticipant, allParticipants, s
     }
 }
 
-module.exports = { generateMatchChart, generateTeamComparisonChart };
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-view individual chart
+// Generates a chart focused on the stats of a specific view (damage_dealt,
+// damage_taken, heal, farm, objectives, wards, kda). For 'overview', falls
+// back to the existing generateMatchChart() which shows all 9 stats.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const VIEW_STAT_CONFIG = {
+    overview: null, // Uses generateMatchChart()
+    damage_dealt: {
+        stats: [
+            { key: 'totalDamageDealtToChampions', label: 'Dmg Champs' },
+            { key: 'physicalDamageDealtToChampions', label: 'Phys Dmg' },
+            { key: 'magicDamageDealtToChampions', label: 'Magic Dmg' },
+            { key: 'trueDamageDealtToChampions', label: 'True Dmg' },
+            { key: 'damageDealtToObjectives', label: 'Obj Dmg' },
+            { key: 'damageDealtToTurrets', label: 'Turret Dmg' },
+            { key: 'totalDamageDealt', label: 'Total Dmg' },
+        ],
+    },
+    damage_taken: {
+        stats: [
+            { key: 'totalDamageTaken', label: 'Total Taken' },
+            { key: 'physicalDamageTaken', label: 'Phys Taken' },
+            { key: 'magicDamageTaken', label: 'Magic Taken' },
+            { key: 'trueDamageTaken', label: 'True Taken' },
+            { key: 'damageSelfMitigated', label: 'Mitigated' },
+            { key: 'totalHeal', label: 'Heal' },
+        ],
+    },
+    heal: {
+        stats: [
+            { key: 'totalHeal', label: 'Total Heal' },
+            { key: 'totalHealsOnTeammates', label: 'Ally Heal' },
+            { key: 'totalDamageShieldedOnTeammates', label: 'Ally Shield' },
+        ],
+    },
+    farm: {
+        stats: [
+            { key: 'totalMinionsKilled', label: 'CS Total' },
+            { key: 'neutralMinionsKilled', label: 'Neutral' },
+            { key: 'goldEarned', label: 'Gold' },
+            { key: 'goldSpent', label: 'Gold Spent' },
+        ],
+    },
+    objectives: {
+        stats: [
+            { key: 'turretKills', label: 'Turrets' },
+            { key: 'inhibitorKills', label: 'Inhibs' },
+            { key: 'baronKills', label: 'Barons', nested: true },
+            { key: 'dragonKills', label: 'Dragons', nested: true },
+            { key: 'riftHeraldKills', label: 'Heralds', nested: true },
+            { key: 'objectivesStolen', label: 'Stolen', nested: true },
+        ],
+    },
+    wards: {
+        stats: [
+            { key: 'wardsPlaced', label: 'Wards' },
+            { key: 'wardsKilled', label: 'Destroyed' },
+            { key: 'visionScore', label: 'Vision' },
+            { key: 'detectorWardsPlaced', label: 'Control' },
+        ],
+    },
+    kda: {
+        stats: [
+            { key: 'kills', label: 'Kills' },
+            { key: 'deaths', label: 'Deaths' },
+            { key: 'assists', label: 'Assists' },
+            { key: 'doubleKills', label: 'Double' },
+            { key: 'tripleKills', label: 'Triple' },
+            { key: 'quadraKills', label: 'Quadra' },
+            { key: 'pentaKills', label: 'Penta' },
+        ],
+    },
+};
+
+/**
+ * Gera um gráfico individual para uma view específica.
+ * Para 'overview', delega para generateMatchChart().
+ * Para outras views, gera um gráfico com apenas os stats daquela view.
+ *
+ * Usa normalização DINÂMICA: o valor máximo da barra é o maior valor
+ * entre os stats da view (não um máximo fixo). Isso garante que todas
+ * as barras sejam visíveis e proporcionais.
+ *
+ * @param {object} participant - Dados do participante da partida
+ * @param {string} viewId - ID da view (overview, damage_dealt, etc.)
+ * @returns {Promise<Buffer>} Buffer PNG do gráfico
+ */
+async function generateViewChart(participant, viewId) {
+    if (!viewId || viewId === 'overview') {
+        return generateMatchChart(participant);
+    }
+
+    const config = VIEW_STAT_CONFIG[viewId];
+    if (!config) {
+        return generateMatchChart(participant);
+    }
+
+    // Extrai valores reais do participante (suporta campos aninhados em objectives)
+    const rawValues = config.stats.map(s => {
+        let val = participant[s.key];
+        if (val === undefined && s.nested && participant.objectives) {
+            val = participant.objectives[s.key];
+        }
+        return typeof val === 'number' ? val : 0;
+    });
+
+    // Normalização dinâmica: o maior valor vira 1.0
+    const maxVal = Math.max(...rawValues, 1);
+    const dataValues = rawValues.map(v => v / maxVal);
+
+    // Labels com valor formatado
+    const formattedLabels = config.stats.map((s, i) => {
+        const val = rawValues[i];
+        if (val >= 1000000) return `${s.label}: ${(val / 1000000).toFixed(2)}M`;
+        if (val >= 1000) return `${s.label}: ${(val / 1000).toFixed(1)}k`;
+        return `${s.label}: ${val}`;
+    });
+
+    const colors = [
+        'rgba(0,255,0,0.7)', 'rgba(255,50,50,0.7)', 'rgba(255,255,0,0.7)',
+        'rgba(54,162,235,0.7)', 'rgba(75,192,192,0.7)', 'rgba(255,159,64,0.7)',
+        'rgba(153,102,255,0.7)',
+    ];
+    const borderColors = [
+        'rgba(0,255,0,1)', 'rgba(255,50,50,1)', 'rgba(255,255,0,1)',
+        'rgba(54,162,235,1)', 'rgba(75,192,192,1)', 'rgba(255,159,64,1)',
+        'rgba(153,102,255,1)',
+    ];
+
+    const chartConfig = {
+        type: 'bar',
+        data: {
+            labels: formattedLabels,
+            datasets: [{
+                data: dataValues,
+                backgroundColor: colors.slice(0, config.stats.length),
+                borderColor: borderColors.slice(0, config.stats.length),
+                borderWidth: 1,
+            }],
+        },
+        options: {
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false },
+            },
+            scales: {
+                x: { display: false, max: 1.1 },
+                y: { ticks: { color: '#dcddde', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            },
+        },
+    };
+
+    try {
+        const configStr = JSON.stringify(chartConfig);
+        const response = await axios.get('https://quickchart.io/chart', {
+            params: { c: configStr, w: 500, h: 300, bkg: '#2f3136', f: 'png' },
+            responseType: 'arraybuffer',
+            timeout: 15000,
+        });
+        return Buffer.from(response.data);
+    } catch (err) {
+        console.error(`[chartGenerator] View chart (${viewId}) erro:`, err.message);
+        return generateMatchChart(participant);
+    }
+}
+
+module.exports = { generateMatchChart, generateTeamComparisonChart, generateViewChart };

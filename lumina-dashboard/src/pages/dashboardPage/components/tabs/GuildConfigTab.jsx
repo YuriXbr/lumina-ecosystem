@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser } from '../../../../contexts/UserContext';
 import {
   ServerIcon,
@@ -7,16 +7,19 @@ import {
   XMarkIcon,
   CheckIcon,
   XMarkIcon as XIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  ExclamationTriangleIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 import ErrorState from '../../../../components/ui/ErrorState';
-import ErrorBanner from '../../../../components/ui/ErrorBanner';
 import { SkeletonRow } from '../../../../components/ui/Skeleton';
+import { useT } from '../../../../i18n/LanguageContext.jsx';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
 const GUILDS_PER_PAGE = 10;
 
 export default function GuildConfigTab() {
+  const t = useT();
   const { user: currentUser, getUserLevel } = useUser();
   const [guilds, setGuilds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,10 +32,16 @@ export default function GuildConfigTab() {
   const [updatingMembers, setUpdatingMembers] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [discordUpdateError, setDiscordUpdateError] = useState(null);
-  const [guildUpdateError, setGuildUpdateError] = useState(null);
 
   // ─── Carregar guildas da API ───────────────────────────────────────────────
+  // AbortController + requestId previne race condition clássica: quando o
+  // usuário digita rápido na busca, múltiplos fetches ficam em voo. Sem proteção,
+  // o fetch antigo (com searchTerm defasado) pode resolver DEPOIS do fetch novo
+  // e sobrescrever o estado com dados stale. Sintoma observado pelo usuário:
+  // "guildas não {t('admin.guilds.configured')} aparecem mas somem depois que as {t('admin.guilds.configured')} carregam".
+  const requestIdRef = useRef(0);
   const loadGuilds = useCallback(async () => {
+    const myRequestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -53,23 +62,30 @@ export default function GuildConfigTab() {
       }
 
       const data = await response.json();
-      // Garante que cada guilda tenha um memberCount válido (fallback 0, não undefined)
+      // Guarda de race: se um fetch mais novo foi disparado, descarta esta resposta.
+      if (myRequestId !== requestIdRef.current) return;
+      // Normaliza: garante memberCount numérico e mapeia `icon` (campo do backend)
+      // para `discordIcon` (campo que o render espera).
       const normalized = (data.guilds || []).map(g => ({
         ...g,
         memberCount: typeof g.memberCount === 'number' ? g.memberCount : 0,
-        discordIcon: g.discordIcon || null,
+        discordIcon: g.discordIcon || g.icon || null,
       }));
       setGuilds(normalized);
     } catch (err) {
+      if (myRequestId !== requestIdRef.current) return;
       console.error('Erro ao carregar guildas:', err);
       setError(err.message);
     } finally {
-      setLoading(false);
+      if (myRequestId === requestIdRef.current) setLoading(false);
     }
   }, [currentPage, searchTerm]);
 
   useEffect(() => {
     loadGuilds();
+    // Cleanup: ao desmontar ou antes de re-render, marca como stale para que
+    // qualquer fetch pendente seja descartado.
+    return () => { requestIdRef.current += 1; };
   }, [loadGuilds]);
 
   // ─── Buscar dados do Discord para uma guilda específica ────────────────────
@@ -136,12 +152,12 @@ export default function GuildConfigTab() {
       if (failureCount > 0 && successCount === 0) {
         // Todas falharam
         setDiscordUpdateError(
-          'Não foi possível carregar dados do Discord. Verifique se o bot está configurado e tem acesso aos servidores.'
+          t('admin.guilds.discordUpdateAllError')
         );
       } else if (failureCount > 0) {
         // Algumas falharam — avisa parcial
         setDiscordUpdateError(
-          `${failureCount} de ${guilds.length} guildas não puderam ser atualizadas (o bot pode não estar nelas).`
+          t('admin.guilds.discordUpdatePartialError', { failureCount, total: guilds.length })
         );
       } else if (successCount > 0) {
         setUpdateSuccess(true);
@@ -149,7 +165,7 @@ export default function GuildConfigTab() {
       }
     } catch (error) {
       console.error('Erro durante atualização do Discord:', error);
-      setDiscordUpdateError('Erro inesperado ao contatar o Discord.');
+      setDiscordUpdateError(t('admin.guilds.discordUpdateUnexpectedError'));
     } finally {
       setUpdatingMembers(false);
     }
@@ -170,7 +186,6 @@ export default function GuildConfigTab() {
   };
 
   const updateGuild = async (guildId, updateData) => {
-    setGuildUpdateError(null);
     try {
       const csrfToken = await getCsrfToken();
       const response = await fetch(`${API_BASE}expapi/v1/admin/guilds/${guildId}`, {
@@ -192,13 +207,13 @@ export default function GuildConfigTab() {
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
         const error = await response.json();
-        throw new Error(error.error || 'Erro ao atualizar guilda');
+        throw new Error(error.error || t('guild.updateError'));
       } else {
-        throw new Error(`Erro HTTP ${response.status}: Resposta inesperada do servidor`);
+        throw new Error(t('admin.guilds.httpErrorResponse', { status: response.status }));
       }
     } catch (error) {
       console.error('Erro ao atualizar guilda:', error);
-      setGuildUpdateError('Erro ao atualizar guilda: ' + error.message);
+      alert(t('guild.updateError') + ': ' + error.message);
       return false;
     }
   };
@@ -269,12 +284,14 @@ export default function GuildConfigTab() {
   // ─── Modal de detalhes da guilda ────────────────────────────────────────────
   const GuildDetailModal = () => {
     if (!selectedGuild || !editingGuild) return null;
+    // `t` is inherited from the parent GuildConfigTab component scope
+    // (GuildDetailModal is defined inside GuildConfigTab, which has const t = useT())
     return (
       <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
         <div className="relative top-10 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 shadow-lg rounded-md bg-white max-h-screen overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">
-              Configurações: {selectedGuild.guildName}
+              {t('admin.guilds.settingsTitle', { name: selectedGuild.guildName })}
             </h3>
             <button onClick={closeGuildDetails} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
@@ -283,10 +300,10 @@ export default function GuildConfigTab() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="col-span-full">
-              <h4 className="text-md font-medium text-gray-900 mb-3">Informações Básicas</h4>
+              <h4 className="text-md font-medium text-gray-900 mb-3">{t("guild.basicInfo")}</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">ID da Guilda</label>
+                  <label className="block text-sm font-medium text-gray-700">{t('admin.guilds.guildId')}</label>
                   <input
                     type="text"
                     value={selectedGuild.guildId}
@@ -295,7 +312,7 @@ export default function GuildConfigTab() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Membros</label>
+                  <label className="block text-sm font-medium text-gray-700">{t('common.members')}</label>
                   <input
                     type="number"
                     value={selectedGuild.memberCount}
@@ -307,7 +324,7 @@ export default function GuildConfigTab() {
             </div>
 
             <div className="col-span-full">
-              <h4 className="text-md font-medium text-gray-900 mb-3">Configurações do Bot</h4>
+              <h4 className="text-md font-medium text-gray-900 mb-3">{t("guild.botSettings")}</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="flex items-center">
                   <input
@@ -317,7 +334,7 @@ export default function GuildConfigTab() {
                     disabled={!canEditField('botEnabled')}
                     className="h-4 w-4 text-purple-600 disabled:opacity-50"
                   />
-                  <label className="ml-2 text-sm text-gray-700">Bot Ativo</label>
+                  <label className="ml-2 text-sm text-gray-700">{t("guild.botActive")}</label>
                 </div>
                 <div className="flex items-center">
                   <input
@@ -327,7 +344,7 @@ export default function GuildConfigTab() {
                     disabled={!canEditField('welcomeEnabled')}
                     className="h-4 w-4 text-purple-600 disabled:opacity-50"
                   />
-                  <label className="ml-2 text-sm text-gray-700">Boas-vindas</label>
+                  <label className="ml-2 text-sm text-gray-700">{t("guild.welcome")}</label>
                 </div>
                 <div className="flex items-center">
                   <input
@@ -337,7 +354,7 @@ export default function GuildConfigTab() {
                     disabled={!canEditField('moderationEnabled')}
                     className="h-4 w-4 text-purple-600 disabled:opacity-50"
                   />
-                  <label className="ml-2 text-sm text-gray-700">Moderação</label>
+                  <label className="ml-2 text-sm text-gray-700">{t("guild.moderation")}</label>
                 </div>
                 <div className="flex items-center">
                   <input
@@ -347,17 +364,17 @@ export default function GuildConfigTab() {
                     disabled={!canEditField('musicEnabled')}
                     className="h-4 w-4 text-purple-600 disabled:opacity-50"
                   />
-                  <label className="ml-2 text-sm text-gray-700">Música</label>
+                  <label className="ml-2 text-sm text-gray-700">{t("guild.music")}</label>
                 </div>
               </div>
             </div>
 
             {canEditField('prefix') && (
               <div className="col-span-full">
-                <h4 className="text-md font-medium text-gray-900 mb-3">Configurações Avançadas</h4>
+                <h4 className="text-md font-medium text-gray-900 mb-3">{t("guild.advanced")}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Prefixo</label>
+                    <label className="block text-sm font-medium text-gray-700">{t("guild.prefix")}</label>
                     <input
                       type="text"
                       value={editingGuild.prefix || '!'}
@@ -366,7 +383,7 @@ export default function GuildConfigTab() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Idioma</label>
+                    <label className="block text-sm font-medium text-gray-700">{t("guild.language")}</label>
                     <select
                       value={editingGuild.language || 'pt-BR'}
                       onChange={(e) => setEditingGuild({...editingGuild, language: e.target.value})}
@@ -387,13 +404,13 @@ export default function GuildConfigTab() {
               onClick={closeGuildDetails}
               className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               onClick={saveGuildChanges}
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
             >
-              Salvar Alterações
+              {t('admin.guilds.saveChanges')}
             </button>
           </div>
         </div>
@@ -422,11 +439,11 @@ export default function GuildConfigTab() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guilda</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Membros</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Última Atividade</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.guilds.guildHeader')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.members')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.status')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.guilds.lastActivity')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -441,8 +458,8 @@ export default function GuildConfigTab() {
   if (error && guilds.length === 0) {
     return (
       <ErrorState
-        title="Erro ao carregar guildas"
-        message="Não foi possível carregar a lista de guildas do servidor."
+        title={t("admin.guilds.loadError")}
+        message={t('admin.guilds.loadErrorDesc')}
         detail={error}
         onRetry={loadGuilds}
       />
@@ -457,10 +474,22 @@ export default function GuildConfigTab() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center">
               <ServerIcon className="h-5 w-5 text-gray-400 mr-2" />
-              <h3 className="text-lg font-medium text-gray-900">Gerenciamento de Guildas</h3>
+              <h3 className="text-lg font-medium text-gray-900">{t('admin.guilds.title')}</h3>
+              {guilds.length > 0 && (
+                <span className="ml-3 inline-flex items-center gap-2 text-xs text-gray-500">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-50 text-green-700">
+                    {guilds.filter(g => g.configured !== false).length} {t('admin.guilds.configured')}
+                  </span>
+                  {guilds.some(g => g.configured === false) && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                      {guilds.filter(g => g.configured === false).length} {t('admin.guilds.notLabel')} {t('admin.guilds.configured')}
+                    </span>
+                  )}
+                </span>
+              )}
               {updateSuccess && (
                 <span className="ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  ✓ Dados atualizados do Discord
+                  ✓ {t('admin.guilds.updatedDiscord')}
                 </span>
               )}
             </div>
@@ -469,17 +498,17 @@ export default function GuildConfigTab() {
                 onClick={updateMemberCounts}
                 disabled={updatingMembers || filteredGuilds.length === 0}
                 className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Buscar contagem de membros e ícones diretamente do Discord"
+                title={t("guild.updateDiscordTooltip")}
               >
                 {updatingMembers ? (
                   <>
                     <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                    Atualizando...
+                    {t('common.loading')}
                   </>
                 ) : (
                   <>
                     <ArrowPathIcon className="h-4 w-4 mr-2" />
-                    Atualizar Discord
+                    {t('admin.guilds.updateDiscord')}
                   </>
                 )}
               </button>
@@ -489,7 +518,7 @@ export default function GuildConfigTab() {
                 </div>
                 <input
                   type="text"
-                  placeholder="Buscar guildas..."
+                  placeholder={t("admin.guilds.searchPlaceholder")}
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
@@ -505,17 +534,34 @@ export default function GuildConfigTab() {
 
       {/* Erro ao atualizar Discord (banner, não bloqueia a tabela) */}
       {discordUpdateError && (
-        <ErrorBanner error={discordUpdateError} variant="warning" />
-      )}
-
-      {/* Erro em mutações (save/update) */}
-      {guildUpdateError && (
-        <ErrorBanner error={guildUpdateError} />
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 flex items-start justify-between gap-3">
+          <div className="flex items-start gap-2 text-sm text-yellow-800">
+            <ExclamationTriangleIcon className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <span>{discordUpdateError}</span>
+          </div>
+          <button
+            onClick={() => setDiscordUpdateError(null)}
+            className="text-yellow-600 hover:text-yellow-800"
+          >
+            <XMarkIcon className="h-4 w-4" />
+          </button>
+        </div>
       )}
 
       {/* Erro em refresh subsequente */}
       {error && guilds.length > 0 && (
-        <ErrorBanner error={`Falha ao atualizar: ${error}`} onRetry={loadGuilds} />
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm text-red-700">
+            <ExclamationTriangleIcon className="h-4 w-4 flex-shrink-0" />
+            <span>{t('admin.guilds.refreshError', { error })}</span>
+          </div>
+          <button
+            onClick={loadGuilds}
+            className="text-xs font-medium text-red-700 hover:text-red-900 underline"
+          >
+            {t('common.tryAgain')}
+          </button>
+        </div>
       )}
 
       {/* Lista de Guildas */}
@@ -523,18 +569,18 @@ export default function GuildConfigTab() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guilda</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Membros</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Atividade</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('common.name')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('common.members')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('common.status')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('admin.guilds.lastActivity')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredGuilds.length === 0 && (
               <tr>
                 <td colSpan="5" className="px-6 py-10 text-center text-sm text-gray-400">
-                  Nenhuma guilda encontrada.
+                  {t('admin.guilds.noGuilds')}
                 </td>
               </tr>
             )}
@@ -568,7 +614,7 @@ export default function GuildConfigTab() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <div className="flex items-center">
-                    {guild.memberCount?.toLocaleString('pt-BR') || '0'}
+                    {guild.memberCount?.toLocaleString(undefined) || '0'}
                     {updatingMembers && (
                       <ArrowPathIcon className="ml-2 h-3 w-3 text-purple-600 animate-spin" />
                     )}
@@ -576,29 +622,48 @@ export default function GuildConfigTab() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex flex-col space-y-1">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      guild.botEnabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {guild.botEnabled ? 'Ativo' : 'Inativo'}
-                    </span>
-                    <div className="flex space-x-1 flex-wrap">
-                      {guild.welcomeEnabled && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Bem-vindas</span>}
-                      {guild.moderationEnabled && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Moderação</span>}
-                      {guild.musicEnabled && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">Música</span>}
-                    </div>
+                    {guild.configured === false ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                        {t('admin.guilds.notConfigured')}
+                      </span>
+                    ) : (
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        guild.botEnabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {guild.botEnabled ? t('common.active') : t('common.inactive')}
+                      </span>
+                    )}
+                    {guild.configured !== false && (
+                      <div className="flex space-x-1 flex-wrap">
+                        {guild.welcomeEnabled && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">{t('guild.welcome')}</span>}
+                        {guild.moderationEnabled && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">{t("guild.moderation")}</span>}
+                        {guild.musicEnabled && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">{t("guild.music")}</span>}
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {guild.lastActivity ? new Date(guild.lastActivity).toLocaleDateString('pt-BR') : 'N/A'}
+                  {guild.configured === false
+                    ? '—'
+                    : (guild.lastActivity ? new Date(guild.lastActivity).toLocaleDateString(undefined) : '—')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button
-                    onClick={() => openGuildDetails(guild)}
-                    className="text-purple-600 hover:text-purple-900"
-                    title="Configurar guilda"
-                  >
-                    <EyeIcon className="h-4 w-4" />
-                  </button>
+                  {guild.configured === false ? (
+                    <span
+                      className="inline-flex items-center text-gray-400 cursor-not-allowed"
+                      title={t("guild.notConfigured")}
+                    >
+                      <Cog6ToothIcon className="h-4 w-4" />
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => openGuildDetails(guild)}
+                      className="text-purple-600 hover:text-purple-900"
+                      title={t("guild.configure")}
+                    >
+                      <EyeIcon className="h-4 w-4" />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -611,9 +676,7 @@ export default function GuildConfigTab() {
         <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-lg shadow">
           <div>
             <p className="text-sm text-gray-700">
-              Mostrando <span className="font-medium">{Math.min((currentPage - 1) * GUILDS_PER_PAGE + 1, filteredGuilds.length)}</span> a{' '}
-              <span className="font-medium">{Math.min(currentPage * GUILDS_PER_PAGE, filteredGuilds.length)}</span>{' '}
-              de <span className="font-medium">{filteredGuilds.length}</span> guildas
+              {t('admin.guilds.showing', { start: Math.min((currentPage - 1) * GUILDS_PER_PAGE + 1, filteredGuilds.length), end: Math.min(currentPage * GUILDS_PER_PAGE, filteredGuilds.length), total: filteredGuilds.length })}
             </p>
           </div>
           <div>

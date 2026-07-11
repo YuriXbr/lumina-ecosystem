@@ -190,7 +190,7 @@ class LogService extends DatabaseService {
             const escaped = String(route).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             filter.route = { $regex: escaped, $options: 'i' };
         }
-        if (requestId) filter.requestId = requestId;
+        if (requestId) filter.requestId = String(requestId);
         if (startDate || endDate) {
             filter.createdAt = {};
             if (startDate) filter.createdAt.$gte = new Date(startDate);

@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const colorCodes = require('../../colorCodes.js');
 const botConfigService = require('../../services/EncryptionService.js');
+const i18n = require('../../i18n/index.js');
 
 const mainGuild   = botConfigService.bot.mainGuild;
 const errorChannel = botConfigService.bot.logErrorChannel;
@@ -21,7 +22,10 @@ const allChannel   = botConfigService.bot.logAllChannel;
  *   @param {string}   [apiContext.apiError] - Mensagem de erro da API
  *   @param {string}   [apiContext.apiCode]  - Código de erro da API
  */
-async function commandErrorWarning(interaction, error, userMessage = 'Ocorreu um erro ao executar o comando.', apiContext = null) {
+async function commandErrorWarning(interaction, error, userMessage = null, apiContext = null) {
+    const locale = i18n.resolveFromInteraction(interaction);
+    const t = i18n.getTranslator(locale);
+    const finalUserMessage = userMessage || t('logModal.errorDefault');
     const ts = new Date().toLocaleString('pt-BR', {
         day: '2-digit', month: '2-digit', year: '2-digit',
         hour: '2-digit', minute: '2-digit', second: '2-digit',
@@ -102,8 +106,8 @@ async function commandErrorWarning(interaction, error, userMessage = 'Ocorreu um
 
     // ── Resposta ao usuário (ephemeral) ───────────────────────────────────────
     const userEmbed = new EmbedBuilder()
-        .setTitle('❌ Ops, algo deu errado!')
-        .setDescription(userMessage)
+        .setTitle(t('logModal.errorTitle'))
+        .setDescription(finalUserMessage)
         .setColor(0xFF3636);
 
     try {

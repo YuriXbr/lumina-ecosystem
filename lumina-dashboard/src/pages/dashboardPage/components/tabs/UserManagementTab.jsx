@@ -10,10 +10,10 @@ import {
   NoSymbolIcon,
   EyeIcon,
   XMarkIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import ErrorState from '../../../../components/ui/ErrorState';
-import ErrorBanner from '../../../../components/ui/ErrorBanner';
 import { SkeletonRow } from '../../../../components/ui/Skeleton';
 
 export default function UserManagementTab() {
@@ -21,7 +21,6 @@ export default function UserManagementTab() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [updateError, setUpdateError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -49,7 +48,7 @@ export default function UserManagementTab() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/admin/users?page=${currentPage}&limit=${usersPerPage}&search=${encodeURIComponent(searchTerm)}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/admin/users?page=${currentPage}&limit=${usersPerPage}&search=${encodeURIComponent(searchTerm)}`, {
         credentials: 'include',
       });
 
@@ -81,14 +80,13 @@ export default function UserManagementTab() {
   }, [loadUsers]);
 
   const updateUser = async (userId, updateData) => {
-    setUpdateError(null);
     try {
       console.log('Iniciando atualização do usuário:', userId, updateData);
       
       const csrfToken = await getCsrfToken();
       console.log('CSRF Token obtido:', csrfToken);
       
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/admin/users/${userId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/admin/users/${userId}`, {
         method: 'PUT',
         headers: {
           
@@ -121,14 +119,14 @@ export default function UserManagementTab() {
       }
     } catch (error) {
       console.error('Erro ao atualizar usuário:', error);
-      setUpdateError('Erro ao atualizar usuário: ' + error.message);
+      alert('Erro ao atualizar usuário: ' + error.message);
       return false;
     }
   };
 
   const getCsrfToken = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/csrf-token`, { credentials: 'include' })
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, { credentials: 'include' })
       if (response.ok) {
         const data = await response.json();
         return data.csrfToken;
@@ -424,12 +422,19 @@ export default function UserManagementTab() {
     <div className="space-y-6">
       {/* Erro em refresh subsequente (mantém os dados antigos visíveis) */}
       {error && users.length > 0 && (
-        <ErrorBanner error={`Falha ao atualizar: ${error}`} onRetry={loadUsers} />
-      )}
-
-      {/* Erro em mutações (update/promote/block/ban) */}
-      {updateError && (
-        <ErrorBanner error={updateError} />
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm text-red-700">
+            <ExclamationTriangleIcon className="h-4 w-4 flex-shrink-0" />
+            <span>Falha ao atualizar: {error}</span>
+          </div>
+          <button
+            onClick={loadUsers}
+            className="inline-flex items-center gap-1 text-xs font-medium text-red-700 hover:text-red-900"
+          >
+            <ArrowPathIcon className="h-3.5 w-3.5" />
+            Tentar novamente
+          </button>
+        </div>
       )}
 
       {/* Cabeçalho e Busca */}

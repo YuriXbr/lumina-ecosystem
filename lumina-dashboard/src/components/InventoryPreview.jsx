@@ -1,19 +1,21 @@
 import { GiftIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { useT } from '../i18n/LanguageContext.jsx';
 
 /**
  * Preview do inventário do usuário na Área de Membros.
  * Mostra baús, chaves e streak diário — clica para abrir o inventário completo.
  */
 export default function InventoryPreview({ inventory, loading, error, onRetry }) {
+  const t = useT();
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
           <GiftIcon className="h-4 w-4 text-purple-600" />
-          Inventário
+          {t('inventory.title')}
         </h3>
         <a href="/inventory" className="text-xs text-purple-600 hover:text-purple-700 font-medium">
-          Ver tudo →
+          {t("common.viewAll")} →
         </a>
       </div>
 
@@ -27,18 +29,18 @@ export default function InventoryPreview({ inventory, loading, error, onRetry })
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-3 text-xs text-red-700">
-          <p>Erro ao carregar inventário.</p>
+          <p>{t("inventory.loadError", { defaultValue: t("common.loadError") })}</p>
           <button onClick={onRetry} className="text-red-700 underline mt-1 font-medium">
-            Tentar novamente
+            {t('common.tryAgain')}
           </button>
         </div>
       )}
 
       {!loading && !error && inventory && (
         <div className="grid grid-cols-3 gap-2">
-          <StatBox label="Baús Hextech" value={inventory.hextechChests ?? 0} color="from-blue-400 to-blue-600" />
-          <StatBox label="Baús Masterwork" value={inventory.masterWorkChests ?? 0} color="from-purple-400 to-purple-600" />
-          <StatBox label="Chaves" value={inventory.keys ?? 0} color="from-yellow-400 to-yellow-600" />
+          <StatBox label={t("inventory.items.hextechChests")} value={inventory.hextechChests ?? 0} color="from-blue-400 to-blue-600" />
+          <StatBox label={t("inventory.items.masterworkChests")} value={inventory.masterWorkChests ?? 0} color="from-purple-400 to-purple-600" />
+          <StatBox label={t("inventory.items.keys")} value={inventory.keys ?? 0} color="from-yellow-400 to-yellow-600" />
         </div>
       )}
 
@@ -47,14 +49,14 @@ export default function InventoryPreview({ inventory, loading, error, onRetry })
           href="/inventory"
           className="mt-3 block w-full text-center py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
         >
-          🎁 Recompensa diária disponível!
+          🎁 {t("inventory.daily.title")}
         </a>
       )}
 
       {!loading && !error && inventory && !inventory.dailyRewardAvailable && inventory.nextDailyReward && (
         <p className="mt-3 text-xs text-gray-500 text-center">
-          Próxima recompensa em {new Date(inventory.nextDailyReward).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-          {inventory.dailyRewardStreak > 0 && ` • 🔥 ${inventory.dailyRewardStreak} dias seguidos`}
+          {t('inventory.daily.nextDaily', { defaultValue: 'Next daily reward available in' })} {new Date(inventory.nextDailyReward).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+          {inventory.dailyRewardStreak > 0 && ` • 🔥 ${t('inventory.daily.daysInRow', { count: inventory.dailyRewardStreak, defaultValue: '{count} days in a row' })}`}
         </p>
       )}
     </div>

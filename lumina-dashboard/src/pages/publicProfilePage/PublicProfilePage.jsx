@@ -6,12 +6,15 @@ import {
 } from '@heroicons/react/24/outline';
 import Header from '../../components/Header';
 import ErrorState from '../../components/ui/ErrorState';
+import { useT } from '../../i18n/LanguageContext.jsx';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 export default function PublicProfilePage() {
+  const t = useT();
   const { identifier } = useParams();
   const [profile, setProfile] = useState(null);
+  const [badges, setBadges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -30,6 +33,17 @@ export default function PublicProfilePage() {
       }
       const data = await res.json();
       setProfile(data);
+
+      // Busca badges públicas do usuário em paralelo
+      try {
+        const badgeRes = await fetch(`${API_BASE}expapi/v1/badges/user/${encodeURIComponent(identifier)}`);
+        if (badgeRes.ok) {
+          const badgeData = await badgeRes.json();
+          setBadges(badgeData.badges || []);
+        }
+      } catch {
+        // Não-fatal — perfil sem badges ainda renderiza
+      }
     } catch (e) {
       setError(e.message);
     } finally {
@@ -45,7 +59,7 @@ export default function PublicProfilePage() {
 
   const displayName = profile?.displayName
     || profile?.username
-    || 'Usuário';
+    || t('common.user');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -58,7 +72,7 @@ export default function PublicProfilePage() {
           className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-purple-700 mb-4"
         >
           <ArrowLeftIcon className="h-4 w-4" />
-          Voltar
+          {t('common.back')}
         </Link>
 
         {loading && (
@@ -74,10 +88,10 @@ export default function PublicProfilePage() {
 
         {!loading && error && (
           <ErrorState
-            title="Perfil não encontrado"
+            title={t("profile.notFound")}
             message={error === 'HTTP 404' || error.includes('não encontrado')
-              ? 'Este usuário não existe ou o identificador está incorreto.'
-              : 'Erro ao carregar o perfil.'}
+              ? t('profile.notFoundDesc')
+              : t('profile.loadError')}
             detail={error}
             onRetry={load}
           />
@@ -114,11 +128,11 @@ export default function PublicProfilePage() {
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {profile.publicProfile ? (
                         <span className="inline-flex items-center gap-1 text-[10px] text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                          <CheckCircleIcon className="h-3 w-3" /> Perfil público
+                          <CheckCircleIcon className="h-3 w-3" /> {t("profile.public")}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-[10px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
-                          Perfil privado
+                          {t("profile.private")}
                         </span>
                       )}
                     </div>
@@ -130,36 +144,75 @@ export default function PublicProfilePage() {
             {/* Detalhes (se público) */}
             {profile.publicProfile && (
               <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-                <h2 className="text-sm font-semibold text-gray-900">Informações</h2>
+                <h2 className="text-sm font-semibold text-gray-900">{t("profile.identifiers")}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {profile.registrationDate && (
-                    <InfoBox icon={CalendarIcon} label="Membro desde" value={new Date(profile.registrationDate).toLocaleDateString('pt-BR', { year: 'numeric', month: 'long' })} />
+                    <InfoBox icon={CalendarIcon} label={t("profile.joinedAt")} value={new Date(profile.registrationDate).toLocaleDateString(undefined, { year: 'numeric', month: 'long' })} />
                   )}
-                  <InfoBox icon={ServerIcon} label="Status" value={profile.accessType || 'Membro'} />
+                  <InfoBox icon={ServerIcon} label={t("profile.status")} value={profile.accessType || t('common.member')} />
                 </div>
               </div>
             )}
 
-            {/* Placeholder badges */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6 text-center">
-              <GiftIcon className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-              <h3 className="text-sm font-medium text-gray-900">Badges</h3>
-              <p className="text-xs text-gray-500 mt-1">Badges de eventos aparecerão aqui em breve.</p>
-              <span className="inline-block mt-3 px-3 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
-                Em breve
-              </span>
+            {/* Badges */}
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <GiftIcon className="h-5 w-5 text-purple-600" />
+                <h3 className="text-sm font-semibold text-gray-900">{t('badges.title')}</h3>
+                {badges.length > 0 && (
+                  <span className="text-xs text-gray-400">({badges.length})</span>
+                )}
+              </div>
+              {badges.length === 0 ? (
+                <div className="text-center py-6">
+                  <GiftIcon className="h-10 w-10 mx-auto text-gray-200 mb-2" />
+                  <p className="text-xs text-gray-400">{t('badges.noBadges')}</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {badges.map(badge => (
+                    <div
+                      key={badge.code}
+                      className="relative rounded-lg border-2 p-2 text-center hover:shadow-md transition-shadow"
+                      style={{ borderColor: badge.highlightColor || '#E5E7EB' }}
+                      title={badge.description || badge.name}
+                    >
+                      {badge.imageUrl ? (
+                        <img
+                          src={badge.imageUrl}
+                          alt={badge.name}
+                          className="w-12 h-12 mx-auto rounded-full object-cover"
+                          style={{ boxShadow: `0 0 8px ${badge.highlightColor}40` }}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center ${badge.imageUrl ? 'hidden' : ''}`}
+                        style={{ backgroundColor: badge.highlightColor || '#8B5CF6' }}
+                      >
+                        <GiftIcon className="h-6 w-6 text-white" />
+                      </div>
+                      <p className="text-[10px] font-medium text-gray-700 mt-1 truncate">{badge.name}</p>
+                      <p className="text-[8px] text-gray-400 uppercase">{t(`badges.rarity.${badge.rarity}`)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Identificadores (apenas se o viewer for o dono — mas não temos como saber; mostrar para todos) */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-2">Identificadores</p>
+              <p className="text-xs text-gray-500 mb-2">{t("profile.identifiers")}</p>
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Username</span>
+                  <span className="text-xs text-gray-500">{t('profile.username')}</span>
                   <code className="text-xs font-mono text-gray-700">@{profile.username || '—'}</code>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Discord ID</span>
+                  <span className="text-xs text-gray-500">{t('profile.discordId')}</span>
                   <code className="text-xs font-mono text-gray-700">{profile.discordOauth2Id || '—'}</code>
                 </div>
               </div>

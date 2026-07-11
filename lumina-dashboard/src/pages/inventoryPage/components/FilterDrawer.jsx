@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useT } from '../../../i18n/LanguageContext.jsx';
 
 /**
  * Envolve a Sidebar de filtros tornando-a responsiva:
@@ -10,6 +11,7 @@ import React, { useEffect } from 'react';
  *   ao clicar fora e suporte a tecla Esc.
  */
 export default function FilterDrawer({ isOpen, onClose, activeFilterCount, onOpenButtonClick, renderFilters }) {
+  const t = useT();
     // Fecha com Esc e trava o scroll do body enquanto o drawer está aberto (mobile)
     useEffect(() => {
         if (!isOpen) return;
@@ -38,7 +40,7 @@ export default function FilterDrawer({ isOpen, onClose, activeFilterCount, onOpe
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
-                    Filtros
+                    {t('common.filters')}
                     {activeFilterCount > 0 && (
                         <span className="bg-indigo-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
                             {activeFilterCount}
@@ -52,7 +54,7 @@ export default function FilterDrawer({ isOpen, onClose, activeFilterCount, onOpe
                 <div className="p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
                         <span className="text-2xl mr-3">🔍</span>
-                        Filtros
+                        {t('common.filters')}
                     </h3>
                     {renderFilters()}
                 </div>
@@ -77,12 +79,12 @@ export default function FilterDrawer({ isOpen, onClose, activeFilterCount, onOpe
                     <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
                         <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                             <span className="text-2xl mr-3">🔍</span>
-                            Filtros
+                            {t('common.filters')}
                         </h3>
                         <button
                             onClick={onClose}
                             className="text-gray-400 hover:text-gray-600 transition-colors"
-                            aria-label="Fechar filtros"
+                            aria-label={t('common.closeFilters')}
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

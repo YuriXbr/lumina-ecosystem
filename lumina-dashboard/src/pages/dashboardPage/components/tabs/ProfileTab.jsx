@@ -6,13 +6,11 @@ import {
   LinkIcon,
   NoSymbolIcon
 } from '@heroicons/react/24/outline';
-import ErrorBanner from '../../../../components/ui/ErrorBanner';
 
 export default function ProfileTab() {
   const { user } = useUser();
   const [isLinking, setIsLinking] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
-  const [error, setError] = useState(null);
 
   const getDiscordAvatarUrl = () => {
     console.log('ProfileTab getDiscordAvatarUrl chamado', { user });
@@ -38,15 +36,14 @@ const handleLinkDiscord = () => {
     const origin = window.location.origin;
     const params = new URLSearchParams({ origin, intent: 'link' });
     if (token) params.set('linkToken', token);
-    window.location.href = `${import.meta.env.VITE_API_BASE_URL || '/'}expapi/oauth2/discord/auth/start?${params}`;
+    window.location.href = `${import.meta.env.VITE_API_BASE_URL}expapi/oauth2/discord/auth/start?${params}`;
 };
 
   const handleUnlinkDiscord = async () => {
     setIsUnlinking(true);
-    setError(null);
     try {
       // Obter token CSRF
-      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/csrf-token`, {
+      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, {
       
       let csrfToken = '';
       if (csrfResponse.ok) {
@@ -55,7 +52,7 @@ const handleLinkDiscord = () => {
       }
 
       // Deslinkar Discord
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/unlink-discord`, { credentials: 'include' })
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/unlink-discord`, { credentials: 'include' })
       
       if (response.ok) {
         const data = await response.json();
@@ -64,11 +61,11 @@ const handleLinkDiscord = () => {
         window.location.reload();
       } else {
         const error = await response.json();
-        setError('Erro ao deslinkar Discord: ' + (error.error || 'Erro desconhecido'));
+        alert('Erro ao deslinkar Discord: ' + (error.error || 'Erro desconhecido'));
       }
     } catch (error) {
       console.error('Erro ao deslinkar Discord:', error);
-      setError('Erro ao deslinkar Discord: ' + error.message);
+      alert('Erro ao deslincar Discord: ' + error.message);
     } finally {
       setIsUnlinking(false);
     }
@@ -76,11 +73,6 @@ const handleLinkDiscord = () => {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      {/* Erro de mutação (deslinkar Discord) */}
-      {error && (
-        <ErrorBanner error={error} />
-      )}
-
       {/* Informações Pessoais */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200">

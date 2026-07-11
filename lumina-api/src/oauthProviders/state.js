@@ -8,7 +8,9 @@ const isAllowedOrigin = isAllowedOriginShared;
 
 function getStateSecret() {
     // Usa um segredo dedicado se existir; senão reaproveita o JWT_SECRET.
-    return process.env.OAUTH_STATE_SECRET || process.env.JWT_SECRET;
+    const secret = process.env.OAUTH_STATE_SECRET;
+    if (!secret) throw new Error('OAUTH_STATE_SECRET must be set — do not reuse JWT_SECRET');
+    return secret;
 }
 
 /**

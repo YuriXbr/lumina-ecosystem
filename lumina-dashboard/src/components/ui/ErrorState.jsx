@@ -6,15 +6,17 @@
  * botão grande para re-disparar o fetch.
  */
 import { ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { useT } from '../../i18n/LanguageContext.jsx';
 
 export default function ErrorState({
-  title = 'Erro ao carregar dados',
-  message = 'Não foi possível concluir a solicitação.',
+  title = '',
+  message = '',
   detail = null,
   onRetry = null,
-  retryLabel = 'Tentar novamente',
+  retryLabel = '',
   compact = false,
 }) {
+  const t = useT();
   if (compact) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">

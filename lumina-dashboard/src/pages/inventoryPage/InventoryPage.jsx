@@ -6,10 +6,11 @@ import FilterDrawer from './components/FilterDrawer';
 import luminaLogo from '../assets/isolated-monochrome-white.svg';
 import OpenChestModal from './components/OpenChestModal';
 import DailyRewardModal from './components/DailyRewardModal';
+import { useT } from '../../i18n/LanguageContext.jsx';
 
 async function getInventoryFromId(id) {
     console.log('Buscando inventário do usuário', id);
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/internal/fetchuserskins?userId=${id}`)
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/internal/fetchuserskins?userId=${id}`)
         .then(response => response.json())
         .then(data => data);
     return response;
@@ -24,17 +25,18 @@ const RARITY_TO_K_FORMAT = {
     transcendent: 'kTranscendent',
 };
 
-const rarityOptions = [
-    { key: 'kNoRarity', label: 'Sem raridade' },
-    { key: 'kLegacy', label: 'Legado' },
-    { key: 'kEpic', label: 'Épicas' },
-    { key: 'kLegendary', label: 'Lendárias' },
-    { key: 'kMythic', label: 'Míticas' },
-    { key: 'kUltimate', label: 'Ultimates' },
-    { key: 'kTranscendent', label: 'Transcendentes' },
+const RARITY_OPTIONS = [
+    { key: 'kNoRarity',     labelKey: 'inventory.rarity.noRarity' },
+    { key: 'kLegacy',       labelKey: 'inventory.rarity.legacy' },
+    { key: 'kEpic',         labelKey: 'inventory.rarity.epic' },
+    { key: 'kLegendary',    labelKey: 'inventory.rarity.legendary' },
+    { key: 'kMythic',       labelKey: 'inventory.rarity.mythic' },
+    { key: 'kUltimate',     labelKey: 'inventory.rarity.ultimate' },
+    { key: 'kTranscendent', labelKey: 'inventory.rarity.transcendent' },
 ];
 
 export function InventoryPage() {
+  const t = useT();
     const [isChestModalOpen, setIsChestModalOpen] = useState(false);
     const [isDailyModalOpen, setIsDailyModalOpen] = useState(false);
     const [skins, setSkins] = useState([]);
@@ -75,7 +77,7 @@ export function InventoryPage() {
         }
 
         // Verifica sessão via cookie httpOnly (não mais localStorage)
-        fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/session`, {
+        fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/session`, {
             credentials: 'include',
         })
             .then(res => res.ok ? res.json() : null)
@@ -89,7 +91,7 @@ export function InventoryPage() {
 
     // Solicita informações do Discord
     useEffect(() => {
-        fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/v1/discordinfo`, {
+        fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/discordinfo`, {
             credentials: 'include',
         })
             .then(res => {
@@ -160,7 +162,7 @@ export function InventoryPage() {
     const loginWithDiscord = async () => {
         const origin = window.location.href;
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/'}expapi/oauth2/discord/prepare`, {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/oauth2/discord/prepare`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -279,6 +281,7 @@ export function InventoryPage() {
 
     // Componente de Paginação
     const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+        const t = useT();
         const getPageNumbers = () => {
             const pages = [];
             const maxVisible = 5;
@@ -316,7 +319,7 @@ export function InventoryPage() {
                     disabled={currentPage === 1}
                     className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Anterior
+                    {t('common.previous')}
                 </button>
                 
                 {getPageNumbers().map((page, index) => (
@@ -342,7 +345,7 @@ export function InventoryPage() {
                     disabled={currentPage === totalPages}
                     className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Próxima
+                    {t('common.next')}
                 </button>
             </div>
         );
@@ -370,16 +373,16 @@ export function InventoryPage() {
                                 
                                 <div className="hidden lg:flex lg:space-x-8">
                                     <a href="/commands" className="text-white/80 hover:text-white transition-colors font-medium">
-                                        Comandos
+                                        {t('nav.commands')}
                                     </a>
                                     <a href="/inventory" className="text-white border-b border-white font-medium">
-                                        Inventário
+                                        {t('nav.inventory')}
                                     </a>
                                     <a href="/pricing" className="text-white/80 hover:text-white transition-colors font-medium">
-                                        Assinaturas
+                                        {t('nav.pricing')}
                                     </a>
                                     <a href="/about" className="text-white/80 hover:text-white transition-colors font-medium">
-                                        Sobre Nós
+                                        {t('nav.about')}
                                     </a>
                                 </div>
                                 <div className="flex items-center space-x-4">
@@ -387,7 +390,7 @@ export function InventoryPage() {
                                         <a
                                             href="/members"
                                             className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-lg transition-colors font-medium backdrop-blur-sm border border-white/20"
-                                            title={discordInfo?.username ? `Ir para a Área de Membros — ${discordInfo.username}` : 'Ir para a Área de Membros'}
+                                            title={discordInfo?.username ? t('inventory.goToMembersAreaWithUser', { user: discordInfo.username }) : t('inventory.goToMembersArea')}
                                         >
                                             {discordInfo?.avatar && discordInfo?.id ? (
                                                 <img
@@ -401,7 +404,7 @@ export function InventoryPage() {
                                                 </svg>
                                             )}
                                             <span className="hidden sm:inline">
-                                                {discordInfo?.username || 'Minha conta'}
+                                                {discordInfo?.username || t('common.myAccount')}
                                             </span>
                                         </a>
                                     ) : (
@@ -409,7 +412,7 @@ export function InventoryPage() {
                                             href="/login"
                                             className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors font-medium backdrop-blur-sm border border-white/20"
                                         >
-                                            Login
+                                            {t('nav.login')}
                                         </a>
                                     )}
                                 </div>
@@ -453,7 +456,7 @@ export function InventoryPage() {
                                         setRaritySearch={setRaritySearch}
                                         selectedRarities={selectedRarities}
                                         toggleRarity={toggleRarity}
-                                        rarityOptions={rarityOptions}
+                                        rarityOptions={RARITY_OPTIONS}
                                     />
                                 )}
                             />
@@ -463,8 +466,8 @@ export function InventoryPage() {
                                 {inventoryLoading ? (
                                     <div className="flex flex-col justify-center items-center h-96">
                                         <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mb-4"></div>
-                                        <span className="text-xl font-semibold text-gray-700">Carregando inventário...</span>
-                                        <p className="text-gray-500 mt-2">Buscando suas skins coletadas</p>
+                                        <span className="text-xl font-semibold text-gray-700">{t("inventory.loadingInventory")}</span>
+                                        <p className="text-gray-500 mt-2">{t("inventory.fetchingSkins")}</p>
                                     </div>
                                 ) : sortedSkins.length > 0 ? (
                                     <div>
@@ -474,19 +477,19 @@ export function InventoryPage() {
                                                 <div className="flex items-center space-x-4">
                                                     <span className="text-indigo-700 font-semibold">
                                                         {hasActiveFilters ? (
-                                                            `${sortedSkins.length} skin${sortedSkins.length !== 1 ? 's' : ''} encontrada${sortedSkins.length !== 1 ? 's' : ''}`
+                                                            t('inventory.skinsFound', { count: sortedSkins.length })
                                                         ) : (
-                                                            `Mostrando ${paginatedSkins.length} de ${sortedSkins.length} skins`
+                                                            t('inventory.showing', { shown: paginatedSkins.length, total: sortedSkins.length })
                                                         )}
                                                     </span>
                                                     {hasActiveFilters && (
                                                         <span className="text-sm text-indigo-600">
-                                                            (Filtros ativos - Todas as skins)
+                                                            ({t('inventory.filtersActive')} - {t('inventory.allSkins')})
                                                         </span>
                                                     )}
                                                     {!hasActiveFilters && totalPages > 1 && (
                                                         <span className="text-sm text-indigo-600">
-                                                            (Página {currentPage} de {totalPages})
+                                                            {t('inventory.pageOf', { current: currentPage, total: totalPages })}
                                                         </span>
                                                     )}
                                                 </div>
@@ -494,17 +497,17 @@ export function InventoryPage() {
                                                 <div className="flex items-center space-x-4">
                                                     {/* Filtro de Ordenação */}
                                                     <div className="flex items-center space-x-2">
-                                                        <span className="text-sm text-gray-600 font-medium">Ordenar por:</span>
+                                                        <span className="text-sm text-gray-600 font-medium">{t("common.sortBy")}</span>
                                                         <select
                                                             value={sortOrder}
                                                             onChange={(e) => setSortOrder(e.target.value)}
                                                             className="text-sm bg-white border border-gray-300 rounded-md px-3 py-1 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                                         >
-                                                            <option value="alphabetical">Nome (A-Z)</option>
-                                                            <option value="alphabetical-desc">Nome (Z-A)</option>
-                                                            <option value="rarity">Raridade</option>
-                                                            <option value="quantity">Quantidade</option>
-                                                            <option value="champion">Campeão</option>
+                                                            <option value="alphabetical">{t('inventory.sortByName')}</option>
+                                                            <option value="alphabetical-desc">{t('inventory.sortByNameDesc')}</option>
+                                                            <option value="rarity">{t('inventory.sortByRarity')}</option>
+                                                            <option value="quantity">{t('inventory.sortByQuantity')}</option>
+                                                            <option value="champion">{t('inventory.sortByChampion')}</option>
                                                         </select>
                                                     </div>
 
@@ -519,7 +522,7 @@ export function InventoryPage() {
                                                             }}
                                                             className="text-sm bg-white px-3 py-1 rounded-md border border-indigo-300 text-indigo-700 hover:bg-indigo-50 transition-colors"
                                                         >
-                                                            Limpar filtros
+                                                            {t('common.clearFilters')}
                                                         </button>
                                                     )}
                                                 </div>
@@ -552,14 +555,14 @@ export function InventoryPage() {
                                     <div className="text-center py-16">
                                         <div className="text-6xl mb-4">📦</div>
                                         <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                                            Nenhuma skin encontrada
+                                            {t('inventory.noSkinsFound')}
                                         </h3>
                                         <p className="text-gray-600 mb-6 max-w-md mx-auto">
                                             {!isLoggedIn ? 
-                                                "Faça login para ver seu inventário de skins." :
+                                                t('inventory.loginRequired') :
                                                 discordError ?
-                                                "Conecte sua conta Discord para acessar seu inventário." :
-                                                "Você ainda não possui skins. Use o comando /openchest no Discord para coletar suas primeiras skins!"
+                                                t('inventory.discordRequired') :
+                                                t('inventory.noSkins')
                                             }
                                         </p>
                                         
@@ -568,21 +571,21 @@ export function InventoryPage() {
                                                 href="/login"
                                                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
                                             >
-                                                Fazer Login
+                                                {t('common.login')}
                                             </a>
                                         ) : discordError ? (
                                             <button
                                                 onClick={loginWithDiscord}
                                                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
                                             >
-                                                Conectar Discord
+                                                {t('inventory.connectDiscord')}
                                             </button>
                                         ) : (
                                             <a
                                                 href="/commands"
                                                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
                                             >
-                                                Ver Comandos
+                                                {t('inventory.viewCommands')}
                                             </a>
                                         )}
                                     </div>
@@ -590,10 +593,10 @@ export function InventoryPage() {
                                     <div className="text-center py-16">
                                         <div className="text-6xl mb-4">🔍</div>
                                         <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                                            Nenhuma skin corresponde aos filtros
+                                            {t('inventory.noSkinsMatch')}
                                         </h3>
                                         <p className="text-gray-600 mb-6">
-                                            Tente ajustar os filtros para encontrar as skins que procura.
+                                            {t('inventory.noSkinsMatchDesc')}
                                         </p>
                                         
                                         <button
@@ -606,7 +609,7 @@ export function InventoryPage() {
                                             }}
                                             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
                                         >
-                                            Limpar todos os filtros
+                                            {t('inventory.clearAllFilters')}
                                         </button>
                                     </div>
                                 )}

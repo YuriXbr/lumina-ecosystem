@@ -1,94 +1,117 @@
 const Discord = require('discord.js');
-var today = new Date(); var data = today.getDate() + '/' + (today.getMonth() + 1) + '/' + today.getFullYear() + ' ' + today.getHours() + ':' + today.getMinutes() + ':' + today.getSeconds();
 const c = require('../colorCodes.js');
 const E = require('../../assets/emojis.js').emojis;
 const { commandErrorWarning } = require('../logger/logModals/commandErrorWarning.js');
+const i18n = require('../i18n/index.js');
 
+/**
+ * Embed helpers compartilhados — todos aceitam um `t` (translator) opcional.
+ * Se `t` não for passado, usa en-US (fallback).
+ *
+ * Isto mantém compatibilidade com comandos que ainda não aceitam `t` em seu
+ * `execute(interaction)`: podem chamar errorEmbed(message, origin) e tudo
+ * funciona como antes.
+ */
 
-    /** Loading Embed constant
-     * @type {MessageEmbed}
-     */
-    const loadingEmbed = new Discord.EmbedBuilder()
+/**
+ * Cria um loading embed traduzido.
+ * @param {Function} [t] translator function (default: en-US)
+ */
+function buildLoadingEmbed(t) {
+    const tr = t || i18n.getTranslator('en-US');
+    return new Discord.EmbedBuilder()
         .setColor(c.YELLOW)
-        .setTitle(`${E.loading} | LOADING`)
-        .setDescription("Wait a moment, I'm processing your request.")
+        .setTitle(`${E.loading} | ${tr('embed.loadingTitle')}`)
+        .setDescription(tr('embed.loadingDesc'));
+}
 
-    /** Error Embed constant
-     * @type {MessageEmbed}
-     * @param {string} message - Embed message
-     * @param {string} origin - The embed caller origin (default: 'unknown')
-     * @param {Interaction} interaction - interaction object
-     * @param {boolean} autoReply - Function will send the embed automatically if true (need interaction object) (default: false)
-     * @param {boolean} ephemeral - If the message will be ephemeral (default: true)
-     * @param {boolean} riotLogo - If the embed will have the Riot Games logo (default: false)
-     * @param {string} footerText - The text that will be displayed in the footer (default: null)
-     * @returns {MessageEmbed} - Returns an error embed
-     */
-    async function complexLoadingEmbed(message = null , origin = 'unknown', interaction, autoReply = false, ephemeral = true, riotLogo = false, footerText = null) {    
-        let url = riotLogo ? 'https://i.imgur.com/xU45ZZz.png' : null;
-        let footer = footerText ? footerText+= ` | origin: ${origin}` : `origin: ${origin}`;
+const loadingEmbed = buildLoadingEmbed(); // constante preservada p/ retrocompat
 
-        const loadingEmbed = new Discord.EmbedBuilder()
+/**
+ * @param {string} message
+ * @param {string} origin
+ * @param {Interaction} interaction
+ * @param {boolean} autoReply
+ * @param {boolean} ephemeral
+ * @param {boolean} riotLogo
+ * @param {string} footerText
+ * @param {Function} [t] translator
+ */
+async function complexLoadingEmbed(message = null, origin = 'unknown', interaction, autoReply = false, ephemeral = true, riotLogo = false, footerText = null, t) {
+    const tr = t || i18n.getTranslator('en-US');
+    let url = riotLogo ? 'https://i.imgur.com/xU45ZZz.png' : null;
+    let footer = footerText ? footerText += ` | origin: ${origin}` : `origin: ${origin}`;
+
+    const embed = new Discord.EmbedBuilder()
         .setColor(c.YELLOW)
-        .setTitle(`${E.loading} | LOADING`)
-        .setDescription(message || "Wait a moment, I'm processing your request.")
-        .setFooter({text:footer, iconURL: url})
-        if(autoReply) await interaction.editReply({ embeds: [loadingEmbed], ephemeral: ephemeral, content: null });
-        return loadingEmbed;
-    }
+        .setTitle(`${E.loading} | ${tr('embed.loadingTitle')}`)
+        .setDescription(message || tr('embed.loadingDesc'))
+        .setFooter({ text: footer, iconURL: url });
+    if (autoReply) await interaction.editReply({ embeds: [embed], ephemeral, content: null });
+    return embed;
+}
 
-    /** ErrorEmbed Function
-    * @param {string} message - Embed message
-    * @param {string} origin - The embed caller origin (default: 'unknown')
-    * @param {Interaction} interaction - interaction object
-    * @param {boolean} autoReply - Function will send the embed automatically if true (need interaction object) (default: false)
-    * @param {boolean} ephemeral - If the message will be ephemeral (default: true)
-    * @returns {MessageEmbed} - Returns an error embed
-    */
-    async function errorEmbed(message, origin = 'unknown', interaction, autoReply = false, ephemeral = true) {
-        const errorEmbed = new Discord.EmbedBuilder()
+/**
+ * @param {string} message
+ * @param {string} origin
+ * @param {Interaction} interaction
+ * @param {boolean} autoReply
+ * @param {boolean} ephemeral
+ * @param {Function} [t] translator
+ */
+async function errorEmbed(message, origin = 'unknown', interaction, autoReply = false, ephemeral = true, t) {
+    const tr = t || i18n.getTranslator('en-US');
+    const embed = new Discord.EmbedBuilder()
         .setColor(c.RED)
-        .setTitle(`${E.error} | ERROR`)
+        .setTitle(`${E.error} | ${tr('embed.errorTitle')}`)
         .setDescription(message)
-        .setFooter({text:`origin: ${origin}`})
-        if(autoReply) await interaction.editReply({ embeds: [errorEmbed], ephemeral: ephemeral, content: null });
-        console.log(c.error+ ' Origin: '+origin+' | '+message);
-        commandErrorWarning(interaction, message);
-        return errorEmbed;
-    }
+        .setFooter({ text: `origin: ${origin}` });
+    if (autoReply) await interaction.editReply({ embeds: [embed], ephemeral, content: null });
+    console.log(c.error + ' Origin: ' + origin + ' | ' + message);
+    commandErrorWarning(interaction, message);
+    return embed;
+}
 
-    /** SuccessEmbed Function
-     * @param {string} message - Embed message
-     * @param {string} origin - The embed caller origin (default: 'unknown')
-     * @param {Interaction} interaction - interaction object
-     * @param {boolean} autoReply - Function will send the embed automatically if true (need interaction object) (default: false)
-     * @param {boolean} ephemeral - If the message will be ephemeral (default: true)
-     * @param {boolean} riotLogo - If the embed will have the Riot Games logo (default: false)
-     * @param {string} footerText - The text that will be displayed in the footer (default: null)
-     * @returns {MessageEmbed} - Returns a success embed
-     */
-    async function complexsuccessEmbed(message, origin = 'unknown', interaction, autoReply = false, ephemeral = true, riotLogo = false, footerText = null) {
-        let url = riotLogo ? 'https://i.imgur.com/xU45ZZz.png' : null;
-        let footer = footerText ? footerText+= ` | origin: ${origin}` : `origin: ${origin}`;
-        
-        const successEmbed = new Discord.EmbedBuilder()
+/**
+ * @param {string} message
+ * @param {string} origin
+ * @param {Interaction} interaction
+ * @param {boolean} autoReply
+ * @param {boolean} ephemeral
+ * @param {boolean} riotLogo
+ * @param {string} footerText
+ * @param {Function} [t] translator
+ */
+async function complexsuccessEmbed(message, origin = 'unknown', interaction, autoReply = false, ephemeral = true, riotLogo = false, footerText = null, t) {
+    const tr = t || i18n.getTranslator('en-US');
+    let url = riotLogo ? 'https://i.imgur.com/xU45ZZz.png' : null;
+    let footer = footerText ? footerText += ` | origin: ${origin}` : `origin: ${origin}`;
+
+    const embed = new Discord.EmbedBuilder()
         .setColor(c.GREEN)
-        .setTitle(`${E.greenMark} | SUCCESS`)
+        .setTitle(`${E.greenMark} | ${tr('embed.successTitle')}`)
         .setDescription(message)
-        .setFooter({text:footer, iconURL: url})
-        if(autoReply) await interaction.editReply({ embeds: [successEmbed], ephemeral: ephemeral, content: null });
-        return successEmbed;
-    }
+        .setFooter({ text: footer, iconURL: url });
+    if (autoReply) await interaction.editReply({ embeds: [embed], ephemeral, content: null });
+    return embed;
+}
 
-    const successEmbed = new Discord.EmbedBuilder()
+function buildSuccessEmbed(t) {
+    const tr = t || i18n.getTranslator('en-US');
+    return new Discord.EmbedBuilder()
         .setColor(c.GREEN)
-        .setTitle(`${E.greenMark} | SUCCESS`)
-        .setDescription("The request was successfully processed.")
+        .setTitle(`${E.greenMark} | ${tr('embed.successTitle')}`)
+        .setDescription(tr('embed.successDesc'));
+}
+
+const successEmbed = buildSuccessEmbed(); // retrocompat
 
 module.exports = {
-	loadingEmbed,
+    loadingEmbed,
+    buildLoadingEmbed,
     complexLoadingEmbed,
     errorEmbed,
     successEmbed,
-    complexsuccessEmbed
-}
+    buildSuccessEmbed,
+    complexsuccessEmbed,
+};

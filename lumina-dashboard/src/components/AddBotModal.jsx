@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useT } from '../i18n/LanguageContext.jsx';
 
 /**
  * Modal explicativo mostrado quando o usuário clica em "Adicionar Bot"
@@ -9,6 +10,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
  * direto ao fluxo de OAuth do Discord (com guild_id pré-selecionado).
  */
 export default function AddBotModal({ guild, onClose }) {
+  const t = useT();
   const [accepted, setAccepted] = useState(false);
 
   if (!guild) return null;
@@ -16,15 +18,19 @@ export default function AddBotModal({ guild, onClose }) {
   const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID;
   // Permissions: base razoável para um bot de moderação + League
   // 274877991936 = applications.commands + bot + (Manage Roles, Manage Channels, Kick, Ban, Manage Messages, Embed Links, Read History, Send Messages)
-  const permissions = '8'; // Administrator
-  const oauthUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=${permissions}&guild_id=${guild.id}&scope=bot+applications.commands`;
+  const permissions = '274877991936';
+  const oauthUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=${permissions}&guild_id=${guild.id}&response_type=code&redirect_uri=${encodeURIComponent(import.meta.env.VITE_DISCORD_REDIRECT_URI || window.location.origin)}&scope=bot+applications.commands`;
 
   const features = [
-    { icon: '🎮', title: 'Comandos de League of Legends', desc: 'Perfil, histórico, maestria e rotação gratuita.' },
-    { icon: '🛡️', title: 'Moderação completa', desc: 'Ban, mute, warn com persistência e expiração.' },
-    { icon: '💎', title: 'Sistema de skins', desc: 'Baús, inventário e recompensa diária.' },
-    { icon: '📊', title: 'Dashboard próprio', desc: 'Configurações por servidor acessíveis via web.' },
+    { icon: '🎮', title: t('addBot.features.league'), desc: t('home.features.league.desc') },
+    { icon: '🛡️', title: t('addBot.features.moderation'), desc: t('home.features.moderation.desc') },
+    { icon: '💎', title: t('addBot.features.skins'), desc: t('home.features.chests.desc') },
+    { icon: '📊', title: t('addBot.features.dashboard'), desc: t('home.features.dashboard.desc') },
   ];
+
+  // Split translation around the {server} placeholder to preserve <strong> styling
+  const toServerParts = t('addBot.toServer', { server: '\u0000' }).split('\u0000');
+  const descParts = t('addBot.description', { server: '\u0000' }).split('\u0000');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
@@ -47,8 +53,8 @@ export default function AddBotModal({ guild, onClose }) {
               </div>
             )}
             <div>
-              <h3 className="text-base font-semibold text-gray-900">Adicionar Lumina Bot</h3>
-              <p className="text-sm text-gray-500">em <strong>{guild.name}</strong></p>
+              <h3 className="text-base font-semibold text-gray-900">{t('addBot.title')}</h3>
+              <p className="text-sm text-gray-500">{toServerParts[0]}<strong>{guild.name}</strong>{toServerParts[1]}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
@@ -59,8 +65,7 @@ export default function AddBotModal({ guild, onClose }) {
         {/* Features */}
         <div className="px-6 py-4 space-y-3">
           <p className="text-sm text-gray-600">
-            Você está prestes a adicionar o Lumina Bot ao servidor <strong>{guild.name}</strong>.
-            Veja o que ele oferece:
+            {descParts[0]}<strong>{guild.name}</strong>{descParts[1]}
           </p>
           <div className="grid grid-cols-2 gap-3">
             {features.map(f => (
@@ -80,8 +85,7 @@ export default function AddBotModal({ guild, onClose }) {
               className="mt-1 h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
             />
             <span className="text-sm text-gray-600">
-              Entendo que o bot será adicionado com permissões para gerenciar cargos, canais e mensagens,
-              e que terei acesso às configurações específicas deste servidor através do painel web.
+              {t('addBot.confirmText')}
             </span>
           </label>
         </div>
@@ -95,13 +99,13 @@ export default function AddBotModal({ guild, onClose }) {
             }`}
             onClick={e => { if (!accepted) e.preventDefault(); }}
           >
-            Continuar para Discord
+            {t("addBot.continueToDiscord")}
           </a>
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
           >
-            Cancelar
+            {t('common.cancel')}
           </button>
         </div>
       </div>

@@ -1,0 +1,491 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "back": "Back",
+    "next": "Next",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "none": "None",
+    "permanent": "Permanent",
+    "notProvided": "Not provided",
+    "noPermission": "You don't have permission to use this command.",
+    "commandError": "An error occurred while executing the command. Our team has been notified.",
+    "commandNotFound": "This command was not found. Try again or contact an administrator.",
+    "botMissingPermission": "I don't have permission to do this.",
+    "apiTimeout": "The API took too long to respond. Try again in a few moments.",
+    "apiAuthError": "Internal API authentication error. Notify an administrator.",
+    "insufficientResources": "You don't have enough keys or chests for this.",
+    "comingSoon": "Coming soon"
+  },
+  "logModal": {
+    "noPermissionTitle": "🚫 No Permission",
+    "noPermissionDesc": "You don't have permission to use the command",
+    "fieldUser": "👤 User",
+    "fieldGuild": "🏠 Guild",
+    "fieldEvent": "📣 Event",
+    "fieldTime": "🕐 Time",
+    "errorTitle": "❌ Oops, something went wrong!",
+    "errorDefault": "An error occurred while executing the command.",
+    "fieldCommand": "⚔️ Command",
+    "fieldDuration": "⏱️ Duration",
+    "fieldError": "❌ Error",
+    "fieldLocale": "🌐 Locale"
+  },
+  "cmd": {
+    "ping": {
+      "title": "🏓 Pong!",
+      "description": "Latency: **{latency}ms**\nAPI latency: **{apiLatency}ms**"
+    },
+    "daily": {
+      "title": "🎁 Daily reward claimed!",
+      "description": "You received **{chests} Hextech Chest(s)** and **{keys} Key(s)**!\nUse `/openchest` to open your chests.",
+      "streakField": "Streak",
+      "streakValue_one": "🔥 {count} day consecutive",
+      "streakValue_other": "🔥 {count} days consecutive",
+      "footer": "Come back in 24 hours to claim again!",
+      "alreadyClaimedTitle": "⏳ Daily already claimed",
+      "alreadyClaimedDesc": "You already claimed your daily reward today.\nAvailable again {relative} ({full}).",
+      "currentStreakField": "Current streak"
+    },
+    "openchest": {
+      "inventoryTitle": "🎁 Chest Inventory",
+      "keysField": "🔑 Keys",
+      "hextechField": "📦 Hextech Chests",
+      "masterworkField": "🏆 Masterwork Chests",
+      "footerCanOpen": "Choose a chest below to open.",
+      "footerCannotOpen": "You need keys and chests to open. Use `/daily` to claim your daily reward!",
+      "loadingTitle": "Opening chest...",
+      "loadingDesc": "Drawing your skin, please wait a moment.",
+      "resultTitle": "Chest opened!",
+      "resultDesc": "You received:",
+      "championField": "Champion",
+      "rarityField": "Rarity",
+      "remainingField": "Remaining",
+      "notYourChest": "You cannot interact with someone else's chest.",
+      "timedOut": "Time's up — use `/openchest` again whenever you want.",
+      "somethingWrong": "❌ Something went wrong",
+      "chestInfo": {
+        "hextech": {
+          "label": "Hextech Chest",
+          "description": "Any rarity possible"
+        },
+        "masterwork": {
+          "label": "Masterwork Chest",
+          "description": "Guaranteed epic or higher rarity"
+        }
+      },
+      "rarity": {
+        "legacy": "Legacy",
+        "epic": "Epic",
+        "legendary": "Legendary",
+        "ultimate": "Ultimate",
+        "mythic": "Mythic",
+        "transcendent": "Transcendent"
+      }
+    },
+    "help": {
+      "title": "📖 Command List",
+      "description": "Here are all available commands organized by category.",
+      "categoryField": "Category",
+      "commandsField": "Commands",
+      "footer": "Use /<command> to run any command."
+    },
+    "server": {
+      "title": "🏠 Server Information",
+      "nameField": "Name",
+      "idField": "ID",
+      "ownerField": "Owner",
+      "membersField": "Members",
+      "channelsField": "Channels",
+      "rolesField": "Roles",
+      "createdField": "Created at",
+      "boostLevelField": "Boost Level"
+    },
+    "user": {
+      "title": "👤 User Information",
+      "usernameField": "Username",
+      "idField": "ID",
+      "joinedField": "Joined at",
+      "accountCreatedField": "Account created at",
+      "rolesField": "Roles",
+      "permissionsField": "Key Permissions"
+    },
+    "warn": {
+      "title": "⚠️ Warning Applied",
+      "description": "You warned **{user}** successfully.",
+      "reasonField": "Reason",
+      "durationField": "Duration",
+      "noPermission": "You don't have permission to warn users.",
+      "botCannotWarn": "Couldn't warn the user (missing bot permissions).",
+      "defaultReason": "No reason provided."
+    },
+    "unwarn": {
+      "title": "✅ Warning Removed",
+      "description": "You removed a warning from **{user}** successfully.",
+      "noPermission": "You don't have permission to remove warnings.",
+      "botCannotUnwarn": "Couldn't remove the warning (missing bot permissions).",
+      "noWarnings": "This user has no warnings."
+    },
+    "mute": {
+      "title": "🔇 Mute Applied",
+      "description": "You muted **{user}** successfully.",
+      "reasonField": "Reason",
+      "durationField": "Duration",
+      "noPermission": "You don't have permission to mute users.",
+      "botCannotMute": "Couldn't mute the user (missing bot permissions).",
+      "defaultReason": "No reason provided."
+    },
+    "unmute": {
+      "title": "🔊 Unmute Applied",
+      "description": "You unmuted **{user}** successfully.",
+      "noPermission": "You don't have permission to unmute users.",
+      "botCannotUnmute": "Couldn't unmute the user (missing bot permissions).",
+      "notMuted": "This user is not muted."
+    },
+    "ban": {
+      "title": "🔨 Ban Applied",
+      "description": "You banned **{user}** successfully.",
+      "reasonField": "Reason",
+      "durationField": "Duration",
+      "noPermission": "You don't have permission to ban users.",
+      "botCannotBan": "Couldn't ban the user (missing bot permissions).",
+      "defaultReason": "No reason provided."
+    },
+    "unban": {
+      "title": "✅ Unban Applied",
+      "description": "You unbanned **{user}** successfully.",
+      "noPermission": "You don't have permission to unban users.",
+      "botCannotUnban": "Couldn't unban the user (missing bot permissions).",
+      "notBanned": "This user is not banned."
+    },
+    "give": {
+      "title": "🎁 Item Given",
+      "description": "You gave **{amount}x {item}** to **{user}**.",
+      "noPermission": "You don't have permission to give items.",
+      "invalidItem": "Invalid item.",
+      "items": {
+        "hextech": "Hextech Chest",
+        "masterwork": "Masterwork Chest",
+        "key": "Key"
+      }
+    },
+    "dashboard": {
+      "title": "🌐 Dashboard",
+      "description": "Access the dashboard at: {url}"
+    },
+    "reload": {
+      "title": "🔄 Reload",
+      "description": "Reloaded {type} **{name}** successfully.",
+      "noPermission": "You don't have permission to reload.",
+      "notFound": "{type} **{name}** not found.",
+      "typeCommand": "command",
+      "typeEvent": "event"
+    },
+    "stop": {
+      "title": "🛑 Stopping bot",
+      "description": "The bot is shutting down...",
+      "noPermission": "You don't have permission to stop the bot."
+    },
+    "setupRoles": {
+      "title": "⚙️ Role Setup",
+      "description": "Roles and moderation channel configured successfully.",
+      "muteRoleField": "Mute Role",
+      "banRoleField": "Ban Role",
+      "moderationChannelField": "Moderation Channel",
+      "noPermission": "You don't have permission to set up roles.",
+      "missingFields": "Please provide all required options."
+    },
+    "serverSettings": {
+      "title": "⚙️ Server Settings",
+      "description": "Current configuration for this server.",
+      "noSettings": "No settings found for this server.",
+      "updatedTitle": "✅ Settings Updated",
+      "updatedDesc": "Server settings have been updated successfully.",
+      "noPermission": "You don't have permission to view server settings."
+    },
+    "leagueProfile": {
+      "loadingTitle": "Loading profile...",
+      "loadingDesc": "Fetching player information from Riot API.",
+      "notFound": "Player not found. Check the region, name, and tag.",
+      "apiError": "Error fetching player data. Try again later.",
+      "summonerField": "Summoner",
+      "levelField": "Level",
+      "rankField": "Rank",
+      "winrateField": "Win Rate",
+      "lpField": "LP",
+      "championsField": "Top Champions",
+      "taglineTooLong": "The tagline must have a maximum of 5 characters.",
+      "taglineFormat": "You must insert only the numbers of the tagline. Do not insert \"#\"",
+      "accountError": "An error occurred while trying to get the account information.",
+      "summonerNotFound": "The summoner you entered does not exist. Please check the account name and server.",
+      "summonerError": "An error occurred while trying to get the summoner information.",
+      "queueError": "An error occurred while trying to get the queue information.",
+      "masteryError": "An error occurred while trying to get the mastery information.",
+      "ddragonError": "An error occurred while trying to get the DDragon version.",
+      "summonerTitle": "Summoner name: {name}#{tag}",
+      "levelDesc": "Level: {level}",
+      "rankValue": "Rank: {tier} {rank} {lp} LP\nWins: {wins}\nLosses: {losses}\nWinrate: {winrate}%"
+    },
+    "leagueMastery": {
+      "loadingTitle": "Loading mastery...",
+      "loadingDesc": "Fetching champion mastery data.",
+      "notFound": "Player not found.",
+      "apiError": "Error fetching mastery data.",
+      "championField": "Champion",
+      "levelField": "Mastery Level",
+      "pointsField": "Mastery Points"
+    },
+    "leagueMatchHistory": {
+      "loadingAccount": "Accessing user account information",
+      "loadingMatches": "Analyzing matches",
+      "loadingStats": "Calculating statistics",
+      "loadingChart": "Generating chart",
+      "notFound": "Player not found.",
+      "apiError": "Error fetching match history.",
+      "title": "Match History",
+      "winrateField": "Win Rate",
+      "kdaField": "KDA",
+      "matchesField": "Recent Matches",
+      "accountError": "An error occurred while fetching the account information.",
+      "historyError": "An error occurred while fetching the match history.",
+      "championError": "An error occurred while fetching the champion data.",
+      "ddragonError": "An error occurred while fetching the DDragon version.",
+      "matchError": "An error occurred while analyzing the match {number} statistics.",
+      "success": "Match history successfully analyzed.",
+      "victory": "Victory",
+      "defeat": "Defeat",
+      "matchHeader": "Match {number} | time: {time}",
+      "gameDuration": "Game Duration: {min}m {sec}s",
+      "kills": "Kills",
+      "deaths": "Deaths",
+      "assists": "Assists",
+      "kda": "KDA",
+      "damageDealt": "Damage Dealt to Champions",
+      "damageTaken": "Damage Taken",
+      "goldEarned": "Gold Earned",
+      "visionScore": "Vision Score",
+      "wardsPlaced": "Wards Placed",
+      "creepScore": "Creep Score",
+      "csPerMin": "Creep Score per Minute",
+      "accessingAccount": "Accessing user account information",
+      "accessingHistory": "Accessing match history",
+      "analyzingMatch": "Analyzing statistics for match {number}",
+      "generatingChart": "Generating chart",
+      "viewOverview": "Overview",
+      "viewDamageDealt": "Damage Dealt",
+      "viewDamageTaken": "Damage Taken",
+      "viewHeal": "Heal",
+      "viewFarm": "Farm",
+      "viewObjectives": "Objectives",
+      "viewWards": "Wards",
+      "viewKda": "KDA",
+      "teamLabelDamageDealt": "Damage to Champions",
+      "teamLabelDamageTaken": "Damage Taken",
+      "teamLabelHeal": "Total Heal",
+      "teamLabelFarm": "Total CS",
+      "teamLabelObjectives": "Damage to Objectives",
+      "teamLabelWards": "Wards Placed",
+      "teamLabelKda": "KDA",
+      "statKills": "Kills",
+      "statDeaths": "Deaths",
+      "statAssists": "Assists",
+      "statKDA": "KDA",
+      "statGold": "Gold",
+      "statVision": "Vision",
+      "statWards": "Wards",
+      "statDamageDealt": "Damage Dealt",
+      "statDamageTaken": "Damage Taken",
+      "statCS": "CS",
+      "statCSPerMin": "CS/min",
+      "statTotalDamageChamps": "Total Damage to Champions",
+      "statPhysicalDamage": "Physical Damage",
+      "statMagicDamage": "Magic Damage",
+      "statTrueDamage": "True Damage",
+      "statDamageObjectives": "Damage to Objectives",
+      "statDamageTurrets": "Damage to Turrets",
+      "statDamageEpicMonsters": "Damage to Epic Monsters",
+      "statTotalDamage": "Total Damage",
+      "statTotalDamageTaken": "Total Damage Taken",
+      "statPhysicalDamageTaken": "Physical Damage Taken",
+      "statMagicDamageTaken": "Magic Damage Taken",
+      "statTrueDamageTaken": "True Damage Taken",
+      "statDamageMitigated": "Damage Mitigated",
+      "statTotalHeal": "Total Heal",
+      "statHealTeammates": "Heal on Allies",
+      "statShieldTeammates": "Shield on Allies",
+      "statCSTotal": "Total CS",
+      "statNeutralMonsters": "Neutral Monsters",
+      "statGoldEarned": "Gold Earned",
+      "statGoldSpent": "Gold Spent",
+      "statTurretsDestroyed": "Turrets Destroyed",
+      "statInhibitorsDestroyed": "Inhibitors Destroyed",
+      "statBarons": "Barons",
+      "statDragons": "Dragons",
+      "statHeralds": "Heralds",
+      "statObjectivesStolen": "Objectives Stolen",
+      "statWardsPlaced": "Wards Placed",
+      "statWardsKilled": "Wards Destroyed",
+      "statVisionScore": "Vision Score",
+      "statDetectorWards": "Control Wards",
+      "statVisionWardsBought": "Vision Wards Bought",
+      "statSightWardsBought": "Sight Wards Bought",
+      "statDoubleKills": "Double Kills",
+      "statTripleKills": "Triple Kills",
+      "statQuadraKills": "Quadra Kills",
+      "statPentaKills": "Penta Kills",
+      "statKillingSprees": "Killing Sprees",
+      "statLargestKillingSpree": "Largest Killing Spree",
+      "statFirstBlood": "First Blood",
+      "firstBloodKill": "Kill",
+      "firstBloodAssist": "Assist",
+      "firstBloodNo": "No",
+      "matchOf": "Match {current}/{total}",
+      "duration": "Duration",
+      "teamMode": "Team Comparison Mode",
+      "viewLabel": "View",
+      "btnPrevious": "Previous",
+      "btnNext": "Next",
+      "btnTeamMode": "Team Mode",
+      "btnCompareTeam": "Compare Team",
+      "btnMatchPrev": "Previous Match",
+      "btnMatchNext": "Next Match",
+      "btnLoading": "Loading...",
+      "btnMatchOf": "Match {current}/{total}",
+      "loadingHistory": "Fetching match history...",
+      "loadingProcessingMatch": "Processing match {current} of {total}...",
+      "loadingMatch": "Loading match {current}/{total}...",
+      "loadingTitle": "LOADING",
+      "errorProcessing": "An error occurred while analyzing the match statistics.",
+      "errorCollector": "An error occurred while processing your action. Try again.",
+      "noMatches": "An error occurred while fetching the match history, or no matches were found."
+    },
+    "leagueChampionRotation": {
+      "loadingTitle": "Loading rotation...",
+      "loadingDesc": "Fetching current champion rotation.",
+      "title": "🔄 Champion Rotation",
+      "description": "Champions currently in free rotation.",
+      "apiError": "Error fetching champion rotation."
+    },
+    "leagueQueueSearch": {
+      "loadingTitle": "Searching queues...",
+      "loadingDesc": "Looking for ranked matches in {elo} {division}.",
+      "title": "Queue Search Results",
+      "noResults": "No queues found for the specified elo/division.",
+      "apiError": "Error searching queues.",
+      "loading": "Fetching data, please wait...",
+      "fetchError": "An error occurred while fetching the ranked queues.",
+      "description": "Found {count} ranked queues.",
+      "pageFooter": "Page {current} of {total}",
+      "summonerField": "Summoner: {name}",
+      "statsValue": "LP: {lp}\nWins: {wins}\nLosses: {losses}\nWinrate: {winrate}%",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "test": {
+      "nsfwRequired": "⚠️ This command can only be used in NSFW channels.\\nUse an appropriate channel and try again.",
+      "noImages": "No images found for these tags.",
+      "notYourButton": "Only the person who ran the command can use these buttons!",
+      "noImagesFilter": "No images found with this filter.",
+      "noContent": "No content found for {type}.",
+      "timedOut": "Time's up! Use the command again to continue browsing.",
+      "fetchError": "An error occurred while fetching the images.",
+      "loading": "Loading...",
+      "loadingMore": "Loading more images...",
+      "all": "All",
+      "imagesOnly": "Images only",
+      "videosOnly": "Videos only",
+      "aiDisabled": "AI Disabled",
+      "aiEnabled": "AI Enabled"
+    },
+    "event": {
+      "emitted": "Event {event} emitted with data: {data}",
+      "error": "There was an error emitting the event: {error}"
+    },
+    "redeem": {
+      "title": "Badge Redeemed!",
+      "description": "You received: **{name}**",
+      "rarityField": "Rarity",
+      "codeField": "Code",
+      "footer": "Check your badges in /members",
+      "noCode": "You must provide a badge code.",
+      "notLinked": "Your Discord account is not linked to Lumina. Link it in the dashboard first."
+    },
+    "createbadge": {
+      "title": "Badge Created!",
+      "description": "Badge **{code}** has been created successfully.",
+      "noPermission": "You do not have permission to create badges.",
+      "missingFields": "You must provide at least a code and name.",
+      "error": "Error creating badge."
+    },
+    "social": {
+      "hug": {
+        "description": "Hug someone!",
+        "userOption": "The user to hug",
+        "actionText": "{author} hugs {target} 💕"
+      },
+      "kiss": {
+        "description": "Kiss someone!",
+        "userOption": "The user to kiss",
+        "actionText": "{author} kisses {target} 💋"
+      },
+      "punch": {
+        "description": "Punch someone!",
+        "userOption": "The user to punch",
+        "actionText": "{author} punches {target} 👊"
+      },
+      "dance": {
+        "description": "Dance with someone!",
+        "userOption": "The user to dance with",
+        "actionText": "{author} dances with {target} 💃"
+      },
+      "wave": {
+        "description": "Wave at someone!",
+        "userOption": "The user to wave at",
+        "actionText": "{author} waves at {target} 👋"
+      },
+      "cry": {
+        "description": "Cry because of someone!",
+        "userOption": "The user that made you cry",
+        "actionText": "{author} is crying because of {target} 😢"
+      },
+      "smile": {
+        "description": "Smile at someone!",
+        "userOption": "The user to smile at",
+        "actionText": "{author} smiles at {target} 😊"
+      },
+      "laugh": {
+        "description": "Laugh at someone!",
+        "userOption": "The user to laugh at",
+        "actionText": "{author} laughs at {target} 😂"
+      }
+    },
+    "invite": {
+      "description": "Adds Lumina Bot to another server",
+      "title": "🔗 Invite Lumina Bot",
+      "descriptionText": "Click the button below to add Lumina Bot to your server!",
+      "button": "Add to Server"
+    }
+  },
+  "event": {
+    "dropChest": "{username}, you received a Masterwork Chest!",
+    "dropChestFooter": "Use /openchest to open the chest!",
+    "dropKey": "{username}, you received a Hextech Key!",
+    "dropKeyFooter": "Use /openchest to open your chests!"
+  },
+  "embed": {
+    "loadingTitle": "LOADING",
+    "loadingDesc": "Wait a moment, I'm processing your request.",
+    "errorTitle": "ERROR",
+    "errorDesc": "An error occurred while processing your request.",
+    "successTitle": "SUCCESS",
+    "successDesc": "The request was successfully processed."
+  }
+}

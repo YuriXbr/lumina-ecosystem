@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../../../contexts/UserContext';
 import { XMarkIcon, CheckCircleIcon, ExclamationTriangleIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { useT } from '../../../i18n/LanguageContext.jsx';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 /**
  * Modal de onboarding mostrado para usuários que ainda não têm username.
  * Pede username (4-16 chars) e displayName (1-32 chars).
  */
 export default function UsernameOnboardingModal({ onClose, onSuccess }) {
+  const t = useT();
   const { user, refreshUser } = useUser();
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -55,11 +57,11 @@ export default function UsernameOnboardingModal({ onClose, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (usernameStatus !== 'available') {
-      setError('Escolha um username disponível.');
+      setError(t('membersArea.onboarding.usernameAvailable'));
       return;
     }
     if (!displayName.trim()) {
-      setError('Display name é obrigatório.');
+      setError(t('membersArea.onboarding.displayNameRequired'));
       return;
     }
     setSaving(true);
@@ -68,7 +70,15 @@ export default function UsernameOnboardingModal({ onClose, onSuccess }) {
       const csrfRes = await fetch(`${API_BASE}expapi/v1/csrf-token`, { credentials: 'include' });
       const { csrfToken } = await csrfRes.json();
 
-      const res = await fetch(`${API_BASE}expapi/v1/user/identity`, { credentials: 'include' })
+      const res = await fetch(`${API_BASE}expapi/v1/user/identity`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken,
+            },
+            credentials: 'include',
+            body: JSON.stringify({ username: username.trim(), displayName: displayName.trim() }),
+        })
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -97,31 +107,29 @@ export default function UsernameOnboardingModal({ onClose, onSuccess }) {
           <button
             onClick={onClose}
             className="absolute top-3 right-3 text-white/80 hover:text-white p-1"
-            aria-label="Fechar"
+            aria-label={t("common.close")}
           >
             <XMarkIcon className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-2 text-white">
             <SparklesIcon className="h-6 w-6" />
-            <h2 className="text-lg font-bold">Bem-vindo ao Lumina!</h2>
+            <h2 className="text-lg font-bold">{t("membersArea.onboarding.title")}</h2>
           </div>
           <p className="text-sm text-purple-100 mt-1">
-            Agora você pode ter um username único para compartilhar seu perfil público.
+            {t("membersArea.onboarding.subtitle")}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           {/* Novidade explicativa */}
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-xs text-purple-800">
-            Estamos introduzindo <strong>usernames</strong>! Escolha um handle único —
-            ele será usado no link do seu perfil público <code className="bg-purple-100 px-1 rounded">/u/seu_username</code>.
-            Você pode alterá-lo a cada 30 dias.
+            {t("membersArea.onboarding.descFull")}
           </div>
 
           {/* Username */}
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-1">
-              Username <span className="text-purple-600">*</span>
+              {t('common.username')} <span className="text-purple-600">*</span>
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
@@ -134,7 +142,7 @@ export default function UsernameOnboardingModal({ onClose, onSuccess }) {
                   usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'border-red-400 focus:ring-red-500' :
                   'border-gray-300 focus:ring-purple-500'
                 }`}
-                placeholder="seu_username"
+                placeholder={t('membersArea.onboarding.usernamePlaceholder')}
                 minLength={4}
                 maxLength={16}
                 required
@@ -151,7 +159,7 @@ export default function UsernameOnboardingModal({ onClose, onSuccess }) {
               )}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              4-16 caracteres: letras, números e _. Não pode começar com número ou _.
+              {t("settings.account.usernameHint")}
             </p>
             {usernameMessage && (
               <p className={`text-xs mt-1 ${usernameStatus === 'available' ? 'text-green-600' : 'text-red-600'}`}>
@@ -163,19 +171,19 @@ export default function UsernameOnboardingModal({ onClose, onSuccess }) {
           {/* DisplayName */}
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-1">
-              Nome de exibição <span className="text-purple-600">*</span>
+              {t("settings.account.displayName")} <span className="text-purple-600">*</span>
             </label>
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value.slice(0, 32))}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-              placeholder="Como você quer ser chamado"
+              placeholder={t('membersArea.onboarding.displayNamePlaceholder')}
               maxLength={32}
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              Aparece no seu perfil. Pode conter espaços e acentos. Alterável a cada 24h.
+              {t('membersArea.onboarding.displayNameHint')}
             </p>
           </div>
 
@@ -192,14 +200,14 @@ export default function UsernameOnboardingModal({ onClose, onSuccess }) {
               onClick={onClose}
               className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
             >
-              Depois
+              {t('membersArea.onboarding.later')}
             </button>
             <button
               type="submit"
               disabled={!canSubmit}
               className="flex-1 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? 'Salvando...' : 'Confirmar'}
+              {saving ? t('membersArea.onboarding.saving') : t('membersArea.onboarding.confirm')}
             </button>
           </div>
         </form>

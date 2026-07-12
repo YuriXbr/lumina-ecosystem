@@ -76,9 +76,9 @@ const ACCESS_LEVELS = {
   }
 };
 
-export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+export const UserProvider = ({ children, initialUser = null, initialLoading = false }) => {
+  const [user, setUser] = useState(initialUser);
+  const [loading, setLoading] = useState(initialLoading);
   const [error, setError] = useState(null);
 
   const loadUser = async () => {
@@ -126,6 +126,21 @@ export const UserProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    // Em testes, o provider pode receber `initialUser` para evitar a chamada
+    // ao /session. Nesse caso, não disparamos loadUser no mount.
+    if (initialUser !== null || initialLoading) {
+      // Ainda registra o listener de 401 para que testes possam simular
+      // expiração de sessão.
+      const handleUnauthorized = () => {
+        setUser(null);
+        setError(null);
+      };
+      window.addEventListener('auth:unauthorized', handleUnauthorized);
+      return () => {
+        window.removeEventListener('auth:unauthorized', handleUnauthorized);
+      };
+    }
+
     loadUser();
 
     // Escuta evento de 401 disparado pelo apiFetch
@@ -138,6 +153,7 @@ export const UserProvider = ({ children }) => {
     return () => {
       window.removeEventListener('auth:unauthorized', handleUnauthorized);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const hasPermission = (permission) => {

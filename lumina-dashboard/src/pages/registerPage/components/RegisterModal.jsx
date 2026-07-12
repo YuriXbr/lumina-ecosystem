@@ -96,7 +96,19 @@ export default function RegisterModal() {
         }, 15000);
 
         try {
+            // CORREÇÃO #4: o fetch() estava incompletos — faltavam as opções
+            // (method, headers, body) e o fechamento do parêntese. A chamada
+            // foi cortada no meio, causando erro de sintaxe "Expected '{', got ';'"
+            // que impedia a importação do módulo inteiro.
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
+                credentials: 'include',
+                body: JSON.stringify(formData),
+            });
 
             clearTimeout(timeoutId);
             setIsLoading(false);

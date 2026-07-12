@@ -143,14 +143,20 @@ function optionalAuth(req, res, next) {
  * Em desenvolvimento (HTTP cross-origin localhost):
  *   sameSite='none' + secure=false — browser aceita cookie cross-origin em HTTP
  * Em produção (HTTPS):
- *   sameSite='lax' + secure=true — protege contra CSRF cross-site
+ *   sameSite='none' + secure=true — permite cookies cross-origin (prod)
+ *   sameSite='lax' + secure=false — same-origin via proxy Vite (dev)
  */
 function setAuthCookie(res, token) {
     const isProduction = process.env.NODE_ENV === 'production';
     res.cookie(COOKIE_NAME, token, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: 'lax', // Lax em ambos — same-origin em dev (proxy), seguro em prod
+        // CORREÇÃO #5: em produção, dashboard e API são cross-origin (subdomínios
+        // diferentes). SameSite=Lax bloqueia o cookie lumina_token em requisições
+        // POST/PUT/DELETE cross-origin, causando 401/403. SameSite=None + Secure
+        // permite o cookie ser enviado cross-origin.
+        sameSite: isProduction ? 'none' : 'lax',
+        domain: isProduction ? '.luminasink.com' : undefined,
         maxAge: 60 * 60 * 1000, // 1 hora
         path: '/',
     });
@@ -164,7 +170,8 @@ function clearAuthCookie(res) {
     res.clearCookie(COOKIE_NAME, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: 'lax',
+        sameSite: isProduction ? 'none' : 'lax',
+        domain: isProduction ? '.luminasink.com' : undefined,
         path: '/',
     });
 }

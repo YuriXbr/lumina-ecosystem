@@ -17,7 +17,10 @@ module.exports = {
 
     async execute(req, res) {
         const { verifyRequestAuthWithAccountCheck } = require('../../../utils/authHelpers');
-        const { user: decoded, account, error: authError } = await verifyRequestAuthWithAccountCheck(req);
+        // CORREÇÃO #1: usar `let` em vez de `const` para permitir reatribuição
+        // de `account` após refresh do token OAuth2 do Discord.
+        const { user: decoded, account: _initialAccount, error: authError } = await verifyRequestAuthWithAccountCheck(req);
+        let account = _initialAccount;
         if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         try {

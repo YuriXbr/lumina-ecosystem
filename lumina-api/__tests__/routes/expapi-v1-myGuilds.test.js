@@ -174,12 +174,9 @@ describe('GET /expapi/v1/my-guilds', () => {
     });
 
     // ─── Refresh token expirado ───────────────────────────────────────────
-    it('500 quando token expirado (BUG: route tenta reatribuir const account)', async () => {
-        // BUG CONHECIDO: a rota faz `const { account } = ...` e depois tenta
-        // `account = updated`, o que lança TypeError "Assignment to constant variable".
-        // Esse erro é capturado pelo catch e retornado como 500.
-        // Quando o bug for corrigido (mudar para `let account`), este teste
-        // deve ser atualizado para esperar 200.
+    it('200 faz refresh do token quando expirado e retorna guildas (após correção do bug)', async () => {
+        // CORREÇÃO #1: a rota agora usa `let account` em vez de `const account`,
+        // permitindo reatribuição após refresh do token OAuth2 do Discord.
         const account = makeAccount({
             discordOauth2Token: 'expired',
             discordOauth2TokenExpiresAt: new Date(Date.now() - 1000),
@@ -208,8 +205,8 @@ describe('GET /expapi/v1/my-guilds', () => {
 
         const res = await request(app).get(URL).set(authHeader());
 
-        expect(res.status).toBe(500);
-        expect(axios.post).toHaveBeenCalled();
+        expect(res.status).toBe(200);
+        expect(axios.post).toHaveBeenCalled(); // refresh foi chamado
     });
 
     it('500 quando refresh token falha (sem ser 429)', async () => {

@@ -211,3 +211,12 @@ export async function apiLogout() {
 }
 
 export { API_BASE };
+
+/**
+ * Reseta o cache interno do CSRF token. Usado apenas em testes para isolar
+ * cada caso de teste do cache do anterior.
+ */
+export function _resetCsrfCacheForTests() {
+    csrfTokenCache = null;
+    csrfTokenPromise = null;
+}

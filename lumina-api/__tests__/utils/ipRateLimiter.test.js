@@ -55,24 +55,39 @@ describe('calcBlockDuration', () => {
     });
 
     it('blockCount=9 → 512 min (BASE × 2^9)', () => {
-        // exponent = min(9, 9) = 9; 2^9 = 512; 512 * 60000 = 30,720,000
+        // exponent = max(0, 9) = 9; 2^9 = 512; 512 * 60000 = 30,720,000
+        // Ainda abaixo de 24h (1,440 min), então Math.min não ativa
         expect(calcBlockDuration(9)).toBe(512 * 60 * 1000);
     });
 
-    it('blockCount=10 → ainda 512 min (exponent capped at 9)', () => {
-        // BUG CONHECIDO: a documentação diz "cap em 24h após 10 bloqueios"
-        // mas o código caps o exponent em 9 (MAX_BLOCKS_CAP - 1 = 9),
-        // resultando em 2^9 = 512 min = 8.5h, NUNCA atingindo 24h.
-        // O Math.min(duration, MAX_BLOCK_MS) é dead code neste cenário.
-        expect(calcBlockDuration(10)).toBe(512 * 60 * 1000);
+    it('blockCount=10 → 1024 min (BASE × 2^10, ainda abaixo de 24h)', () => {
+        // CORREÇÃO #2: antes do fix, o cap de exponent limitava a 512 min.
+        // Agora 2^10 = 1024 min = 17h, ainda abaixo de 24h.
+        expect(calcBlockDuration(10)).toBe(1024 * 60 * 1000);
     });
 
-    it('blockCount=100 → ainda 512 min (cap de exponent)', () => {
-        expect(calcBlockDuration(100)).toBe(512 * 60 * 1000);
+    it('blockCount=11 → 24h (MAX_BLOCK_MS — cap finalmente ativa)', () => {
+        // CORREÇÃO #2: 2^11 = 2048 min = 34h, que excede 24h.
+        // Math.min(2048*60000, MAX_BLOCK_MS) = MAX_BLOCK_MS = 24h.
+        expect(calcBlockDuration(11)).toBe(MAX_BLOCK_MS);
     });
 
-    it('blockCount=20 → ainda 512 min (cap de exponent)', () => {
-        expect(calcBlockDuration(20)).toBe(512 * 60 * 1000);
+    it('blockCount=20 → 24h (cap)', () => {
+        expect(calcBlockDuration(20)).toBe(MAX_BLOCK_MS);
+    });
+
+    it('blockCount=100 → 24h (cap)', () => {
+        expect(calcBlockDuration(100)).toBe(MAX_BLOCK_MS);
+    });
+
+    it('blockCount=0 → 60s (BASE × 2^0)', () => {
+        expect(calcBlockDuration(0)).toBe(60 * 1000);
+    });
+
+    it('blockCount negativo → 60s (Math.max(0, n) protege)', () => {
+        // CORREÇÃO #2: Math.max(0, blockCount) evita 2^negativo = fração
+        expect(calcBlockDuration(-5)).toBe(60 * 1000);
+        expect(calcBlockDuration(-1)).toBe(60 * 1000);
     });
 });
 

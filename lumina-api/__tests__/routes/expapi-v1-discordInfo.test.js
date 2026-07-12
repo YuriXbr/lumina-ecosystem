@@ -107,10 +107,9 @@ describe('GET /expapi/v1/discordinfo', () => {
     });
 
     // ─── Refresh token ────────────────────────────────────────────────────
-    it('500 quando token expirado (BUG: route reatribui const account)', async () => {
-        // BUG CONHECIDO: mesmo padrão de myGuilds — `const { account } = ...`
-        // seguido de `account = updated` lança TypeError. Veja myGuilds.test.js
-        // para detalhes. Quando o bug for corrigido, atualizar para 200.
+    it('200 faz refresh quando token expirado (após correção do bug)', async () => {
+        // CORREÇÃO #1: a rota agora usa `let account` em vez de `const account`,
+        // permitindo reatribuição após refresh do token OAuth2 do Discord.
         const account = makeAccount({
             discordOauth2Token: 'expired',
             discordOauth2TokenExpiresAt: new Date(Date.now() - 1000),
@@ -139,7 +138,7 @@ describe('GET /expapi/v1/discordinfo', () => {
 
         const res = await request(app).get(URL).set(authHeader());
 
-        expect(res.status).toBe(500);
+        expect(res.status).toBe(200);
         expect(axios.post).toHaveBeenCalled();
     });
 

@@ -81,7 +81,14 @@ function ensureCsrfToken(req, res, next) {
         res.cookie(COOKIE_NAME, token, {
             httpOnly: false, // JS precisa ler para incluir no header
             secure: isProduction,
-            sameSite: 'lax',
+            // CORREÇÃO #5: em produção, dashboard (bot.luminasink.com) e API
+            // (api.bot.luminasink.com) são cross-origin. SameSite=Lax bloqueia
+            // cookies em POST/PUT/DELETE cross-origin via fetch, causando 403
+            // CSRF_INVALID. SameSite=None + Secure permite cookies cross-origin.
+            // Em dev, o proxy do Vite torna tudo same-origin, então Lax funciona.
+            sameSite: isProduction ? 'none' : 'lax',
+            // Compartilha o cookie entre subdomínios de luminasink.com em produção
+            domain: isProduction ? '.luminasink.com' : undefined,
             maxAge: TOKEN_MAX_AGE_MS,
             path: '/',
         });

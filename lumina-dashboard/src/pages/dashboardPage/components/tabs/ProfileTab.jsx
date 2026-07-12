@@ -44,7 +44,9 @@ const handleLinkDiscord = () => {
     try {
       // Obter token CSRF
       const csrfResponse = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/csrf-token`, {
-      
+        credentials: 'include',
+      });
+
       let csrfToken = '';
       if (csrfResponse.ok) {
         const csrfData = await csrfResponse.json();

@@ -5,24 +5,30 @@ import DefaultInput from './components/DefaultInput.jsx';
 import DashboardLayout from './components/DashboardLayout.jsx';
 import DefaultSelect from './components/DefaultSelect.jsx';
 import DangerBadge from './components/DangerBadge.jsx';
+import { useUser } from '../../contexts/UserContext';
 
 const DashboardSettingsPage = () => {
   const [formData, setFormData] = useState({});
   const navigate = useNavigate();
+  // CORREÇÃO #3: `token` era referenciado mas nunca definido. Após a migração
+  // para cookie httpOnly, a autenticação é feita via cookie (credentials:
+  // 'include'), não mais via header Authorization: Bearer. Usamos useUser()
+  // para verificar se o usuário está logado, em vez de checar um token inexistente.
+  const { user, loading } = useUser();
 
   useEffect(() => {
-    if (!token) {
+    if (loading) return;
+    if (!user) {
       navigate('/login');
       return;
     }
 
     const fetchData = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/getConfigs`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/settings`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
           },
           credentials: 'include',
         });
@@ -39,7 +45,7 @@ const DashboardSettingsPage = () => {
     };
 
     fetchData();
-  }, [navigate]);
+  }, [navigate, user, loading]);
 
   const handleChange = (section, field, value) => {
     setFormData(prevState => ({

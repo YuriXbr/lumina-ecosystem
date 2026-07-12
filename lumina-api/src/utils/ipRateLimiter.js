@@ -37,14 +37,23 @@ const { mongoSchema } = require('../database/schema');
 // ─── Constantes de backoff ────────────────────────────────────────────────────
 const BASE_BLOCK_MS  = 60 * 1000;          // 1 minuto (primeiro bloqueio)
 const MAX_BLOCK_MS   = 24 * 60 * 60 * 1000; // 24 horas (máximo)
-const MAX_BLOCKS_CAP = 10;                  // após 10 bloqueios, fixa em MAX_BLOCK_MS
+// CORREÇÃO #2: removido MAX_BLOCKS_CAP — era a causa do bug onde a duração
+// nunca atingia 24h. O cap agora é feito pelo Math.min(duration, MAX_BLOCK_MS)
+// na função abaixo, que ativa quando 2^blockCount * BASE_BLOCK_MS >= 24h,
+// ou seja, a partir de blockCount=11 (2^11=2048 min > 1440 min = 24h).
 
 /**
  * Calcula a duração do próximo bloqueio com backoff exponencial.
  * blockCount = número de bloqueios JÁ sofridos (antes do novo).
  */
+/**
+ * CORREÇÃO #2: antes o exponent era capado em MAX_BLOCKS_CAP-1 (=9), o que
+ * limitava a duração a 2^9 = 512 min = 8.5h, nunca atingindo 24h. Agora o
+ * exponent cresce livremente e o cap é feito pelo Math.min(duration, MAX_BLOCK_MS),
+ * garantindo que a duração atinge 24h a partir de blockCount=11.
+ */
 function calcBlockDuration(blockCount) {
-    const exponent = Math.min(blockCount, MAX_BLOCKS_CAP - 1);
+    const exponent = Math.max(0, blockCount);
     return Math.min(BASE_BLOCK_MS * Math.pow(2, exponent), MAX_BLOCK_MS);
 }
 

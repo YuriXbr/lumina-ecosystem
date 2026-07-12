@@ -6,6 +6,8 @@
   "scripts": {
     "start": "cross-env NODE_ENV=production node index.js",
     "dev": "node index.js --watch . --ext js NODE_ENV=development",
+    "sync:guilds": "cross-env NODE_NO_WARNINGS=1 NODE_ENV=production node sync-guilds.js",
+    "sync:guilds:dev": "cross-env NODE_NO_WARNINGS=1 node sync-guilds.js --dry-run",
     "deploy": "cross-env NODE_NO_WARNINGS=1 NODE_ENV=production node deploy-commands.js",
     "updateskins": "node updateskins.js",
     "test": "echo \"Error: no test specified\" && exit 1"

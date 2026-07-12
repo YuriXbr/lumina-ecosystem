@@ -426,6 +426,131 @@
       "error": "Erro ao criar badge."
     },
     "social": {
+      "hug": {
+        "description": "Abraça alguém!",
+        "userOption": "O usuário para abraçar",
+        "actionText": "{author} abraça {target} 💕"
+      },
+      "kiss": {
+        "description": "Beija alguém!",
+        "userOption": "O usuário para beijar",
+        "actionText": "{author} beija {target} 💋"
+      },
+      "punch": {
+        "description": "Soca alguém!",
+        "userOption": "O usuário para socar",
+        "actionText": "{author} soca {target} 👊"
+      },
+      "dance": {
+        "description": "Dança com alguém!",
+        "userOption": "O usuário para dançar",
+        "actionText": "{author} dança com {target} 💃"
+      },
+      "wave": {
+        "description": "Acena para alguém!",
+        "userOption": "O usuário para acenar",
+        "actionText": "{author} acena para {target} 👋"
+      },
+      "cry": {
+        "description": "Chora por causa de alguém!",
+        "userOption": "O usuário que te fez chorar",
+        "actionText": "{author} está chorando por causa de {target} 😢"
+      },
+      "smile": {
+        "description": "Sorri para alguém!",
+        "userOption": "O usuário para sorrir",
+        "actionText": "{author} sorri para {target} 😊"
+      },
+      "laugh": {
+        "description": "Ri de alguém!",
+        "userOption": "O usuário para rir",
+        "actionText": "{author} ri de {target} 😂"
+      },
+      "slap": {
+        "description": "Dá um tapa em alguém!",
+        "userOption": "O usuário para dar um tapa",
+        "actionText": "{author} dá um tapa em {target} 👋"
+      },
+      "airkiss": {
+        "description": "Manda um beijo no ar para alguém!",
+        "userOption": "O usuário para mandar um beijo",
+        "actionText": "{author} manda um beijo no ar para {target} 😘"
+      },
+      "angrystare": {
+        "description": "Olha com raiva para alguém!",
+        "userOption": "O usuário para olhar com raiva",
+        "actionText": "{author} olha com raiva para {target} 😠"
+      },
+      "bite": {
+        "description": "Morde alguém!",
+        "userOption": "O usuário para morder",
+        "actionText": "{author} morde {target} 😋"
+      },
+      "bleh": {
+        "description": "Faz careta para alguém!",
+        "userOption": "O usuário para fazer careta",
+        "actionText": "{author} faz careta para {target} 😛"
+      },
+      "blush": {
+        "description": "Fica tímido por causa de alguém!",
+        "userOption": "O usuário que te fez ficar tímido",
+        "actionText": "{author} fica tímido por causa de {target} 😊"
+      },
+      "brofist": {
+        "description": "Dá um soco de amizade em alguém!",
+        "userOption": "O usuário para dar um soco de amizade",
+        "actionText": "{author} dá um soco de amizade em {target} 👊"
+      },
+      "celebrate": {
+        "description": "Comemora com alguém!",
+        "userOption": "O usuário para comemorar",
+        "actionText": "{author} comemora com {target} 🎉"
+      },
+      "cheers": {
+        "description": "Brinda com alguém!",
+        "userOption": "O usuário para brindar",
+        "actionText": "{author} brinda com {target} 🥂"
+      },
+      "clap": {
+        "description": "Aplaude alguém!",
+        "userOption": "O usuário para aplaudir",
+        "actionText": "{author} aplaude {target} 👏"
+      },
+      "confused": {
+        "description": "Fica confuso por causa de alguém!",
+        "userOption": "O usuário que te deixou confuso",
+        "actionText": "{author} está confuso por causa de {target} 😕"
+      },
+      "cool": {
+        "description": "Fica legal com alguém!",
+        "userOption": "O usuário para ficar legal",
+        "actionText": "{author} fica legal com {target} 😎"
+      },
+      "cuddle": {
+        "description": "Se aconchega com alguém!",
+        "userOption": "O usuário para se aconchegar",
+        "actionText": "{author} se aconchega com {target} 🤗"
+      },
+      "drool": {
+        "description": "Baba por alguém!",
+        "userOption": "O usuário que te faz babar",
+        "actionText": "{author} está babando por {target} 🤤"
+      },
+      "evillaugh": {
+        "description": "Ri maliciosamente de alguém!",
+        "userOption": "O usuário para rir maliciosamente",
+        "actionText": "{author} ri maliciosamente de {target} 😈"
+      },
+      "facepalm": {
+        "description": "Dá um facepalm por causa de alguém!",
+        "userOption": "O usuário que te fez dar facepalm",
+        "actionText": "{author} dá um facepalm por causa de {target} 🤦"
+      },
+      "handhold": {
+        "description": "Segura a mão de alguém!",
+        "userOption": "O usuário para segurar a mão",
+        "actionText": "{author} segura a mão de {target} 🤝"
+      },
       "headbang": {
         "description": "Balança a cabeça com alguém!",
         "userOption": "O usuário para balançar a cabeça",

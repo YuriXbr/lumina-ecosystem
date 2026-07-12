@@ -112,7 +112,7 @@ const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
         await deployCommands();
     } catch (error) {
         console.error(c.error + " An error occurred during the initialization process. Please check the configuration and try again.");
-        console.error(c.error + " " + error);
+        console.error(c.error + " " + error + "\n" + error.stack);
         process.exit(1); // Exit the process if there's an error during bootstrap
     }
 

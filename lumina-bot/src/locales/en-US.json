@@ -426,6 +426,46 @@
       "error": "Error creating badge."
     },
     "social": {
+      "hug": {
+        "description": "Hug someone!",
+        "userOption": "The user to hug",
+        "actionText": "{author} hugs {target} 💕"
+      },
+      "kiss": {
+        "description": "Kiss someone!",
+        "userOption": "The user to kiss",
+        "actionText": "{author} kisses {target} 💋"
+      },
+      "punch": {
+        "description": "Punch someone!",
+        "userOption": "The user to punch",
+        "actionText": "{author} punches {target} 👊"
+      },
+      "dance": {
+        "description": "Dance with someone!",
+        "userOption": "The user to dance with",
+        "actionText": "{author} dances with {target} 💃"
+      },
+      "wave": {
+        "description": "Wave at someone!",
+        "userOption": "The user to wave at",
+        "actionText": "{author} waves at {target} 👋"
+      },
+      "cry": {
+        "description": "Cry because of someone!",
+        "userOption": "The user that made you cry",
+        "actionText": "{author} is crying because of {target} 😢"
+      },
+      "smile": {
+        "description": "Smile at someone!",
+        "userOption": "The user to smile at",
+        "actionText": "{author} smiles at {target} 😊"
+      },
+      "laugh": {
+        "description": "Laugh at someone!",
+        "userOption": "The user to laugh at",
+        "actionText": "{author} laughs at {target} 😂"
+      },
       "headbang": {
         "description": "Headbang with someone!",
         "userOption": "The user to headbang with",

@@ -465,6 +465,226 @@
         "description": "¡Ríete de alguien!",
         "userOption": "El usuario para reírse",
         "actionText": "{author} se ríe de {target} 😂"
+      },
+      "headbang": {
+        "description": "¡Haz headbang con alguien!",
+        "userOption": "El usuario con quien hacer headbang",
+        "actionText": "{author} hace headbang con {target} 🤘"
+      },
+      "huh": {
+        "description": "¡Reacciona con confusión hacia alguien!",
+        "userOption": "El usuario que te confundió",
+        "actionText": "{author} mira confundido a {target} 🤨"
+      },
+      "lick": {
+        "description": "¡Lame a alguien!",
+        "userOption": "El usuario que quieres lamer",
+        "actionText": "{author} lame a {target} 👅"
+      },
+      "love": {
+        "description": "¡Demuestra amor a alguien!",
+        "userOption": "El usuario que quieres amar",
+        "actionText": "{author} demuestra amor a {target} ❤️"
+      },
+      "mad": {
+        "description": "¡Enójate con alguien!",
+        "userOption": "El usuario que te hizo enojar",
+        "actionText": "{author} está enojado con {target} 😡"
+      },
+      "nervous": {
+        "description": "¡Ponte nervioso por alguien!",
+        "userOption": "El usuario que te puso nervioso",
+        "actionText": "{author} se pone nervioso por {target} 😰"
+      },
+      "nom": {
+        "description": "¡Dale un mordisquito a alguien!",
+        "userOption": "El usuario al que quieres morder",
+        "actionText": "{author} le da un mordisquito a {target} 😋"
+      },
+      "nosebleed": {
+        "description": "¡Sufre una hemorragia nasal por alguien!",
+        "userOption": "El usuario que la provocó",
+        "actionText": "{author} tiene una hemorragia nasal por culpa de {target} 🩸"
+      },
+      "nuzzle": {
+        "description": "¡Acurrúcate cariñosamente con alguien!",
+        "userOption": "El usuario con quien acurrucarte",
+        "actionText": "{author} se acurruca cariñosamente con {target} 🥰"
+      },
+      "nyah": {
+        "description": "¡Sácale la lengua a alguien!",
+        "userOption": "El usuario al que quieres molestar",
+        "actionText": "{author} le saca la lengua a {target} 😝"
+      },
+      "pat": {
+        "description": "¡Acaricia a alguien!",
+        "userOption": "El usuario al que quieres acariciar",
+        "actionText": "{author} acaricia a {target} 🥹"
+      },
+      "peek": {
+        "description": "¡Espía a alguien!",
+        "userOption": "El usuario que quieres espiar",
+        "actionText": "{author} espía a {target} 👀"
+      },
+      "pinch": {
+        "description": "¡Pellizca a alguien!",
+        "userOption": "El usuario al que quieres pellizcar",
+        "actionText": "{author} pellizca a {target} 🤏"
+      },
+      "poke": {
+        "description": "¡Empuja a alguien con el dedo!",
+        "userOption": "El usuario al que quieres tocar",
+        "actionText": "{author} empuja a {target} 👉"
+      },
+      "pout": {
+        "description": "¡Haz un puchero por alguien!",
+        "userOption": "El usuario que te hizo enfurruñarte",
+        "actionText": "{author} hace un puchero por {target} 😤"
+      },
+      "roll": {
+        "description": "¡Pon los ojos en blanco hacia alguien!",
+        "userOption": "El usuario al que mirar así",
+        "actionText": "{author} pone los ojos en blanco hacia {target} 🙄"
+      },
+      "run": {
+        "description": "¡Corre con alguien!",
+        "userOption": "El usuario con quien correr",
+        "actionText": "{author} corre con {target} 🏃"
+      },
+      "sad": {
+        "description": "¡Ponte triste por alguien!",
+        "userOption": "El usuario que te entristeció",
+        "actionText": "{author} se pone triste por {target} 😔"
+      },
+      "scared": {
+        "description": "¡Asústate por alguien!",
+        "userOption": "El usuario que te asustó",
+        "actionText": "{author} se asusta por {target} 😨"
+      },
+      "shout": {
+        "description": "¡Grítale a alguien!",
+        "userOption": "El usuario al que quieres gritar",
+        "actionText": "{author} le grita a {target} 📢"
+      },
+      "shrug": {
+        "description": "¡Encógete de hombros ante alguien!",
+        "userOption": "El usuario hacia quien hacerlo",
+        "actionText": "{author} se encoge de hombros ante {target} 🤷"
+      },
+      "shy": {
+        "description": "¡Ponte tímido por alguien!",
+        "userOption": "El usuario que te avergonzó",
+        "actionText": "{author} se pone tímido por {target} 🫣"
+      },
+      "sigh": {
+        "description": "¡Suspira por alguien!",
+        "userOption": "El usuario que te hizo suspirar",
+        "actionText": "{author} suspira por {target} 😮‍💨"
+      },
+      "sing": {
+        "description": "¡Cántale a alguien!",
+        "userOption": "El usuario al que quieres cantar",
+        "actionText": "{author} le canta a {target} 🎤"
+      },
+      "sip": {
+        "description": "¡Da un sorbo mientras observas a alguien!",
+        "userOption": "El usuario que quieres observar",
+        "actionText": "{author} da un sorbo mientras observa a {target} ☕"
+      },
+      "sleep": {
+        "description": "¡Duerme junto a alguien!",
+        "userOption": "El usuario junto al que dormir",
+        "actionText": "{author} duerme junto a {target} 😴"
+      },
+      "slowclap": {
+        "description": "¡Aplaude lentamente a alguien!",
+        "userOption": "El usuario al que aplaudir lentamente",
+        "actionText": "{author} aplaude lentamente a {target} 👏"
+      },
+      "smack": {
+        "description": "¡Dale una palmada a alguien!",
+        "userOption": "El usuario al que golpear",
+        "actionText": "{author} golpea a {target} 💥"
+      },
+      "smug": {
+        "description": "¡Mira a alguien con superioridad!",
+        "userOption": "El usuario al que provocar",
+        "actionText": "{author} mira con superioridad a {target} 😏"
+      },
+      "sneeze": {
+        "description": "¡Estornuda cerca de alguien!",
+        "userOption": "El usuario cerca del que estornudar",
+        "actionText": "{author} estornuda cerca de {target} 🤧"
+      },
+      "sorry": {
+        "description": "¡Pídele disculpas a alguien!",
+        "userOption": "El usuario al que pedir disculpas",
+        "actionText": "{author} le pide disculpas a {target} 🙏"
+      },
+      "stare": {
+        "description": "¡Mira fijamente a alguien!",
+        "userOption": "El usuario al que mirar",
+        "actionText": "{author} mira fijamente a {target} 👁️"
+      },
+      "stop": {
+        "description": "¡Pídele a alguien que se detenga!",
+        "userOption": "El usuario al que decirle que pare",
+        "actionText": "{author} le pide a {target} que se detenga ✋"
+      },
+      "surprised": {
+        "description": "¡Sorpréndete por alguien!",
+        "userOption": "El usuario que te sorprendió",
+        "actionText": "{author} se sorprende por {target} 😲"
+      },
+      "sweat": {
+        "description": "¡Empieza a sudar por culpa de alguien!",
+        "userOption": "El usuario que te puso nervioso",
+        "actionText": "{author} empieza a sudar por {target} 😅"
+      },
+      "thumbsup": {
+        "description": "¡Dale un pulgar arriba a alguien!",
+        "userOption": "El usuario al que dar un pulgar arriba",
+        "actionText": "{author} le da un pulgar arriba a {target} 👍"
+      },
+      "tickle": {
+        "description": "¡Hazle cosquillas a alguien!",
+        "userOption": "El usuario al que hacer cosquillas",
+        "actionText": "{author} le hace cosquillas a {target} 🤭"
+      },
+      "tired": {
+        "description": "¡Cánsate por culpa de alguien!",
+        "userOption": "El usuario que te cansó",
+        "actionText": "{author} está cansado por {target} 🥱"
+      },
+      "wink": {
+        "description": "¡Guiña un ojo a alguien!",
+        "userOption": "El usuario al que guiñar un ojo",
+        "actionText": "{author} le guiña un ojo a {target} 😉"
+      },
+      "woah": {
+        "description": "¡Sorpréndete con alguien!",
+        "userOption": "El usuario que te impresionó",
+        "actionText": "{author} queda impresionado por {target} 😮"
+      },
+      "yawn": {
+        "description": "¡Bosteza cerca de alguien!",
+        "userOption": "El usuario cerca del que bostezar",
+        "actionText": "{author} bosteza cerca de {target} 🥱"
+      },
+      "yay": {
+        "description": "¡Celebra con alguien!",
+        "userOption": "El usuario con quien celebrar",
+        "actionText": "{author} celebra con {target} 🎊"
+      },
+      "yes": {
+        "description": "¡Está de acuerdo con alguien!",
+        "userOption": "El usuario con quien estar de acuerdo",
+        "actionText": "{author} está de acuerdo con {target} ✅"
+      },
+      "no": {
+        "description": "¡No está de acuerdo con alguien!",
+        "userOption": "El usuario con quien discrepar",
+        "actionText": "{author} no está de acuerdo con {target} ❌"
       }
     },
     "invite": {

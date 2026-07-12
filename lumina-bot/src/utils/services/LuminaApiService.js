@@ -15,7 +15,7 @@ module.exports = class LuminaApiService {
 
         this.luminaApiKey = process.env.LUMINA_API_KEY;
         this.api = axios.create({
-            baseURL: process.env.API_BASE_URL,
+            baseURL: process.env.API_BASE_URL || 'http://localhost:3000',
             headers: {
                 'Content-Type': 'application/json',
                 'internal-key': process.env.INTERNAL_API_KEY,

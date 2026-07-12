@@ -3,11 +3,19 @@ const i18n = require('../../utils/i18n/index.js');
 const { loc } = require('../../utils/i18n/commandLocales.js');
 
 const GIFS = [
-    'https://media.tenor.com/iYe5Yfw0J6kAAAAC/anime-hug.gif',
-    'https://media.tenor.com/7V9OjX0-q0kAAAAC/anime-hug.gif',
-    'https://media.tenor.com/wr3Jx0V2USwAAAAC/anime-hug.gif',
-    'https://media.tenor.com/N-HMmABoF00AAAAC/anime-hug.gif',
-    'https://media.tenor.com/x8YYr3qDhEAAAAAC/anime-hug.gif',
+    'https://cdn.nekotina.com/images/8JfApwdl.gif',
+    'https://cdn.nekotina.com/images/4Sb07sLJ.gif',
+    'https://cdn.nekotina.com/images/VPPZWBin.gif',
+    'https://cdn.nekotina.com/images/M_zDzwCH.gif',
+    'https://cdn.nekotina.com/images/EQQ-TVAt.gif',
+    'https://cdn.nekotina.com/images/rN2hDir2.gif',
+    'https://cdn.nekotina.com/images/g2FiClix.gif',
+    'https://cdn.nekotina.com/images/dUTutY96.gif',
+    'https://cdn.nekotina.com/images/nxraD3S-.gif',
+    'https://cdn.nekotina.com/images/qK2nkbkH.gif',
+    'https://cdn.nekotina.com/images/-libdSfxB.gif',
+    'https://cdn.nekotina.com/images/JXuZ1DpJ9.gif',
+    'https://cdn.nekotina.com/images/9p3BSQ4R.gif'
 ];
 
 module.exports = {

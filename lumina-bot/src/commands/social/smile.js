@@ -3,11 +3,12 @@ const i18n = require('../../utils/i18n/index.js');
 const { loc } = require('../../utils/i18n/commandLocales.js');
 
 const GIFS = [
-    'https://media.tenor.com/iYe5Yfw0J6kAAAAC/anime-hug.gif',
-    'https://media.tenor.com/7V9OjX0-q0kAAAAC/anime-hug.gif',
-    'https://media.tenor.com/wr3Jx0V2USwAAAAC/anime-hug.gif',
-    'https://media.tenor.com/N-HMmABoF00AAAAC/anime-hug.gif',
-    'https://media.tenor.com/x8YYr3qDhEAAAAAC/anime-hug.gif',
+    'https://cdn.nekotina.com/images/OZVkjHDww.gif',
+    'https://cdn.nekotina.com/images/rVOW9p7O.gif',
+    'https://cdn.nekotina.com/images/h1hCPYp_.gif',
+    'https://cdn.nekotina.com/images/wnB3gF-XL.gif',
+    'https://cdn.nekotina.com/images/VXdDkx2a2.gif',
+    'https://cdn.nekotina.com/images/v3mAv8OMR.gif'
 ];
 
 module.exports = {

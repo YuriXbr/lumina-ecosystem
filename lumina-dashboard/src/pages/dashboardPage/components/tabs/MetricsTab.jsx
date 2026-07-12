@@ -6,7 +6,7 @@ import {
 import ErrorState from '../../../../components/ui/ErrorState';
 import { SkeletonCard, SkeletonChart, SkeletonLine } from '../../../../components/ui/Skeleton';
 
-const API = import.meta.env.VITE_API_BASE_URL;
+const API = import.meta.env.VITE_API_BASE_URL || '/';
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 function fmtUptime(s) {

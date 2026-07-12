@@ -10,7 +10,7 @@ import { useT } from '../../i18n/LanguageContext.jsx';
 
 async function getInventoryFromId(id) {
     console.log('Buscando inventário do usuário', id);
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/internal/fetchuserskins?userId=${id}`)
+    const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/internal/fetchuserskins?userId=${id}`)
         .then(response => response.json())
         .then(data => data);
     return response;
@@ -77,7 +77,7 @@ export function InventoryPage() {
         }
 
         // Verifica sessão via cookie httpOnly (não mais localStorage)
-        fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/session`, {
+        fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/session`, {
             credentials: 'include',
         })
             .then(res => res.ok ? res.json() : null)
@@ -91,7 +91,7 @@ export function InventoryPage() {
 
     // Solicita informações do Discord
     useEffect(() => {
-        fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/discordinfo`, {
+        fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/discordinfo`, {
             credentials: 'include',
         })
             .then(res => {
@@ -162,7 +162,7 @@ export function InventoryPage() {
     const loginWithDiscord = async () => {
         const origin = window.location.href;
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/oauth2/discord/prepare`, {
+            const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/oauth2/discord/prepare`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

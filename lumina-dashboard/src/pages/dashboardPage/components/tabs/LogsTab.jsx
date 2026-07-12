@@ -7,7 +7,7 @@ import {
 import ErrorState from '../../../../components/ui/ErrorState';
 import { SkeletonRow } from '../../../../components/ui/Skeleton';
 
-const API = import.meta.env.VITE_API_BASE_URL;
+const API = import.meta.env.VITE_API_BASE_URL || '/';
 
 // ─── Metadados de nível ───────────────────────────────────────────────────────
 const LEVEL_META = {

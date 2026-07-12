@@ -8,7 +8,7 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
 
 export default function ConsoleTab() {
   const [logs, setLogs] = useState([]);

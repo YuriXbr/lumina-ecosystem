@@ -184,7 +184,7 @@ export default function OpenChestModal({
         setInventoryLoading(true);
         setInventoryError(null);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/myinventory`, {
+            const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/myinventory`, {
                 credentials: 'include',
             });
             if (!response.ok) {
@@ -216,7 +216,7 @@ export default function OpenChestModal({
         setOpenPhase('shaking');
         setRollError(null);
 
-        const baseUrl = import.meta.env.VITE_API_BASE_URL;
+        const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/');
         const animStart = Date.now();
         const MIN_SHAKE_MS = 1500;
         const FLASH_MS = 400;

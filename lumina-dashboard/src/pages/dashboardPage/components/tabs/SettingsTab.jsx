@@ -122,10 +122,10 @@ export default function SettingsTab() {
     setSaving(true);
     try {
       // Buscar token CSRF
-      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, { credentials: 'include' })
+      const csrfResponse = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/csrf-token`, { credentials: 'include' })
       const { csrfToken } = await csrfResponse.json();
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/profile`, { credentials: 'include' })
+      const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/user/profile`, { credentials: 'include' })
 
       if (response.ok) {
         alert('Configurações salvas com sucesso!');
@@ -158,10 +158,10 @@ export default function SettingsTab() {
 
     try {
       // Buscar token CSRF
-      const csrfResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, { credentials: 'include' })
+      const csrfResponse = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/csrf-token`, { credentials: 'include' })
       const { csrfToken } = await csrfResponse.json();
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/set-password`, { credentials: 'include' })
+      const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/user/set-password`, { credentials: 'include' })
 
       if (response.ok) {
         alert('Senha alterada com sucesso!');

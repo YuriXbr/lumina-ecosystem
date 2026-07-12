@@ -17,7 +17,7 @@ import UsernameOnboardingModal from './components/UsernameOnboardingModal';
 import ReauthModal from './components/ReauthModal';
 import BadgesTab from './components/BadgesTab';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
 
 // ─── Tabs da coluna principal ────────────────────────────────────────────────
 const TABS = [

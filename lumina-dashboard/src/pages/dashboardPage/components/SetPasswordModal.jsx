@@ -50,10 +50,10 @@ export default function SetPasswordModal({ onSuccess, onSkip }) {
 
         setIsLoading(true);
         try {
-            const csrfRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/csrf-token`, { credentials: 'include' })
+            const csrfRes = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/csrf-token`, { credentials: 'include' })
             const { csrfToken } = await csrfRes.json();
 
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}expapi/v1/user/set-password`, {
+            const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/user/set-password`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',

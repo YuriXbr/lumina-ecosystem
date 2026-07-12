@@ -41,10 +41,22 @@ async function resolveBotToken() {
  * caso de falha — nunca propaga o erro para o caller.
  */
 async function fetchGuildChannelsAndRoles(guildId, botToken) {
-    const out = { channels: [], roles: [] };
+    const out = { channels: [], roles: [], botRolePosition: 0 };
     if (!botToken) return out;
 
     const headers = { Authorization: `Bot ${botToken}` };
+
+    // ─── Buscar membro do bot para saber sua position ─────────────────────
+    let botMember = null;
+    try {
+        const botMemberRes = await axios.get(
+            `https://discord.com/api/v10/guilds/${guildId}/members/@me`,
+            { headers, timeout: 8000 }
+        );
+        botMember = botMemberRes.data;
+    } catch (e) {
+        addLog('API', 'discord.botmember.fail', `Falha ao buscar membro do bot: ${e.message}`);
+    }
 
     // ─── Canais ────────────────────────────────────────────────────────────
     try {
@@ -55,12 +67,41 @@ async function fetchGuildChannelsAndRoles(guildId, botToken) {
         if (Array.isArray(channelsRes.data)) {
             out.channels = channelsRes.data
                 .filter(c => c.type === CHANNEL_TYPE_GUILD_TEXT)
-                .map(c => ({ id: c.id, name: c.name }))
+                .map(c => {
+                    // Determinar se o bot pode enviar mensagens no canal
+                    // verificando permission_overwrites
+                    let canSendMessages = true; // default = @everyone perms
+                    if (c.permission_overwrites && botMember) {
+                        const botRoles = new Set(botMember.roles || []);
+                        // PERM_SEND_MESSAGES = 0x800 = 2048
+                        const PERM_SEND_MESSAGES = 2048;
+                        let allow = 0, deny = 0;
+                        for (const ow of c.permission_overwrites) {
+                            if (ow.type === 0 && ow.id === guildId) {
+                                // @everyone overwrite
+                                allow |= parseInt(ow.allow || '0');
+                                deny |= parseInt(ow.deny || '0');
+                            }
+                            if (ow.type === 0 && botRoles.has(ow.id)) {
+                                // Bot's role overwrite
+                                allow |= parseInt(ow.allow || '0');
+                                deny |= parseInt(ow.deny || '0');
+                            }
+                        }
+                        // Start with @everyone, apply role overwrites
+                        const everyoneCanSend = !(deny & PERM_SEND_MESSAGES);
+                        canSendMessages = everyoneCanSend;
+                        // If role explicitly allows, override
+                        if (allow & PERM_SEND_MESSAGES) canSendMessages = true;
+                        // If role explicitly denies, override
+                        if (deny & PERM_SEND_MESSAGES && !(allow & PERM_SEND_MESSAGES)) canSendMessages = false;
+                    }
+                    return { id: c.id, name: c.name, canSendMessages };
+                })
                 .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
         }
     } catch (channelsErr) {
         if (channelsErr.response?.status === 429) {
-            // Respeita rate limit do Discord mas não derruba a request principal.
             addLog('API', 'discord.channels.ratelimit', `Rate limit ao buscar canais da guilda ${guildId}`);
         } else {
             addLog('API', 'discord.channels.fail', `Falha ao buscar canais da guilda ${guildId}: ${channelsErr.message}`);
@@ -74,13 +115,33 @@ async function fetchGuildChannelsAndRoles(guildId, botToken) {
             { headers, timeout: 8000 }
         );
         if (Array.isArray(rolesRes.data)) {
+            // Descobrir a posição do cargo mais alto do bot
+            if (botMember && botMember.roles) {
+                const allRoles = rolesRes.data;
+                const botRoleIds = new Set(botMember.roles);
+                let maxPos = 0;
+                for (const r of allRoles) {
+                    if (botRoleIds.has(r.id)) {
+                        maxPos = Math.max(maxPos, r.position || 0);
+                    }
+                }
+                out.botRolePosition = maxPos;
+            }
+
             out.roles = rolesRes.data
                 .filter(r =>
                     r.id !== guildId &&        // exclui @everyone
                     !r.managed                 // exclui cargos de bots/integrações
                 )
-                .map(r => ({ id: r.id, name: r.name, color: r.color || 0 }))
-                .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+                .map(r => ({
+                    id: r.id,
+                    name: r.name,
+                    color: r.color || 0,
+                    position: r.position || 0,
+                    // Bot can manage this role if its position is higher
+                    botCanManage: (r.position || 0) < out.botRolePosition,
+                }))
+                .sort((a, b) => (b.position || 0) - (a.position || 0)); // Higher roles first
         }
     } catch (rolesErr) {
         if (rolesErr.response?.status === 429) {
@@ -258,7 +319,7 @@ module.exports = {
             // não estiver disponível ou o Discord rate-limitar, retornamos
             // arrays vazios — a request principal não falha.
             const botToken = await resolveBotToken();
-            const { channels, roles } = await fetchGuildChannelsAndRoles(guildId, botToken);
+            const { channels, roles, botRolePosition } = await fetchGuildChannelsAndRoles(guildId, botToken);
 
             // ─── 6. Buscar config do bot no banco (se bot estiver na guilda) ─
             // Audit #18: campos sensíveis (config de moderação, listas de bloqueio)
@@ -327,6 +388,7 @@ module.exports = {
                 hasBot: !!botConfig,
                 channels,
                 roles,
+                botRolePosition: botRolePosition || 0,
             });
         } catch (error) {
             return routeError({

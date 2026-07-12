@@ -1,13 +1,13 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const i18n = require('../../utils/i18n/index.js');
 const { loc } = require('../../utils/i18n/commandLocales.js');
+const axios = require('axios');
 
 const GIFS = [
     'https://cdn.nekotina.com/images/zPAj8S41.gif',
     'https://cdn.nekotina.com/images/35hWap03.gif',
     'https://cdn.nekotina.com/images/jzuxhTqGC.gif',
     'https://cdn.nekotina.com/images/VLHcOl5t.gif',
-    'https://media.tenor.com/x8YYr3qDhEAAAAAC/anime-hug.gif',
 ];
 
 module.exports = {
@@ -28,12 +28,14 @@ module.exports = {
     async execute(interaction, t) {
         const translator = t || i18n.getTranslator(i18n.resolveFromInteraction(interaction));
         const target = interaction.options.getUser('user');
-        const gif = GIFS[Math.floor(Math.random() * GIFS.length)];
+        //const gif = GIFS[Math.floor(Math.random() * GIFS.length)];
+        const result = await axios.get('https://api.otakugifs.xyz/gif?reaction=cry&format=gif');
+        
 
         const embed = new EmbedBuilder()
             .setColor(0x3498db)
             .setDescription(translator('cmd.social.cry.actionText', { author: interaction.user.username, target: target.username }))
-            .setImage(gif)
+            .setImage(result.data.url)
             .setFooter({ text: 'Lumina Bot • Social' });
 
         await interaction.reply({ embeds: [embed] });

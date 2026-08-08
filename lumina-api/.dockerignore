@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+.env
+.env.dev
+.env.production
+coverage
+.git
+.gitignore
+__tests__
+_legacy_broken
+*.md

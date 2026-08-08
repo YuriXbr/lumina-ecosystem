@@ -1,0 +1,113 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Docker Compose — Lumina Ecosystem
+#
+# Todos os serviços usam o MongoDB Atlas (produção) definido no .env.
+# Não há container de MongoDB local — a connection string vem do .env.
+#
+# Como usar:
+#   1. cp .env.example .env  (e preencha com suas credenciais reais)
+#   2. docker compose up --build
+#   3. Acesse: http://localhost  (dashboard)  ou  http://localhost:3000  (API)
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ────────────────────────────────────────────────────────────────────────────
+  # Lumina API — Backend (Node.js/Express)
+  # ────────────────────────────────────────────────────────────────────────────
+  lumina-api:
+    build:
+      context: ./lumina-api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - lumina-network
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+
+      # ── MongoDB Atlas (mesmo banco de produção) ─────────────
+      MONGODB_URI: ${MONGODB_URI}
+
+      # ── Segurança ───────────────────────────────────────────
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      LUMINA_API_KEY: ${LUMINA_API_KEY}
+      OAUTH_STATE_SECRET: ${OAUTH_STATE_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+
+      # ── Discord OAuth ───────────────────────────────────────
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      DISCORD_AUTH_REDIRECT_URI: ${DISCORD_AUTH_REDIRECT_URI:-http://localhost/expapi/oauth2/discord/auth/callback}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+
+      # ── URLs ────────────────────────────────────────────────
+      DASHBOARD_PROTOCOL: https
+      DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN:-localhost}
+
+      # ── Webhook (opcional) ─────────────────────────────────
+      WEBHOOK_URL: ${WEBHOOK_URL:-}
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Lumina Dashboard — Frontend (React/Vite → Nginx)
+  #
+  # O Nginx serve os arquivos estáticos E faz proxy reverso das rotas
+  # /expapi e /api para o container lumina-api (same-origin).
+  # ────────────────────────────────────────────────────────────────────────────
+  lumina-dashboard:
+    build:
+      context: ./lumina-dashboard
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ""
+        VITE_DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+        VITE_DISCORD_REDIRECT_URI: ${DISCORD_AUTH_REDIRECT_URI:-http://localhost/expapi/oauth2/discord/auth/callback}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - lumina-api
+    networks:
+      - lumina-network
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Lumina Bot — Discord Bot (Node.js/Discord.js)
+  # ────────────────────────────────────────────────────────────────────────────
+  lumina-bot:
+    build:
+      context: ./lumina-bot
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - lumina-api
+    networks:
+      - lumina-network
+    environment:
+      NODE_ENV: production
+
+      # ── Discord ─────────────────────────────────────────────
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+
+      # ── API (rede interna do Docker) ────────────────────────
+      API_BASE_URL: http://lumina-api:3000
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      LUMINA_API_KEY: ${LUMINA_API_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+
+      # ── MongoDB Atlas (mesmo banco de produção) ─────────────
+      MONGODB_URI: ${MONGODB_URI}
+
+      # ── Riot API ────────────────────────────────────────────
+      RIOT_API_KEY: ${RIOT_API_KEY:-}
+
+      # ── Discord OAuth ───────────────────────────────────────
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Networks
+# ──────────────────────────────────────────────────────────────────────────────
+networks:
+  lumina-network:
+    driver: bridge

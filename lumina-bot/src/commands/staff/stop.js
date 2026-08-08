@@ -7,7 +7,7 @@ module.exports = {
     category: 'staff',
     cooldown: 15,
     data: new SlashCommandBuilder()
-        .setName('botstop')
+        .setName('stop')
         .setDescription('Stops the bot.')
         .setDescriptionLocalizations(loc('Para o bot.', 'Detiene el bot.')),
 

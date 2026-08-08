@@ -1,4 +1,3 @@
-const publicIp = require( 'public-ip' );
 const { createReadyEmbed } = require('../../embeds/readyEmbed.js');
 const {dashboardLog} = require('./dashboardLog.js');
 

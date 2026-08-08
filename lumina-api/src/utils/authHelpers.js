@@ -143,21 +143,14 @@ function optionalAuth(req, res, next) {
  * Em desenvolvimento (HTTP cross-origin localhost):
  *   sameSite='none' + secure=false — browser aceita cookie cross-origin em HTTP
  * Em produção (HTTPS):
- *   sameSite='none' + secure=true — permite cookies cross-origin (prod)
- *   sameSite='lax' + secure=false — same-origin via proxy Vite (dev)
- *
- * NÃO usar `domain` — sem ele, o cookie é setado para o host exato da API.
- * Se setarmos domain='.luminasink.com', o browser REJEITA o cookie quando
- * a API está em lumina-api-tau.vercel.app (domínio diferente de luminasink.com).
+ *   sameSite='lax' + secure=true — protege contra CSRF cross-site
  */
 function setAuthCookie(res, token) {
     const isProduction = process.env.NODE_ENV === 'production';
     res.cookie(COOKIE_NAME, token, {
         httpOnly: true,
         secure: isProduction,
-        // CORREÇÃO #5: SameSite=None permite o cookie ser enviado cross-origin
-        // de bot.luminasink.com para api.bot.luminasink.com OU vercel.app.
-        sameSite: isProduction ? 'none' : 'lax',
+        sameSite: 'lax', // Lax em ambos — same-origin em dev (proxy), seguro em prod
         maxAge: 60 * 60 * 1000, // 1 hora
         path: '/',
     });
@@ -171,7 +164,7 @@ function clearAuthCookie(res) {
     res.clearCookie(COOKIE_NAME, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax',
+        sameSite: 'lax',
         path: '/',
     });
 }

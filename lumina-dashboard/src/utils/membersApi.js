@@ -102,13 +102,6 @@ async function getCsrfToken() {
 }
 
 /**
- * Reseta o cache interno do CSRF token. Usado apenas em testes.
- */
-export function _resetCsrfCacheForTests() {
-  csrfCache = null;
-}
-
-/**
  * Helpers para URLs de avatar/banner do Discord.
  */
 export function getDiscordAvatarUrl(user) {

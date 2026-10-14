@@ -1,0 +1,3154 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lumina · Auditoria e modelos · 14/10/2026</title>
+<style>:root{color-scheme:light;font-family:system-ui,sans-serif;color:#202435;background:#f4f2fa}body{margin:0}header{background:#392368;color:white;padding:28px max(24px,calc((100vw - 1120px)/2))}header a{color:#e5d7ff}nav{display:flex;gap:24px;flex-wrap:wrap}main{max-width:1120px;margin:auto;padding:24px}section{background:white;border:1px solid #ddd7ea;border-radius:12px;padding:32px;margin:0 0 24px}h1{font-size:2rem;line-height:1.15}h2{margin-top:2em;color:#4c2b80;border-bottom:1px solid #e5dcef;padding-bottom:8px}h3{margin-top:1.7em}p,li{line-height:1.7}a{color:#5e3691}table{border-collapse:collapse;width:100%;font-size:.9rem;margin:20px 0;display:block;overflow:auto}td,th{border:1px solid #ded8e8;padding:10px;text-align:left;vertical-align:top}th{background:#f0ebf8}pre{padding:18px;background:#f6f5f8;border:1px solid #e5dcef;overflow:auto;border-radius:8px}code{font-size:.86rem}img{max-width:100%}section:not(:first-child){content-visibility:auto;contain-intrinsic-size:3000px}@media(max-width:700px){main{padding:12px}section{padding:20px}h1{font-size:1.6rem}}@media print{header,nav{display:none}body{background:white}main{padding:0}section{border:0;padding:0;content-visibility:visible}h2,h3{break-after:avoid}tr{break-inside:avoid}}</style>
+<header><strong>Lumina Ecosystem · Auditoria técnica</strong><p>14/10/2026 · MongoDB em leitura · SQL proposto, não aplicado</p><nav><a href="#RELATORIO.md">Relatório</a><a href="#MODELOS.md">Modelos</a><a href="#DICIONARIO-DADOS.md">Dicionário</a><a href="modelo-relacional.sql">SQL</a></nav></header><main><section id="RELATORIO.md"><h1 id="auditoria-do-lumina-ecosystem">Auditoria do Lumina Ecosystem</h1>
+<p><strong>Data:</strong> 14/10/2026 · <strong>Escopo:</strong> API, dashboard, bot Discord e MongoDB autorizado · <strong>Entrega:</strong> análise e modelagem; código de negócio e banco não foram modificados.</p>
+<h2 id="parecer-executivo">Parecer executivo</h2>
+<p>O projeto tem uma base funcional e boa separação entre API, bot e dashboard, mas precisa corrigir falhas de integridade, autenticação e persistência antes de ampliar uso ou monetização. Os riscos mais urgentes são recompensa diária duplicável, resgate repetido de badges, prêmio de baú não persistido, configurações que não são salvas e punições temporárias sem processamento efetivo.</p>
+<p>A autenticação já usa cookies httpOnly, bcrypt, verificação de assinatura JWT, CSRF em diversas mutações e controle de acesso em rotas administrativas. Essas proteções são úteis, mas não cobrem uniformemente todos os caminhos. O banco real confirma índices importantes ausentes; comentários que dizem que determinado problema foi corrigido não correspondem sempre ao comportamento atual.</p>
+<table>
+<thead>
+<tr>
+<th>Área</th>
+<th>Avaliação</th>
+<th>Motivo principal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Segurança</td>
+<td>Risco alto</td>
+<td>Sessões sem revogação, OAuth sem vínculo da transação ao navegador, dependências vulneráveis e checagem de suspensão desigual</td>
+</tr>
+<tr>
+<td>Usabilidade</td>
+<td>Base promissora, com bloqueios funcionais</td>
+<td>A interface oferece controles que não persistem ou exigem um cargo global que o administrador comum do servidor não possui</td>
+</tr>
+<tr>
+<td>Estabilidade</td>
+<td>Risco alto em fluxos centrais</td>
+<td>Scheduler incompatível com a API, falha silenciosa de prêmio, inicialização de DB irregular e suíte de testes quebrada</td>
+</tr>
+<tr>
+<td>Dados</td>
+<td>Integridade incompleta</td>
+<td>Campos flexíveis, vínculos por email, ausência de constraints compostas e exclusão sem tratamento de dependências</td>
+</tr>
+</tbody>
+</table>
+<p>As classificações são julgamentos de engenharia apoiados nas evidências abaixo; não são certificação, pontuação CVSS do sistema ou constatação de invasão.</p>
+<h2 id="metodo-e-limites">Método e limites</h2>
+<ul>
+<li>Revisão de código e contratos nos caminhos de autenticação, autorização, inventário, badges, configurações, moderação, infraestrutura e chamadas externas.</li>
+<li>Execução da suíte Jest da API com URI MongoDB local indisponível e dependências de testes simuladas; o alvo de banco dos testes não foi o Atlas. A entrada <code>index.js</code> tenta carregar <code>.env.dev</code> mesmo em <code>NODE_ENV=test</code>, por isso o isolamento de variáveis é relevante.</li>
+<li>Build e lint do dashboard; inspeção visual da home, login e área pública de membros em navegador, com base de API isolada. Login real, OAuth Discord, Riot, ações de moderação e páginas autenticadas não foram exercitados contra serviços reais.</li>
+<li>Inspeção autorizada do MongoDB com driver nativo, sem importar os serviços Mongoose: listagem de coleções/índices, contagens, tipos e agregações de integridade. Nenhum índice ou registro foi criado, alterado ou removido. Os documentos de evidência não contêm valores pessoais, credenciais ou tokens.</li>
+<li>Tipos observados: até 1.000 documentos por coleção. Contagens e algumas agregações usam a coleção inteira, com timeout de 10 segundos. O banco permaneceu em uso; as leituras não constituem snapshot transacional único.</li>
+<li>Auditoria npm de todos os pacotes e separadamente das dependências de produção. Os números representam pacotes assinalados pelo npm, incluindo propagação transitiva; não somam vulnerabilidades únicas nem provam que cada advisory é explorável nesta aplicação.</li>
+<li>Provas de lógica em <code>reproduzir-achados.cjs</code>: usam funções reais e respostas controladas, sem rede. Não são testes de invasão no serviço publicado.</li>
+<li>Não foi feita revisão completa do histórico Git, teste de carga, restauração de backup, inspeção das políticas Atlas, avaliação jurídica de privacidade ou teste WCAG completo.</li>
+</ul>
+<p>Fontes primárias: a <a href="https://cheatsheetseries.owasp.org/cheatsheets/OAuth2_Cheat_Sheet.html">OWASP</a> recomenda ligar a transação OAuth ao navegador e usar proteção de uso único; o <a href="https://www.mongodb.com/docs/manual/core/write-operations-atomicity/">MongoDB</a> explica o uso de condições no próprio comando atômico; o <a href="https://mongoosejs.com/docs/8.x/docs/validation.html">Mongoose 8</a> documenta que validadores de updates precisam ser ativados. A <a href="https://nodejs.org/api/process.html#warning-using-uncaughtexception-correctly">documentação Node.js</a> desaconselha continuar a execução normal após exceção não capturada.</p>
+<h2 id="resultados-executados">Resultados executados</h2>
+<table>
+<thead>
+<tr>
+<th>Verificação</th>
+<th>Resultado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>API <code>npm test -- --json</code></td>
+<td>66 suítes: 53 passaram, 13 falharam; 930 testes: 896 passaram, 34 falharam</td>
+</tr>
+<tr>
+<td>Dashboard <code>npm run build</code></td>
+<td>Passou; JS principal 718,18 kB / 194,34 kB gzip; CSS 77,87 kB</td>
+</tr>
+<tr>
+<td>Dashboard <code>npm run lint</code></td>
+<td>Falhou: ESLint 9 sem <code>eslint.config.js</code></td>
+</tr>
+<tr>
+<td>Dashboard Vitest</td>
+<td>Não executável com a instalação declarada: faltam <code>vitest</code>, <code>jsdom</code> e Testing Library; não há script de testes</td>
+</tr>
+<tr>
+<td>Bot testes</td>
+<td><code>npm test</code> é placeholder que encerra com erro; não há suíte configurada</td>
+</tr>
+<tr>
+<td>Sintaxe API/bot</td>
+<td>236 arquivos JavaScript em src verificados com <code>node --check</code>; zero erros de sintaxe</td>
+</tr>
+<tr>
+<td>Provas locais de achados</td>
+<td>Passaram; confirmaram comportamentos descritos, não correções</td>
+</tr>
+<tr>
+<td>MongoDB</td>
+<td>19 coleções, metadados e integridade inspecionados em leitura</td>
+</tr>
+</tbody>
+</table>
+<p>As falhas da API incluem mocks inválidos (<code>mockModel</code> indefinido), referências a módulo removido, expectativas antigas sobre endpoints e itens permitidos, falhas no refresh Discord e divergências no backoff. Existem timers que tentam importar módulos depois do encerramento do ambiente Jest. Nem todas as 34 falhas representam defeitos de produção; também não devem ser descartadas como ruído sem triagem. A evidência detalhada está em <a href="evidencias/validacao.json">validacao.json</a>.</p>
+<p>CSRF e limitadores são desativados em vários caminhos quando <code>NODE_ENV=test</code>; a suíte não comprova a cadeia real desses middlewares em produção, ainda que haja testes unitários dedicados.</p>
+<h3 id="dependencias">Dependências</h3>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Todas: baixa / moderada / alta / crítica</th>
+<th>Produção: moderada / alta / crítica</th>
+<th style="text-align: right;">Total produção</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>API</td>
+<td>4 / 7 / 38 / 4</td>
+<td>4 / 4 / 3</td>
+<td style="text-align: right;">11</td>
+</tr>
+<tr>
+<td>Dashboard</td>
+<td>1 / 5 / 21 / 0</td>
+<td>0 / 3 / 0</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr>
+<td>Bot</td>
+<td>5 / 14 / 44 / 5</td>
+<td>4 / 11 / 3</td>
+<td style="text-align: right;">18</td>
+</tr>
+</tbody>
+</table>
+<p>Versões travadas: Mongoose 8.7.3 na API e 8.7.0 no bot; Axios 1.7.7/1.7.4; Vite 5.4.10; React Router DOM 6.27.0. O npm identifica, entre outros, advisories de Mongoose, <code>form-data</code> e <code>proxy-addr</code>. A vulnerabilidade de geração de boundary de multipart foi publicada pelo próprio <a href="https://github.com/form-data/form-data/security/advisories/GHSA-fjxv-7rqg-78g4">projeto form-data</a>; sua exploração depende de condições específicas. Os links e intervalos completos retornados pelo registry constam no JSON de validação.</p>
+<p>Atualizar em branch dedicada, ajustar lockfiles e validar os fluxos. Não executar <code>npm audit fix --force</code> indiscriminadamente: algumas sugestões envolvem mudança de major ou downgrade. No dashboard, separar vulnerabilidades do servidor de desenvolvimento/build das bibliotecas entregues ao navegador.</p>
+<h2 id="achados-de-seguranca-e-integridade">Achados de segurança e integridade</h2>
+<p><strong>Prioridades:</strong> P0 = atender antes de ampliar produção; P1 = próxima etapa de correção; P2 = melhoria planejada. “Confirmado” significa código, metadados ou reprodução controlada; somente quando indicado foi observado em dados existentes.</p>
+<h3 id="s01-p0-alta-diaria-pode-ser-concedida-mais-de-uma-vez">S01 — P0 / alta: diária pode ser concedida mais de uma vez</h3>
+<p><strong>Evidência:</strong> <code>lumina-api/src/database/services/UserInventoryService.js</code>, <code>claimDaily</code>; rotas públicas e internas chamam o mesmo serviço. O método lê <code>nextDailyReward</code>, decide em memória e grava usando apenas <code>{userId}</code>. A prova local executou duas chamadas com a mesma leitura e ambas concederam a recompensa: +6 baús/+2 chaves em vez de +3/+1.</p>
+<p><strong>Impacto:</strong> duplicação de recursos por concorrência. <strong>Correção:</strong> atualizar com filtro de elegibilidade (<code>nextDailyReward &lt;= now</code> ou inexistente), <code>$inc</code> e atualização do próximo prazo no mesmo comando; tratar criação concorrente e <code>E11000</code>. Definir idempotência compartilhada para bot e dashboard. <strong>Aceite:</strong> dezenas de resgates concorrentes concedem exatamente uma diária por janela.</p>
+<h3 id="s02-p0-alta-badges-repetidas-e-limite-global-vulneravel-a-concorrencia">S02 — P0 / alta: badges repetidas e limite global vulnerável à concorrência</h3>
+<p><strong>Evidência:</strong> <code>src/routes/expapi/v1/badges/redeemBadge.js</code>, <code>src/routes/expapi/internal/redeemBadge.js</code>, <code>UserBadgeService.js</code>. A rota web pressupõe índice único e captura <code>11000</code>; nem schema nem MongoDB real têm índice <code>(userEmail,badgeCode)</code>. A coleção possui apenas <code>_id_</code>. O limite faz <code>count</code> seguido de <code>create</code>.</p>
+<p><strong>Impacto:</strong> uma conta pode resgatar novamente o mesmo código; chamadas simultâneas podem ultrapassar o limite de campanha. A amostra atual possui uma redenção e zero pares duplicados, portanto não há evidência de abuso já ocorrido. <strong>Correção:</strong> índice composto após deduplicação, preferencialmente <code>(accountId,badgeId)</code>; reserva de quota e inserção em transação ou contador condicional com compensação durável. <strong>Aceite:</strong> repetição resulta em 409 e quota nunca excede o máximo sob concorrência.</p>
+<h3 id="s03-p1-alta-identidade-nao-tem-unicidade-consistente">S03 — P1 / alta: identidade não tem unicidade consistente</h3>
+<p><strong>Evidência:</strong> schema <code>username</code> único/sparse com default <code>''</code>, <code>usernameLower</code> com índice não único; confirmado no MongoDB. <code>setUsername</code> checa disponibilidade antes de gravar; <code>authProviders.discord.providerId</code> também não tem unicidade. Duas contas atuais não possuem username; não foram encontradas duplicatas normalizadas ou de provider.</p>
+<p><strong>Impacto:</strong> nomes diferentes apenas por caixa podem ser reservados simultaneamente; contas OAuth sem username podem colidir na string vazia ao serem criadas; vínculo de provider tem janela de concorrência. <strong>Correção:</strong> índice único parcial em username normalizado não vazio; omitir campo ausente; índice único parcial para provider/ID e tratamento de conflito. <strong>Aceite:</strong> <code>Alice</code> e <code>alice</code> não coexistem e várias contas sem handle podem ser criadas.</p>
+<h3 id="s04-p0-alta-transacao-oauth-sem-vinculo-ao-navegador-e-jwt-no-fragmento">S04 — P0 / alta: transação OAuth sem vínculo ao navegador e JWT no fragmento</h3>
+<p><strong>Evidência:</strong> <code>oauthProviders/state.js</code>, <code>Oauth2/authStart.js</code>, <code>Oauth2/authCallback.js</code>, <code>exchangeToken.js</code>. O state assinado contém origin, horário e intent, mas não há challenge de sessão, nonce verificado ou consumo de uso único; o callback de login aceita state válido sem cookie da transação. Não há PKCE nos parâmetros do provider, apesar do README citar PKCE. O callback coloca o JWT no fragmento da URL e o frontend o troca por cookie.</p>
+<p><strong>Impacto:</strong> risco de login CSRF/injeção de resposta OAuth; assinatura evita falsificação de conteúdo, mas não comprova que o navegador iniciou aquela transação. O fragmento não é enviado normalmente ao servidor como query, porém permanece acessível ao JavaScript da página e ao histórico enquanto existir. Não foi executado ataque real contra Discord.</p>
+<p><strong>Correção:</strong> estado aleatório de uso único ligado a cookie de transação ou sessão, expiração e consumo; verificar suporte do provider antes de adotar PKCE. Manter sessão em cookie e usar código efêmero de troca entre origens se necessário. <strong>Aceite:</strong> callback de outro navegador/replay falha; SPA não recebe JWT reutilizável em URL.</p>
+<h3 id="s05-p1-alta-suspensao-de-conta-aplicada-de-forma-desigual">S05 — P1 / alta: suspensão de conta aplicada de forma desigual</h3>
+<p><strong>Evidência:</strong> callback checa <code>banned/blocked</code> após busca por provider, mas antes do fallback por email; o caminho <code>intent=link</code> também não revalida suspensão. Reprodução local encontrou conta suspensa pelo email e recebeu cookie/redirect de sucesso. <code>dailyReward</code>, <code>publicRollskin</code> e <code>myInventory</code> usam JWT + <code>resolveDiscordAccount</code>, que não checa suspensão.</p>
+<p><strong>Impacto:</strong> JWT pode ser emitido para conta suspensa nesse caminho; sessões existentes ainda usam rotas que só validam assinatura. Rotas administrativas que chamam <code>verifyRequestAuthWithAccountCheck</code> permanecem protegidas pela consulta ao banco; isto não significa bypass universal do painel admin.</p>
+<p><strong>Correção:</strong> middleware comum de autenticação com consulta do estado da conta, aplicado a todos os recursos privados; validar novamente a conta final do callback. Falha de carregamento do service deve negar a operação, não retornar autorização sem conta. <strong>Aceite:</strong> bloquear/banir invalida acesso nos fluxos de senha, OAuth, vínculo, diária, baús e inventário.</p>
+<h3 id="s06-p1-alta-logout-e-troca-de-senha-nao-revogam-jwt">S06 — P1 / alta: logout e troca de senha não revogam JWT</h3>
+<p><strong>Evidência:</strong> <code>authHelpers.verifyRequestAuth</code>, <code>logout.js</code> e <code>DashboardAccountService.changePassword</code>. Logout remove cookie; JWT continua válido por até uma hora. Não há <code>jti</code>, registro de sessão ou comparação de <code>lastPasswordChange</code>/versão de token.</p>
+<p><strong>Impacto:</strong> token previamente obtido pode ser reutilizado após logout ou alteração de senha. <strong>Correção:</strong> sessão revogável identificada por ID, ou versão de sessão/credencial validada no banco; revogar outras sessões ao trocar senha. <strong>Aceite:</strong> token anterior é recusado imediatamente conforme a política escolhida.</p>
+<h3 id="s07-p0-alta-dependencias-vulneraveis-e-runtime-desatualizado">S07 — P0 / alta: dependências vulneráveis e runtime desatualizado</h3>
+<p><strong>Evidência:</strong> auditoria npm acima; Dockerfiles <code>node:20-slim</code>, bot restringe engine a Node 20. A <a href="https://nodejs.org/en/about/previous-releases">tabela oficial Node.js</a> registra o fim do suporte da linha 20 em 30/04/2026. Os testes locais usaram Node 24.18.0, diferente do runtime declarado no bot/Docker.</p>
+<p><strong>Impacto:</strong> superfície conhecida de injeção/DoS e patches de plataforma ausentes. Não foi comprovada exploração de cada dependência. <strong>Correção:</strong> runtime LTS suportado compatível, atualização seletiva de pacotes e lockfiles, imagens reprodutíveis e checks de segurança no CI. <strong>Aceite:</strong> nenhuma vulnerabilidade alta/crítica explorável sem tratamento e validação de Discord/voz/OAuth no runtime de produção escolhido.</p>
+<h3 id="s08-p1-media-confianca-no-proxy-e-limitacao-podem-ser-contornadas">S08 — P1 / média: confiança no proxy e limitação podem ser contornadas</h3>
+<p><strong>Evidência:</strong> <code>index.js</code> confia em um hop (<code>trust proxy=1</code>); Compose também expõe a porta 3000. Clientes que alcançam diretamente a API podem fornecer <code>X-Forwarded-For</code>. Limitadores de login/registro usam memória; o limitador Mongo faz leitura seguida de incremento e libera a requisição quando há erro.</p>
+<p><strong>Impacto:</strong> troca do IP percebido em topologia com acesso direto; contagem por instância em serverless e ultrapassagem do limite sob paralelismo. <strong>Correção:</strong> API acessível apenas pelo proxy esperado, confiança em proxies/rede explícitos, store compartilhado e incremento/decisão atômicos. Definir comportamento de indisponibilidade para operações sensíveis. <strong>Aceite:</strong> não é possível mudar a identidade de rate limit por header arbitrário nem exceder quota com múltiplas réplicas.</p>
+<h3 id="s09-p1-media-validacao-insuficiente-em-updates-e-campos-flexiveis">S09 — P1 / média: validação insuficiente em updates e campos flexíveis</h3>
+<p><strong>Evidência:</strong> <code>DataBaseService.update</code> não habilita <code>runValidators</code>; guilds aceitam objetos/arrays sem validar conteúdo ou limites; admins podem transmitir valores sem validação de domínio completa. <code>removeInventory</code> permite saldo negativo e <code>addInventory</code> aceita quantidade fracionária positiva. Não há saldos negativos no banco inspecionado.</p>
+<p><strong>Impacto:</strong> configurações incoerentes, economia inválida e falhas tardias. <strong>Correção:</strong> schemas de request, subdocumentos tipados, enums/intervalos, inteiros e saldo condicionado; <code>runValidators</code> onde aplicável. <code>$inc</code> exige invariantes no filtro/serviço, pois validadores de update não cobrem todos os operadores. <strong>Aceite:</strong> IDs inválidos, saldos negativos, NaN e quantidades fracionárias são recusados.</p>
+<h3 id="s10-p1-media-credenciais-oauth-persistidas-sem-protecao-de-aplicacao">S10 — P1 / média: credenciais OAuth persistidas sem proteção de aplicação</h3>
+<p><strong>Evidência:</strong> callback grava access/refresh token diretamente em campos string; nenhuma criptografia desses campos aparece no fluxo. Configuração interna do bot usa AES-CBC sem tag de autenticação; chaves internas podem ser transmitidas por query no caminho legado.</p>
+<p><strong>Impacto:</strong> leitura de documentos expõe credenciais utilizáveis; CBC sozinho não autentica ciphertext. A criptografia de armazenamento do Atlas, se configurada, é uma proteção diferente e não foi auditada. <strong>Correção:</strong> segredo cifrado com AEAD e gestão de chave/versionamento, escopos mínimos, remoção de tokens sem uso e API keys somente em header. <strong>Aceite:</strong> dump de coleção não contém tokens reutilizáveis em claro; adulteração de ciphertext é detectada.</p>
+<h3 id="s11-p1-media-perfil-privado-e-exclusao-tem-semantica-incompleta">S11 — P1 / média: perfil privado e exclusão têm semântica incompleta</h3>
+<p><strong>Evidência:</strong> <code>publicProfile.js</code> retorna accountId, Discord ID e fallback de nome/sobrenome mesmo com <code>publicProfile=false</code>. O encerramento usa TTL só em <code>dashboardaccounts</code>; não há job de limpeza/retenção de badges, inventário, caches e logs. Inventário pertence ao Discord, portanto sua remoção exige regra explícita para o uso pelo bot.</p>
+<p><strong>Impacto:</strong> opção “privado” pode surpreender; fechamento deixa dependências e dados correlacionáveis. <strong>Correção:</strong> contrato explícito de visibilidade, opt-in para nome/Discord e workflow de exclusão/anomização com política por domínio. <strong>Aceite:</strong> testar exposição por tipo de perfil e exclusão ponta a ponta, incluindo cancelamento. Não se conclui conformidade ou infração legal apenas por esta análise.</p>
+<h3 id="s12-p2-media-protecao-csrf-depende-de-cobertura-manual">S12 — P2 / média: proteção CSRF depende de cobertura manual</h3>
+<p><strong>Evidência:</strong> flag por rota no loader; exchange-token é POST sem CSRF e aceita token fornecido no body. Double-submit não é assinado nem vinculado à sessão. Há SameSite=Lax e exigência de header em várias rotas, o que reduz riscos.</p>
+<p><strong>Correção:</strong> política global para mutações autenticadas por cookie, validação de Origin/Fetch Metadata, token ligado à sessão e tratamento específico dos endpoints de login/troca. Validar especialmente a possibilidade de login CSRF quando a API recebe requisição sem Origin. <strong>Aceite:</strong> testes com configuração equivalente à produção verificam POST/PUT/DELETE sem proteção e não assumem que CORS substitui CSRF.</p>
+<h2 id="achados-de-estabilidade-e-contratos">Achados de estabilidade e contratos</h2>
+<h3 id="e01-p0-alta-controles-de-servidor-nao-sao-persistidos-corretamente">E01 — P0 / alta: controles de servidor não são persistidos corretamente</h3>
+<p><strong>Evidência:</strong> schema <code>guilds</code> não declara <code>commandsEnabled</code>, <code>autoMessages</code>, <code>blockedUsers</code>, <code>blockedRoles</code>, <code>gachaEnabled</code>, <code>gachaChestsEnabled</code> ou <code>memberCount</code>. A prova com schema Mongoose descarta esses campos. Eles também não apareceram nos sete documentos reais.</p>
+<p>O frontend envia <code>gachaRefreshInterval</code>, mas o backend aceita <code>gachaRollsRefreshInterval</code> em milissegundos; há divergência de nome e unidade. O toggle de moderação envia <code>moderationChannelId='configured'</code>, que não é um canal Discord. IDs de usuários/cargos são copiados para <code>blockedChannels</code>. Os comandos usam chaves diferentes: frontend <code>league.profile</code>, guard <code>league.leagueprofile</code>; baús usam <code>skins.openchest</code> no frontend e <code>chests.openchest</code> no bot.</p>
+<p><strong>Impacto:</strong> resposta de sucesso pode esconder campos descartados; toggles não controlam o bot, intervalos não mudam, canais inválidos e bloqueios atuam no domínio errado. <strong>Correção:</strong> contrato único e versionado; schema explícito; rejeitar campos não suportados; catálogo de comandos compartilhado; conversão de unidade. <strong>Aceite:</strong> salvar, reler do banco e executar no bot produz o mesmo resultado mostrado no dashboard.</p>
+<h3 id="e02-p0-alta-bau-consumido-sem-skin-e-compensacao-nao-duravel">E02 — P0 / alta: baú consumido sem skin e compensação não durável</h3>
+<p><strong>Evidência:</strong> <code>SkinService.addSkinToInventory</code> captura erro e retorna <code>null</code>; <code>gachaService.rollSkin</code> ignora o retorno e anuncia o prêmio. Prova local reproduziu sucesso sem persistência. Na exceção, chave e baú são devolvidos separadamente, com erros de reembolso silenciados. Queda entre etapas também deixa operação parcial.</p>
+<p><strong>Correção:</strong> debit+premiação na mesma transação/atualização quando possível; verificar retorno e propagar falha; ID de operação e ledger/reconciliação para interrupções. <strong>Aceite:</strong> injetar falhas em cada etapa gera prêmio e débito únicos, ou nenhum dos dois.</p>
+<h3 id="e03-p0-alta-scheduler-de-punicoes-desconectado-do-armazenamento-real">E03 — P0 / alta: scheduler de punições desconectado do armazenamento real</h3>
+<p><strong>Evidência:</strong> API grava <code>banlists</code>, <code>mutelists</code>, <code>warnlists</code>; bot consulta <code>punishlists</code>, que não existe no banco inspecionado. Não foi encontrada chamada de <code>mongoose.connect</code> no bot; o scheduler retorna enquanto não conectado. Também há require relativo inválido (<code>../utils/services/LuminaApiService</code>, dentro de <code>src/utils/services</code>) e falta de campo tipo: o processamento tenta remover mute e ban por inferência.</p>
+<p><strong>Impacto:</strong> punições temporárias podem permanecer após o prazo/restart; eventual execução em coleção manualmente preenchida pode revogar a ação errada. <strong>Correção:</strong> uma fonte única de punições com tipo/status explícitos, worker com lease e retries; escolher conexão direta ou API interna consistente. <strong>Aceite:</strong> restart e execução simultânea de dois workers encerram somente a punição correta, exatamente uma vez conforme política.</p>
+<h3 id="e04-p1-alta-inicializacao-irregular-do-banco-e-rotas-que-falham-silenciosamente">E04 — P1 / alta: inicialização irregular do banco e rotas que falham silenciosamente</h3>
+<p><strong>Evidência:</strong> <code>NewsService.listPublished/getById</code> acessam o model sem <code>connect</code>; o serviço genérico conecta sob demanda, mas o boot não aguarda DB. O loader captura erro de import e pula a rota. Índices são criados em timeout de cinco segundos ou sob demanda, com erros silenciados.</p>
+<p><strong>Impacto:</strong> primeira requisição anônima de notícias pode sofrer timeout de buffering se nenhuma operação anterior conectou; rota importante pode desaparecer mantendo o processo aparentemente disponível. Este cenário foi identificado no código, não exercitado com cold start de produção.</p>
+<p><strong>Correção:</strong> bootstrap aguarda configuração/DB, inicializa índices via migração controlada, valida registry de rotas e publica readiness distinta de liveness. <strong>Aceite:</strong> cold start com DB disponível atende notícias imediatamente; DB indisponível resulta em readiness negativa/503; falha em rota obrigatória impede boot saudável.</p>
+<h3 id="e05-p1-media-execucao-continua-apos-excecoes-nao-capturadas">E05 — P1 / média: execução continua após exceções não capturadas</h3>
+<p><strong>Evidência:</strong> handlers globais da API e bot apenas registram <code>uncaughtException</code> e continuam. <strong>Impacto:</strong> processo pode operar em estado parcialmente corrompido. <strong>Correção:</strong> log mínimo, parar novas requisições, encerrar recursos e sair; supervisor reinicia. <strong>Aceite:</strong> falha fatal conduz a shutdown limitado por timeout e reinício observável.</p>
+<h3 id="e06-p1-media-logout-visual-e-indisponibilidade-se-confundem">E06 — P1 / média: logout visual e indisponibilidade se confundem</h3>
+<p><strong>Evidência:</strong> <code>apiFetch.checkSession</code> converte erro de conexão/resposta em <code>{authenticated:false}</code>; <code>apiLogout</code> não verifica status HTTP e <code>UserContext.logout</code> limpa o usuário. O cookie pode continuar válido após logout rejeitado por CSRF. <strong>Correção:</strong> distinguir sem sessão de erro de serviço; informar logout pendente e repetir operação segura; tratar expiração/renovação do CSRF. <strong>Aceite:</strong> falha de API não redireciona silenciosamente como usuário deslogado; reload não restaura uma sessão anunciada como encerrada.</p>
+<h3 id="e07-p1-media-automacao-de-qualidade-e-build-nao-reprodutiveis">E07 — P1 / média: automação de qualidade e build não reprodutíveis</h3>
+<p><strong>Evidência:</strong> API lock diverge de <code>package.json</code> em <code>helmet/cross-env</code>; Docker usa <code>npm install</code> para tolerar divergência. Dashboard não tem lint configurado nem dependências de sua suíte. Bot não tem suíte; não há workflow CI versionado encontrado. Script da API passa <code>NODE_ENV=production</code> como argumento depois de <code>index.js</code>, sem definir variável.</p>
+<p><strong>Correção:</strong> lockfiles alinhados e <code>npm ci</code>, scripts corretos, lint/test/build no CI, testes contratuais e cenários reais em staging. <strong>Aceite:</strong> checkout limpo reproduz instalação e checks; produção é selecionada por variável real e não por argumento sem interpretação.</p>
+<h3 id="e08-p1-media-docker-local-usa-producao-e-cookies-exigem-https">E08 — P1 / média: Docker local usa produção e cookies exigem HTTPS</h3>
+<p><strong>Evidência:</strong> Compose declara uso do mesmo Atlas de produção, publica HTTP 80, API em NODE_ENV=production e cookies Secure. Sem terminador TLS externo, autenticação por cookie falha em acesso HTTP comum; browser pode tratar localhost de forma especial, portanto testar o alvo real. Não há healthcheck, shutdown coordenado ou usuário sem privilégio nos Dockerfiles Node.</p>
+<p><strong>Correção:</strong> staging separado, TLS explícito, healthchecks/readiness, usuário não root e limites de recursos; evitar publicar porta interna da API. <strong>Aceite:</strong> instalação documentada funciona sob a URL anunciada e não escreve em produção durante desenvolvimento.</p>
+<h3 id="e09-p2-media-chamadas-externas-e-metricas-precisam-de-consistencia">E09 — P2 / média: chamadas externas e métricas precisam de consistência</h3>
+<p>OAuth troca/refresh e resolução de perfil têm chamadas Axios sem timeout em diversos pontos; rotas de guilda já incluem timeouts e tratamento de 429. <code>metrics.js</code> mantém contadores em memória, portanto métricas administrativas são por processo e reiniciam; não representam o ecossistema inteiro em múltiplas réplicas/serverless. Logs em Mongo têm TTL de 30 dias e índices úteis, mas precisam de política consistente de redação/retencão; webhooks de erro incluem email/IP/extra separadamente da stack sanitizada.</p>
+<p><strong>Correção:</strong> timeouts/AbortSignal e retry com jitter somente onde seguro, respeito ao Retry-After, circuit breaker, métricas centralizadas e redação uniforme. <strong>Aceite:</strong> indisponibilidade de Riot/Discord tem prazo e mensagem previsíveis; painel identifica intervalo, fonte e reset dos indicadores.</p>
+<h2 id="usabilidade-e-design">Usabilidade e design</h2>
+<table>
+<thead>
+<tr>
+<th>ID / prioridade</th>
+<th>Avaliação e evidência</th>
+<th>Ação sugerida</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>U01 / P0</td>
+<td>Administrador Discord vê edição por <code>guild.canManage</code>, mas salva via <code>/admin/guilds/:id</code>, que exige nível global &gt;=7; configurações gerais requerem &gt;=8, avançadas &gt;=9</td>
+<td>Endpoint próprio para gestor da guilda, verificando permissão Discord no servidor de destino; reservar endpoint global à equipe Lumina</td>
+</tr>
+<tr>
+<td>U02 / P1</td>
+<td>Login visual em português tem nomes acessíveis <code>Email address</code> e <code>Password</code>; link de voltar é só ícone sem nome</td>
+<td>Traduzir labels, nomear botões/links, exibir labels persistentes e mensagens associadas aos campos</td>
+</tr>
+<tr>
+<td>U03 / P1</td>
+<td>Layout do login é legível em desktop; em viewport estreito exige rolagem para alcançar Entrar, com grande espaço vertical</td>
+<td>Reduzir margens no mobile; testar teclado virtual, autofill, zoom 200%, foco e recuperação de erro</td>
+</tr>
+<tr>
+<td>U04 / P2</td>
+<td>Home mostra duas estatísticas rotuladas “Comandos”; GitHub aponta à página genérica; “24/7” é texto estático</td>
+<td>Corrigir rótulos/destino; substituir disponibilidade estática por status medido ou texto sem promessa operacional</td>
+</tr>
+<tr>
+<td>U05 / P1</td>
+<td>Configurações de servidor são em português fixo apesar de haver três locales</td>
+<td>Internacionalizar páginas novas e padronizar formatos de data/horário/unidades</td>
+</tr>
+<tr>
+<td>U06 / P1</td>
+<td>Não foi encontrado fluxo funcional de recuperação de senha; 2FA aparece principalmente no schema e em traduções/área antiga</td>
+<td>Implementar recuperação, verificação de email e segurança da conta com feedback claro; não apresentar estado de feature inexistente</td>
+</tr>
+<tr>
+<td>U07 / P2</td>
+<td>Todas as páginas são importadas em <code>main.jsx</code>; bundle principal 718 kB</td>
+<td>Lazy loading por rota, Suspense, medição real de LCP/INP/CLS em mobile e orçamento de bundle</td>
+</tr>
+<tr>
+<td>U08 / P1</td>
+<td>Recusar cookies registra preferência local, sem política por categoria/integração; comentário diz conformidade sem validação</td>
+<td>Separar cookies essenciais/opcionais e documentar finalidades, revogação e retenção; revisão jurídica específica se necessário</td>
+</tr>
+<tr>
+<td>U09 / P2</td>
+<td>Há ErrorState/skeletons e retry em notícias; a prévia isolada mostrou “Erro ao carregar novidades” com Tentar novamente</td>
+<td>Manter esse padrão e distinguir dados indisponíveis, conta sem Discord, escopo expirado, sem permissão e lista vazia</td>
+</tr>
+</tbody>
+</table>
+<p>Evidências visuais: <a href="evidencias/login-desktop.png">login desktop</a>, <a href="evidencias/login-estreito.png">login estreito</a>. Nenhum problema de layout nas páginas autenticadas foi apresentado como verificado visualmente.</p>
+<h2 id="features-a-adicionar-por-beneficio-e-dependencia">Features a adicionar, por benefício e dependência</h2>
+<table>
+<thead>
+<tr>
+<th>Prioridade</th>
+<th>Feature</th>
+<th>Benefício</th>
+<th>Dependências / aceite</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0</td>
+<td>Configuração de servidor funcional por gestor Discord</td>
+<td>Torna o dashboard utilizável pela comunidade</td>
+<td>Resolver E01/U01; salvar/reler e comprovar comportamento no bot</td>
+</tr>
+<tr>
+<td>P0</td>
+<td>Ledger de economia e operações idempotentes</td>
+<td>Evita perdas/duplicações e facilita suporte</td>
+<td>S01/S02/E02; trilha por operação com débito, crédito e reconciliação</td>
+</tr>
+<tr>
+<td>P0</td>
+<td>Worker persistente de punições</td>
+<td>Faz mutes/bans temporários sobreviverem a restart</td>
+<td>E03; tipo, estado, lease, tentativa e histórico</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>Recuperação de senha + verificação de email</td>
+<td>Reduz usuários presos fora da conta</td>
+<td>Token de uso único armazenado por hash, limite de tentativas e resposta sem enumeração</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>Sessões ativas e “sair de todos os dispositivos”</td>
+<td>Recuperação após comprometimento</td>
+<td>S06; revogação imediata e identificação de sessões sem fingerprint excessivo</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>2FA ou passkeys para staff</td>
+<td>Protege controles administrativos</td>
+<td>Sessões/reautenticação; MFA exigido no backend, códigos de recuperação protegidos</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>Wizard de instalação e diagnóstico de permissões</td>
+<td>Reduz suporte e configurações inválidas</td>
+<td>Mostrar hierarquia do bot, canais/cargos elegíveis e testes de envio em staging</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>Histórico de configuração com rollback</td>
+<td>Permite recuperar mudanças incorretas</td>
+<td>Autor, guilda, antes/depois redigidos, versão e invalidação de cache</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>Painel operacional com status e alertas</td>
+<td>Identifica falhas antes dos usuários</td>
+<td>Health/readiness, latência, filas, limites Riot/Discord e métricas centralizadas</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>Exportação de dados e fechamento completo</td>
+<td>Dá controle de privacidade ao usuário</td>
+<td>S11; política sobre dados do bot, retenção e cancelamento</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>Histórico de baús, probabilidades e regras transparentes</td>
+<td>Melhora confiança e entendimento da coleção</td>
+<td>Ledger confiável; distinguir coleção virtual Lumina de propriedade na conta Riot</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>Perfil com badges/inventário sob opt-in</td>
+<td>Completa recursos hoje retornados como placeholders</td>
+<td>S11; regras de visibilidade e paginação</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>Assinatura de novidades/alertas por preferências</td>
+<td>Entrega informações úteis sem spam</td>
+<td>Consentimento por canal e outbox; deduplicação e limites</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>Vinculação Riot e histórico de desempenho</td>
+<td>Amplia valor para jogadores</td>
+<td>Verificar políticas/scopes oficiais Riot antes de integrar; cache, quotas e atribuição de dados</td>
+</tr>
+</tbody>
+</table>
+<p>Trocas entre usuários, ranking competitivo de inventário e monetização devem esperar integridade da economia, regras de abuso e entendimento de propriedade dos itens. Os dados pessoais/endereço/documento governamental atualmente previstos no schema não são necessários por padrão para o bot; avaliar minimização antes de coletá-los.</p>
+<h2 id="arquitetura-recomendada-e-sequencia">Arquitetura recomendada e sequência</h2>
+<p>Manter a separação atual em três componentes. Para o tamanho observado, não há evidência que justifique microserviços adicionais nem migração imediata para SQL. Centralizar contratos/DTOs, catálogo de comandos, autorização e serviços de economia; MongoDB pode implementar índices, transações e invariantes necessários. O modelo relacional entregue serve para documentação, validação dos vínculos e opção futura de migração.</p>
+<ol>
+<li><strong>Integridade e acesso:</strong> S01, S02, S04, S05, E01, E02, E03 e U01; cobertura de concorrência/falha e atualização de dependências/runtime em branch própria.</li>
+<li><strong>Estabilização:</strong> bootstrap/readiness, shutdown, pipeline reproduzível, isolamento de staging, índices versionados, revogação de sessões e timeouts.</li>
+<li><strong>Experiência e produto:</strong> recuperação/MFA, wizard, auditoria de configuração, privacidade e paginação/lazy loading; depois features de coleção e integração Riot.</li>
+</ol>
+<p>Cada etapa deve terminar com aceite mensurável: checkout limpo passa os checks; concorrência não duplica recursos; salvar configuração persiste e muda o comportamento do bot; restart não perde punições; sessão suspensa/revogada é recusada; restauração de backup é exercitada em ambiente separado.</p>
+<h2 id="engenharia-reversa-entregue">Engenharia reversa entregue</h2>
+<ul>
+<li><a href="MODELOS.md">Modelo lógico e relações atuais</a>: cardinalidades, identidades, domínios e divergências.</li>
+<li><a href="DICIONARIO-DADOS.md">Dicionário completo</a>: 17 schemas, 302 campos declarados, 19 coleções reais e índices observados.</li>
+<li><a href="modelo-relacional.sql">Modelo relacional proposto em SQL</a>: PKs, FKs, UNIQUEs, CHECKs e decomposição dos arrays/objetos de domínio. É uma proposta normalizada; não é o schema já aplicado ao MongoDB.</li>
+<li><a href="evidencias/mongo-metadata.json">Metadados anônimos do MongoDB</a>, <a href="evidencias/validacao.json">validação/dependências</a> e <a href="evidencias/reproducoes.json">provas locais</a>.</li>
+</ul>
+<p>O banco observado contém cinco contas, sete guildas, nove inventários, um badge/uma redenção, 174 campeões, 1.920 skins de catálogo e 17 bans. Zero usernames normalizados, providers ou pares de badge duplicados foram encontrados; ausência de duplicatas hoje não substitui constraints. Sete inventários sem conta de dashboard podem representar usuários exclusivos do bot. A coleção de logs tinha cerca de 15,1 mil documentos e estava recebendo eventos durante a leitura.</p>
+<p>O DDL proposto passou pelo parser PostgreSQL (<code>pglast</code>): 49 tabelas e 70 destinos de FKs conferidos, sem execução em PostgreSQL ou no MongoDB. Os dois diagramas Mermaid foram renderizados localmente e exportados em SVG. A versão HTML foi conferida no navegador.</p></section><section id="MODELOS.md"><h1 id="engenharia-reversa-modelos-logico-e-relacional">Engenharia reversa: modelos lógico e relacional</h1>
+<p><strong>Data:</strong> 14/10/2026. Reconstrução a partir do MongoDB autorizado, <code>schema.js</code>, serviços e consumidores. O MongoDB atual é documental: relações são referências convencionais e não FKs. As propostas abaixo não foram aplicadas ao banco.</p>
+<h2 id="inventario-fisico-observado">Inventário físico observado</h2>
+<table>
+<thead>
+<tr>
+<th>Coleção real</th>
+<th style="text-align: right;">Documentos</th>
+<th>Chave de domínio / vínculo</th>
+<th>Observação</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bots</td>
+<td style="text-align: right;">1</td>
+<td>clientId UNIQUE</td>
+<td>Configuração global; arrays de staff/deploy; índice legado em token sem campo observado</td>
+</tr>
+<tr>
+<td>dashboardaccounts</td>
+<td style="text-align: right;">5</td>
+<td>accountId UNIQUE; email UNIQUE</td>
+<td>username UNIQUE sparse, usernameLower não único; providers embutidos</td>
+</tr>
+<tr>
+<td>guilds</td>
+<td style="text-align: right;">7</td>
+<td>guildId UNIQUE</td>
+<td>owner é Discord ID; configurações e objetos de gacha embutidos</td>
+</tr>
+<tr>
+<td>inventories</td>
+<td style="text-align: right;">9</td>
+<td>userId UNIQUE</td>
+<td><strong>userId é Discord ID</strong>, não accountId nem email; skins é uma lista de IDs numéricos com repetição</td>
+</tr>
+<tr>
+<td>banlists</td>
+<td style="text-align: right;">17</td>
+<td>_id</td>
+<td>guildId/targetId/staffId sem índice secundário</td>
+</tr>
+<tr>
+<td>mutelists</td>
+<td style="text-align: right;">0</td>
+<td>_id</td>
+<td>Mesmo schema de punição; tipo dado pelo nome da coleção</td>
+</tr>
+<tr>
+<td>warnlists</td>
+<td style="text-align: right;">0</td>
+<td>_id</td>
+<td>Mesmo schema de punição</td>
+</tr>
+<tr>
+<td>userhistories</td>
+<td style="text-align: right;">0</td>
+<td>_id</td>
+<td>Schema declarado; nenhum service atual correspondente encontrado</td>
+</tr>
+<tr>
+<td>champions</td>
+<td style="text-align: right;">174</td>
+<td>championId UNIQUE</td>
+<td>championId é alias textual, conforme importador (<code>champInfo.alias</code>)</td>
+</tr>
+<tr>
+<td>skins</td>
+<td style="text-align: right;">173</td>
+<td>championId UNIQUE</td>
+<td>Agregados por campeão e raridade; arrays reais declarados como Object</td>
+</tr>
+<tr>
+<td>skinsidlists</td>
+<td style="text-align: right;">1.920</td>
+<td>id UNIQUE</td>
+<td>Catálogo individual; championId aponta ao alias do campeão</td>
+</tr>
+<tr>
+<td>skinslines</td>
+<td style="text-align: right;">218</td>
+<td>id UNIQUE</td>
+<td>Grafia física inclui <code>skinslines</code>; IDs string</td>
+</tr>
+<tr>
+<td>universes</td>
+<td style="text-align: right;">121</td>
+<td>id UNIQUE</td>
+<td>skinsSets contém IDs inteiros; relação pretendida com linhas/conjuntos</td>
+</tr>
+<tr>
+<td>badges</td>
+<td style="text-align: right;">1</td>
+<td>code UNIQUE</td>
+<td>Campanha/medalha e regras de resgate</td>
+</tr>
+<tr>
+<td>userbadges</td>
+<td style="text-align: right;">1</td>
+<td>_id</td>
+<td>Vínculo por userEmail + badgeCode; não existe UNIQUE composto</td>
+</tr>
+<tr>
+<td>newsposts</td>
+<td style="text-align: right;">1</td>
+<td>_id</td>
+<td>Autor identificado por email/nome; sem FK</td>
+</tr>
+<tr>
+<td>apilogs</td>
+<td style="text-align: right;">~15,1 mil</td>
+<td>_id</td>
+<td>TTL expiresAt; índices por requestId, nível e rota/data</td>
+</tr>
+<tr>
+<td>apicaches</td>
+<td style="text-align: right;">0</td>
+<td>key UNIQUE</td>
+<td>TTL expiresAt; payload livre</td>
+</tr>
+<tr>
+<td>ipratelimits</td>
+<td style="text-align: right;">0</td>
+<td>(ip,route) UNIQUE</td>
+<td>TTL updatedAt de sete dias</td>
+</tr>
+</tbody>
+</table>
+<p>Todos possuem <code>_id</code> MongoDB. <code>__v</code> é metadado de Mongoose, não identificador de negócio. Model names são pluralizados: <code>inventory → inventories</code>, <code>banlist → banlists</code>, <code>skinsIdList → skinsidlists</code>, <code>newsPosts → newsposts</code>. Não existe coleção <code>punishlists</code> no snapshot observado, apesar de o scheduler usá-la. A coleção auxiliar <code>healthcheck</code> pode ser nomeada pela rota de diagnóstico, mas não foi observada; não representa entidade de negócio.</p>
+<h2 id="modelo-logico-reconstruido-do-sistema-atual">Modelo lógico reconstruído do sistema atual</h2>
+<p><a href="modelo-logico.svg">Abrir diagrama lógico em SVG</a> · Fonte Mermaid: <a href="modelos-1.mmd">modelos-1.mmd</a>.</p>
+<figure><img alt="Diagrama de dados Lumina" src="modelo-logico.svg"><figcaption>SVG escalável: use o link acima para abrir e ampliar.</figcaption></figure>
+<p><strong>Leitura correta das cardinalidades:</strong> o diagrama expressa a intenção lógica do código, não constraints já garantidas. <code>DISCORD_USER</code>, <code>OAUTH_LINK</code>, <code>INVENTORY_SKIN_ENTRY</code> e <code>BOT_STAFF</code> são identidades externas/subestruturas inferidas, não coleções físicas independentes. Vínculo account–Discord pretende ser 0..1 para cada lado, mas hoje não há UNIQUE que o imponha. Um usuário Discord pode existir sem conta do dashboard; isto explica por que os sete inventários sem vínculo não foram classificados como órfãos.</p>
+<p>Universos/linhas são uma relação inferida pelo campo <code>skinsSets</code> e pelo domínio do catálogo. A amostra confirma elementos inteiros em <code>universes.skinsSets</code> e objetos em <code>skinsidlists.skinLines</code>; o payload interno exato e correspondência de todos os IDs precisam ser verificados antes de uma migração. Não se deve simplesmente criar FK de array inteiro para uma coleção.</p>
+<p>O sistema não persiste uma lista completa de membership de guilda: as rotas consultam Discord OAuth. Não há relação account–guild armazenada que autorize configurações por si só. Participar de guilda não equivale a administrá-la.</p>
+<h2 id="dominios-e-invariantes">Domínios e invariantes</h2>
+<table>
+<thead>
+<tr>
+<th>Domínio</th>
+<th>Entidades</th>
+<th>Regra a preservar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Identidade</td>
+<td>Conta, identidade Discord, vínculo OAuth</td>
+<td>accountId estável; provider/ID único; username normalizado único se definido</td>
+</tr>
+<tr>
+<td>Credenciais</td>
+<td>Senha, token OAuth, sessão, ação de credencial</td>
+<td>Hashes de senha/tokens de uso único; tokens OAuth cifrados; revogação de sessões</td>
+</tr>
+<tr>
+<td>Comunidade</td>
+<td>Guilda, configuração, canais/cargos externos</td>
+<td>Escrita só por gestor autorizado; IDs pertencem à guilda correta</td>
+</tr>
+<tr>
+<td>Economia</td>
+<td>Inventário, recursos, skins, fragmentos, operações</td>
+<td>Inteiros não negativos; diária única por janela; prêmio e débito coerentes</td>
+</tr>
+<tr>
+<td>Catálogo</td>
+<td>Campeão, skin, linha, universo</td>
+<td>Skin referencia campeão; decompor relações N:N; agregados não são fonte paralela de verdade</td>
+</tr>
+<tr>
+<td>Moderação</td>
+<td>Punição, alvo, staff, tentativa de processamento</td>
+<td>Tipo e estado explícitos; expiry e lease não sobrescrevem a data original</td>
+</tr>
+<tr>
+<td>Conquistas</td>
+<td>Badge, redenção</td>
+<td>Par usuário/badge único; quota atômica</td>
+</tr>
+<tr>
+<td>Operação</td>
+<td>Log, cache, limitador</td>
+<td>TTL não equivale a FK/cascade; métricas distribuídas exigem fonte compartilhada</td>
+</tr>
+</tbody>
+</table>
+<h2 id="modelo-relacional-normalizado-proposto">Modelo relacional normalizado proposto</h2>
+<p><a href="modelo-relacional.svg">Abrir diagrama relacional em SVG</a> · Fonte Mermaid: <a href="modelos-2.mmd">modelos-2.mmd</a>.</p>
+<p>O <a href="modelo-relacional.sql">SQL</a> usa PostgreSQL como notação concreta para PK/FK/UNIQUE/CHECK, sem recomendar migração imediata. IDs Discord são texto; não usar Number JavaScript nem converter para número de ponto flutuante. <code>account_id</code> permanece texto para preservar IDs antigos que podem não ser UUID; registros novos podem adotar UUID após validar a base existente. IDs de skins são inteiros grandes.</p>
+<figure><img alt="Diagrama de dados Lumina" src="modelo-relacional.svg"><figcaption>SVG escalável: use o link acima para abrir e ampliar.</figcaption></figure>
+<p>Essas relações cobrem os domínios principais; tabelas operacionais, recursos Discord e materializações auxiliares estão descritos no SQL. Existem campos JSONB intencionais para contexto de eventos e dados legados de estrutura não observada; eles não escondem os vínculos principais. Não é promessa de eliminação de todo JSON ou de normalização completa de payloads cuja semântica não pôde ser demonstrada.</p>
+<h3 id="transformacoes-do-modelo-atual">Transformações do modelo atual</h3>
+<table>
+<thead>
+<tr>
+<th>Origem</th>
+<th>Destino</th>
+<th>Transformação</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dashboardaccounts.accountId</td>
+<td>account.account_id</td>
+<td>Preservar identidade; <code>_id</code> em legacy_mongo_id para rastreio</td>
+</tr>
+<tr>
+<td>authProviders + campos Discord legados</td>
+<td>oauth_identity</td>
+<td>Uma linha por conta/provider; conferir divergências entre os dois registros de identidade antes de escolher valor</td>
+</tr>
+<tr>
+<td>passwords / 2FA / reset</td>
+<td>account_security, mfa_backup_code, credential_action</td>
+<td>Separar credenciais; transformar backup/reset em hashes e validade; não importar token antigo inseguro automaticamente</td>
+</tr>
+<tr>
+<td>preferências / contato / bloqueio / fechamento</td>
+<td>account_preferences, account_contact, account, account_security</td>
+<td>Decompor domínios; dados de contato continuam opcionais e devem ser minimizados</td>
+</tr>
+<tr>
+<td>inventários.userId</td>
+<td>discord_user + inventory</td>
+<td>Não vincular diretamente a UUID de conta; criar identidade Discord mesmo sem dashboard</td>
+</tr>
+<tr>
+<td>skins[]</td>
+<td>inventory_skin</td>
+<td>Agrupar ocorrências em quantidade ou preservar cada aquisição em ledger; 397 entradas inteiras no snapshot não significam 397 skins únicas</td>
+</tr>
+<tr>
+<td>keys / baús / essências</td>
+<td>inventory_resource</td>
+<td>Código de recurso + quantidade; preservar grafia de origem <code>mythicEssece</code> no mapeamento, corrigindo destino para <code>mythicEssence</code></td>
+</tr>
+<tr>
+<td>championShards / champions / skinShards</td>
+<td>inventory_champion / inventory_skin_shard</td>
+<td>Confirmar estrutura/quantidades dos objetos antes de decompor; nunca inferir quantidade de objeto vazio</td>
+</tr>
+<tr>
+<td>guilds config escalar</td>
+<td>guild_settings</td>
+<td>Declarar campos ausentes e manter unidades em ms; vazio de ID vira NULL</td>
+</tr>
+<tr>
+<td>blockedChannels / novos bloqueios</td>
+<td>guild_channel_block / guild_user_block / guild_role_block</td>
+<td>Separar tipos; reconciliar IDs misturados pelo frontend antes de migrar</td>
+</tr>
+<tr>
+<td>gachaRolls / usersInventory</td>
+<td>guild_roll_state / guild_inventory_legacy</td>
+<td>Estado de roll por usuário se shape confirmado; snapshot legado retido para não perder mapa não observado</td>
+</tr>
+<tr>
+<td>banlists / mutelists / warnlists</td>
+<td>punishment</td>
+<td>Unificar preservando tipo, documento original, datas e autoria; status/lease novos</td>
+</tr>
+<tr>
+<td>userhistories</td>
+<td>user_history</td>
+<td>Preservar payload legado; vazio atualmente, sem inferir histórico ausente</td>
+</tr>
+<tr>
+<td>skinsidlists</td>
+<td>skin</td>
+<td>Fonte principal; championId é alias, não número Riot</td>
+</tr>
+<tr>
+<td>skins agregado</td>
+<td>VIEW skin_aggregate + legado opcional</td>
+<td>Derivar contagens do catálogo; reconciliar classificação legacy/rarity antes de remover agregados</td>
+</tr>
+<tr>
+<td>skinLines[] / skinsSets[]</td>
+<td>skin_line_member / universe_line</td>
+<td>Extração e conversão dos IDs com verificação de correspondência; relação de universo ainda inferida</td>
+</tr>
+<tr>
+<td>userbadges.userEmail/badgeCode</td>
+<td>badge_redemption.account_id/badge_id</td>
+<td>Resolver vínculos atuais e usar IDs estáveis; UNIQUE composto</td>
+</tr>
+<tr>
+<td>bots arrays de staff/deploy</td>
+<td>bot_staff / bot_staff_permission / bot_deploy_guild</td>
+<td>Decompor e guardar segredo fora de configuração pública</td>
+</tr>
+<tr>
+<td>logs / cache / rate limit</td>
+<td>api_log / api_cache / ip_rate_limit</td>
+<td>PostgreSQL não possui TTL nativo equivalente: agendar limpeza; campos de contexto sem valores pessoais em documentação</td>
+</tr>
+</tbody>
+</table>
+<h3 id="constraints-e-consultas-importantes">Constraints e consultas importantes</h3>
+<ul>
+<li>Username: UNIQUE parcial em <code>lower(username)</code> não vazio; aplicação deve manter cooldown/sintaxe e reservar handles.</li>
+<li>OAuth: UNIQUE <code>(provider,provider_user_id)</code> e <code>(account_id,provider)</code>. Contas desvinculadas não devem bloquear nova conta indevidamente; definir política de retenção.</li>
+<li>Badge: UNIQUE <code>(account_id,badge_id)</code>; quota precisa de transação/lock/contador condicional além do índice.</li>
+<li>Inventário: PK por identidade Discord; saldos/quantidades com CHECK <code>&gt;=0</code>; diária precisa de escrita condicional/idempotência além do schema.</li>
+<li>Punição: índice de jobs por status/data; <code>expires_at</code> separado de <code>lease_until</code>; retry não deve mudar o fim original da punição.</li>
+<li>Canais/cargos: chaves compostas com guild_id para impedir referência a recurso de outro servidor.</li>
+<li>Notícias: índice <code>(pinned DESC,published_at DESC)</code>; autoria por ID estável, snapshot público do nome se desejado.</li>
+<li>Logs: índices existentes fazem sentido; avaliar indexação de eventos administrativos pelo ator e guilda conforme consultas reais, medindo custo de escrita.</li>
+<li>Arrays de inventário, gacha e históricos hoje não têm tamanho limitado pelo schema; paginação e coleções/tabelas de detalhe evitam crescimento do documento único.</li>
+</ul>
+<h2 id="consistencia-observada-e-limitacoes-de-dados">Consistência observada e limitações de dados</h2>
+<p>Nenhuma duplicata de username normalizado, provider Discord ou par de badge foi encontrada. Todas as skins individuais e agregados consultados referenciam campeões existentes. Não foram observados saldos negativos. Isto descreve os dados no momento da leitura e não demonstra resistência a concorrência.</p>
+<p>Dois usuários não tinham handle; sete inventários não tinham conta vinculada ao dashboard. <code>browserFingerprint</code>, declarado Object com default string, apareceu como string nos cinco registros. Arrays de raridade em <code>skins</code> apareceram como arrays, embora declarados Object. A ausência de subdocumentos tipados reduz a capacidade de provar dependências e normalizar automaticamente.</p>
+<p>O índice <code>token_1</code> em bots existe sem campo token observado; índices não são removidos automaticamente quando um campo sai do schema. Não remover índices legados sem revisar histórico, uso e plano de migração.</p>
+<h2 id="plano-para-eventual-migracao-ou-saneamento">Plano para eventual migração ou saneamento</h2>
+<ol>
+<li>Backup e restauração em staging; registrar contagens/hash de dados apropriados e não exportar credenciais sem proteção.</li>
+<li>Validar formatos de accountId, alias de campeão, IDs Discord, campos Mixed e relação universo/linha. Reconciliar identidades legadas/provider.</li>
+<li>Deduplicar pares e handles e classificar bloqueios; criar identities Discord para usuários exclusivos do bot. Definir retenção e closure antes de cascades.</li>
+<li>Criar constraints/índices em migração versionada; não depender de timers silenciosos no boot. Planejar lock e duração da criação de índices.</li>
+<li>Transformar arrays em relações sem perder multiplicidade; reconciliar totais por recurso/usuário/raridade e amostras de catálogo.</li>
+<li>Testar concorrência, rollback, autorização por guilda, exclusão e recuperação de backup. Código e dados devem compartilhar versão de contrato.</li>
+<li>Cutover com janela e plano de rollback explícitos. A proposta SQL entregue é documentação de arquitetura; exige ETL e teste antes de ser usada em produção.</li>
+</ol>
+<p>O <a href="DICIONARIO-DADOS.md">dicionário</a> preserva todos os 302 campos declarados para que a eventual migração não seja baseada somente nos campos resumidos nos diagramas.</p></section><section id="DICIONARIO-DADOS.md"><h1 id="dicionario-de-dados-reconstruido">Dicionário de dados reconstruído</h1>
+<p>Data: 14/10/2026. Fonte: schema.js + metadados MongoDB autorizados. Todos os campos declarados foram incluídos. O arquivo não contém valores de usuários, tokens ou segredos.</p>
+<p>Os tipos observados vêm de até 1.000 documentos por coleção; ausência na amostra não prova ausência em toda a coleção. <code>Object</code>/<code>Array</code> são campos flexíveis, sem contrato interno declarado. <code>unique</code> no schema representa um índice pretendido, não um validador; os índices reais estão listados separadamente. <code>_id</code> (ObjectId, PK) e <code>__v</code> (inteiro de versão) são campos adicionados pelo Mongoose.</p>
+<h2 id="bot-bots">bot → bots</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>clientId</td>
+<td>String</td>
+<td>não</td>
+<td>UNIQUE</td>
+<td>string</td>
+</tr>
+<tr>
+<td>prefix</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>activityStatus</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>activityType</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>activityName</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>activityUrl</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>clientSecret</td>
+<td>String</td>
+<td>não</td>
+<td>UNIQUE</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>redirectUri</td>
+<td>String</td>
+<td>não</td>
+<td>UNIQUE</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>owners</td>
+<td>Array</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>admins</td>
+<td>Array</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>moderators</td>
+<td>Array</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>staffPermissions</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>object</td>
+</tr>
+<tr>
+<td>mainGuild</td>
+<td>String</td>
+<td>não</td>
+<td>UNIQUE</td>
+<td>string</td>
+</tr>
+<tr>
+<td>logGuild</td>
+<td>String</td>
+<td>não</td>
+<td>UNIQUE</td>
+<td>string</td>
+</tr>
+<tr>
+<td>logStartChannel</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>logErrorChannel</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>logEventsChannel</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>logDebugChannel</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>logStaffChannel</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>logDashboardChannel</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>logAllChannel</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>logDataBaseChannel</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>deployGuilds</td>
+<td>Array</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>devMode</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>maintenanceMode</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>webhookUrl</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>githubwebhookUrl</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>bots</strong> (1 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+<li>clientSecret_1: {"clientSecret":1}, UNIQUE.</li>
+<li>redirectUri_1: {"redirectUri":1}, UNIQUE.</li>
+<li>mainGuild_1: {"mainGuild":1}, UNIQUE.</li>
+<li>logGuild_1: {"logGuild":1}, UNIQUE.</li>
+<li>token_1: {"token":1}, UNIQUE.</li>
+<li>clientId_1: {"clientId":1}, UNIQUE.</li>
+</ul>
+<h2 id="inventory-inventories">inventory → inventories</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>userId</td>
+<td>String</td>
+<td>sim</td>
+<td>UNIQUE</td>
+<td>string</td>
+</tr>
+<tr>
+<td>hextechChests</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>masterWorkChests</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>keys</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>mythicEssece</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>blueEssence</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>orangeEssence</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>championShards</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>object</td>
+</tr>
+<tr>
+<td>champions</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>object</td>
+</tr>
+<tr>
+<td>skinShards</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>object</td>
+</tr>
+<tr>
+<td>dailyRewardClaim</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date, null</td>
+</tr>
+<tr>
+<td>nextDailyReward</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date, null</td>
+</tr>
+<tr>
+<td>dailyRewardStreak</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>skins</td>
+<td>Array</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>inventories</strong> (9 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+<li>userId_1: {"userId":1}, UNIQUE.</li>
+</ul>
+<h2 id="guilds-guilds">guilds → guilds</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>guildId</td>
+<td>String</td>
+<td>sim</td>
+<td>UNIQUE</td>
+<td>string</td>
+</tr>
+<tr>
+<td>guildReferenceName</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>muteRoleId</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>banRoleId</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>moderationChannelId</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>usersInventory</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>gachaRollsLastRefresh</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>gachaRollsRefreshInterval</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>gachaRolls</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>gachaMaxRolls</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>gachaGameMode</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>guildOwnerId</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>prefix</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>blockedChannels</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>djEnabled</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>djRoleId</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>persistentMute</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>persistentWarns</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>warnsToMute</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>warnsToTimeOut</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>warnsToKick</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>warnsToBan</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>autoWarnPunishment</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>botInfoChannelId</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>eventLogChannelId</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>guildLocale</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>canPunishStaff</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>memberDmToggle</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>memberWelcomeToggle</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>memberJoinChannelId</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>memberJoinMessage</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>memberLeaveChannelId</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>memberLeaveMessage</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>memberJoinDmMessage</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>warnDuration</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>double</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>guilds</strong> (7 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+<li>guildId_1: {"guildId":1}, UNIQUE.</li>
+</ul>
+<h2 id="punishlist-banlists-mutelists-warnlists">punishList → banlists, mutelists, warnlists</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>guildId</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>targetId</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>staffId</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>reason</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>startTime</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>endTime</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>null</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>banlists</strong> (17 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+</ul>
+<p>Índices reais de <strong>mutelists</strong> (0 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+</ul>
+<p>Índices reais de <strong>warnlists</strong> (0 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+</ul>
+<h2 id="userhistory-userhistories">userHistory → userhistories</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>userId</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>warns</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>lastWarn</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>lastMute</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>lastKick</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>lastBan</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>lastUnmute</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>lastUnban</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>lastPunishment</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>punishmentCount</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>punishmentDuration</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>botBanned</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>botBanReason</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>botBanDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>botBanEndDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>botBanStaff</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>isBot</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>role</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>experience</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>level</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>userhistories</strong> (0 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+</ul>
+<h2 id="skins-skins">skins → skins</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>championId</td>
+<td>String</td>
+<td>sim</td>
+<td>UNIQUE</td>
+<td>string</td>
+</tr>
+<tr>
+<td>quantity</td>
+<td>Number</td>
+<td>sim</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>legacy</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>epic</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>legendary</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>ultimate</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>transcendent</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>mythic</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>legacyQuantity</td>
+<td>Number</td>
+<td>sim</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>epicQuantity</td>
+<td>Number</td>
+<td>sim</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>legendaryQuantity</td>
+<td>Number</td>
+<td>sim</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>ultimateQuantity</td>
+<td>Number</td>
+<td>sim</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>transcendentQuantity</td>
+<td>Number</td>
+<td>sim</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>mythicQuantity</td>
+<td>Number</td>
+<td>sim</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>updatePatch</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>updateDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>skins</strong> (173 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+<li>championId_1: {"championId":1}, UNIQUE.</li>
+</ul>
+<h2 id="skinsidlist-skinsidlists">skinsIdList → skinsidlists</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Number</td>
+<td>sim</td>
+<td>UNIQUE</td>
+<td>int</td>
+</tr>
+<tr>
+<td>name</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>description</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>championId</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>championName</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>isBase</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>rarity</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>isLegacy</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>skinLines</td>
+<td>Array</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>splashPath</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>loadScreenPath</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>tilePath</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>uncenteredSplashPath</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>updatePatch</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>updateDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>championdata</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>object</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>skinsidlists</strong> (1920 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+<li>id_1: {"id":1}, UNIQUE.</li>
+</ul>
+<h2 id="champions-champions">champions → champions</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>championId</td>
+<td>String</td>
+<td>sim</td>
+<td>UNIQUE</td>
+<td>string</td>
+</tr>
+<tr>
+<td>championName</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>updatePatch</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>updateDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>champions</strong> (174 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+<li>championId_1: {"championId":1}, UNIQUE.</li>
+</ul>
+<h2 id="skinlines-skinslines">skinlines → skinslines</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>String</td>
+<td>sim</td>
+<td>UNIQUE</td>
+<td>string</td>
+</tr>
+<tr>
+<td>name</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>description</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>updatePatch</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>updateDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>skinslines</strong> (218 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+<li>id_1: {"id":1}, UNIQUE.</li>
+</ul>
+<h2 id="universes-universes">universes → universes</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>String</td>
+<td>sim</td>
+<td>UNIQUE</td>
+<td>string</td>
+</tr>
+<tr>
+<td>name</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>description</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>skinsSets</td>
+<td>Array</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>updatePatch</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>updateDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>universes</strong> (121 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+<li>id_1: {"id":1}, UNIQUE.</li>
+</ul>
+<h2 id="dashboardaccounts-dashboardaccounts">dashboardAccounts → dashboardaccounts</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>accountId</td>
+<td>String</td>
+<td>sim</td>
+<td>UNIQUE</td>
+<td>string</td>
+</tr>
+<tr>
+<td>firstName</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>lastName</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>email</td>
+<td>String</td>
+<td>sim</td>
+<td>UNIQUE</td>
+<td>string</td>
+</tr>
+<tr>
+<td>password</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>accessType</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>authProviders</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>object</td>
+</tr>
+<tr>
+<td>emailVerified</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>emailVerificationToken</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>emailVerificationTokenExpires</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>emailVerificationTokenUsed</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>emailVerificationTokenUsedDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>twoFactorAuth</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>twoFactorAuthToken</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>twoFactorAuthSecret</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>twoFactorAuthBackupCodes</td>
+<td>Array</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>twoFactorAuthBackupCodesUsed</td>
+<td>Array</td>
+<td>não</td>
+<td>—</td>
+<td>array</td>
+</tr>
+<tr>
+<td>twoFactorAuthBackupCodesGenerated</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>twoFactorAuthBackupCodesExpires</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>twoFactorAuthBackupCodesUsedDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>discordOauth2Id</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>discordOauth2Token</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>discordOauth2RefreshToken</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>discordOauth2TokenExpiresAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date, null</td>
+</tr>
+<tr>
+<td>discordOauth2TokenScope</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>discordOauth2TokenType</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>discordOauth2TokenRequestDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date, null</td>
+</tr>
+<tr>
+<td>discordOauth2TokenRequestIp</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>governamentId</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>phoneNumber</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>birthDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>null</td>
+</tr>
+<tr>
+<td>country</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>state</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>city</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>street</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>number</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>complement</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>zipCode</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>lastLogin</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>lastLoginIp</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>lastLoginUserAgent</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>lastLoginLocation</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>lastLoginCountry</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>lastLoginCity</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>registrationIp</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>registrationDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>registrationUserAgent</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>registrationLocation</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>registrationCountry</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>registrationCity</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>passwordResetToken</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>passwordResetTokenExpires</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>passwordResetTokenUsed</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>passwordResetTokenUsedDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>passwordResetTokenUsedIp</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>passwordResetTokenUsedUserAgent</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>passwordResetTokenUsedLocation</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>passwordResetTokenUsedCountry</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>passwordResetTokenUsedCity</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>browserFingerprint</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>browserFingerprintDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>browserAgent</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>blocked</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>blockAuthor</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>blockDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>blockReason</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>blockExpiration</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>blockCounter</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>banned</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>banAuthor</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>banDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>banReason</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>banExpiration</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>banAppeal</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>banAppealDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>banAppealResponse</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>banAppealResponseDate</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>banAppealResponseBy</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>banAppealResponseIp</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>banCounter</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>emailNotifications</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>discordNotifications</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>botActivityAlerts</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>publicProfile</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>showOnlineStatus</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>language</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>timezone</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>lastPasswordChange</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>passwordAttempts</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>passwordLockedUntil</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>null</td>
+</tr>
+<tr>
+<td>username</td>
+<td>String</td>
+<td>não</td>
+<td>UNIQUE sparse</td>
+<td>string</td>
+</tr>
+<tr>
+<td>usernameLower</td>
+<td>String</td>
+<td>não</td>
+<td>não único</td>
+<td>string</td>
+</tr>
+<tr>
+<td>usernameChangedAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>displayName</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>displayNameChangedAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>deletionRequestedAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>null</td>
+</tr>
+<tr>
+<td>deletionScheduledFor</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>null</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>dashboardaccounts</strong> (5 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+<li>email_1: {"email":1}, UNIQUE.</li>
+<li>accountId_1: {"accountId":1}, UNIQUE.</li>
+<li>username_1: {"username":1}, UNIQUE, sparse.</li>
+<li>usernameLower_1: {"usernameLower":1}.</li>
+<li>deletionScheduledFor_1: {"deletionScheduledFor":1}, TTL 0 segundos, filtro parcial {"deletionScheduledFor":{"$type":"date"}}.</li>
+</ul>
+<h2 id="newsposts-newsposts">newsPosts → newsposts</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>title</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>body</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>excerpt</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>imageUrl</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>tag</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>pinned</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>publishedAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>updatedAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>authorEmail</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>authorName</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>newsposts</strong> (1 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+</ul>
+<h2 id="badges-badges">badges → badges</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>code</td>
+<td>String</td>
+<td>sim</td>
+<td>UNIQUE</td>
+<td>string</td>
+</tr>
+<tr>
+<td>name</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>description</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>imageUrl</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>rarity</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>highlightColor</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>availableFrom</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>expiresAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>null</td>
+</tr>
+<tr>
+<td>maxRedemptions</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>minAccessLevel</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>createdBy</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>createdAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>updatedAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>active</td>
+<td>Boolean</td>
+<td>não</td>
+<td>—</td>
+<td>bool</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>badges</strong> (1 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+<li>code_1: {"code":1}, UNIQUE.</li>
+</ul>
+<h2 id="userbadges-userbadges">userBadges → userbadges</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>userEmail</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>badgeCode</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>redeemedAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>redeemedVia</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>userbadges</strong> (1 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+</ul>
+<h2 id="apilogs-apilogs">apiLogs → apilogs</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>requestId</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>level</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>type</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>action</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>message</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>route</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>method</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>statusCode</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>int</td>
+</tr>
+<tr>
+<td>durationMs</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>double, int</td>
+</tr>
+<tr>
+<td>ip</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>userEmail</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>userId</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>userAgent</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>extra</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>environment</td>
+<td>String</td>
+<td>não</td>
+<td>—</td>
+<td>string</td>
+</tr>
+<tr>
+<td>createdAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+<tr>
+<td>expiresAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>date</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>apilogs</strong> (15103 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+<li>expiresAt_1: {"expiresAt":1}, TTL 0 segundos.</li>
+<li>requestId_1: {"requestId":1}.</li>
+<li>level_1_createdAt_-1: {"level":1,"createdAt":-1}.</li>
+<li>route_1_createdAt_-1: {"route":1,"createdAt":-1}.</li>
+</ul>
+<h2 id="apicache-apicaches">apiCache → apicaches</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key</td>
+<td>String</td>
+<td>sim</td>
+<td>UNIQUE</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>value</td>
+<td>Object</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>expiresAt</td>
+<td>Date</td>
+<td>sim</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>createdAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>apicaches</strong> (0 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+<li>expiresAt_1: {"expiresAt":1}, TTL 0 segundos.</li>
+<li>key_1: {"key":1}, UNIQUE.</li>
+</ul>
+<h2 id="ipratelimits-ipratelimits">ipRateLimits → ipratelimits</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Tipo declarado</th>
+<th>Obrigatório</th>
+<th>Índice declarado</th>
+<th>Tipos observados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ip</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>route</td>
+<td>String</td>
+<td>sim</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>windowStart</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>requestCount</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>blockCount</td>
+<td>Number</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>blockedUntil</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+<tr>
+<td>updatedAt</td>
+<td>Date</td>
+<td>não</td>
+<td>—</td>
+<td>não observado</td>
+</tr>
+</tbody>
+</table>
+<p>Índices reais de <strong>ipratelimits</strong> (0 documentos):</p>
+<ul>
+<li><em>id</em>: {"_id":1}.</li>
+<li>ip_1_route_1: {"ip":1,"route":1}, UNIQUE.</li>
+<li>updatedAt_1: {"updatedAt":1}, TTL 604800 segundos.</li>
+</ul></section></main></html>

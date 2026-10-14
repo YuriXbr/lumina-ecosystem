@@ -1,0 +1,55 @@
+erDiagram
+    DISCORD_USER ||--o| INVENTORY : possui
+    DASHBOARD_ACCOUNT o|--o| DISCORD_USER : vincula_Discord
+    DASHBOARD_ACCOUNT ||--o{ OAUTH_LINK : incorpora
+    DASHBOARD_ACCOUNT ||--o{ USER_BADGE : referencia_por_email
+    BADGE ||--o{ USER_BADGE : referencia_por_code
+    DASHBOARD_ACCOUNT o|--o{ NEWS_POST : autor_por_email
+    DISCORD_USER ||--o{ GUILD : dono
+    GUILD ||--o{ BAN_RECORD : referencia_guildId
+    GUILD ||--o{ MUTE_RECORD : referencia_guildId
+    GUILD ||--o{ WARN_RECORD : referencia_guildId
+    DISCORD_USER ||--o{ BAN_RECORD : alvo_ou_staff
+    DISCORD_USER ||--o{ MUTE_RECORD : alvo_ou_staff
+    DISCORD_USER ||--o{ WARN_RECORD : alvo_ou_staff
+    DISCORD_USER ||--o{ USER_HISTORY : referencia_userId
+    INVENTORY ||--o{ INVENTORY_SKIN_ENTRY : incorpora_lista
+    SKIN ||--o{ INVENTORY_SKIN_ENTRY : referencia_id
+    CHAMPION ||--o{ SKIN : alias_championId
+    CHAMPION ||--o| SKIN_AGGREGATE : agregado
+    SKIN }o--o{ SKIN_LINE : skinLines
+    UNIVERSE }o--o{ SKIN_LINE : skinsSets_inferido
+    BOT ||--o{ BOT_STAFF : incorpora_arrays
+    DISCORD_USER ||--o{ BOT_STAFF : referencia_id
+
+    DASHBOARD_ACCOUNT {
+        ObjectId _id PK
+        string accountId UK
+        string email UK
+        string username UK
+        string usernameLower
+        object authProviders
+        string discordOauth2Id
+    }
+    DISCORD_USER {
+        string discord_id PK "identidade externa inferida"
+    }
+    INVENTORY {
+        ObjectId _id PK
+        string userId UK
+        number keys
+        number hextechChests
+        array skins
+    }
+    USER_BADGE {
+        ObjectId _id PK
+        string userEmail
+        string badgeCode
+        date redeemedAt
+    }
+    SKIN {
+        ObjectId _id PK
+        number id UK
+        string championId
+        array skinLines
+    }

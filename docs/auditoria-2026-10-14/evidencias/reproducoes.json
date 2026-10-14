@@ -1,0 +1,25 @@
+{
+  "scope": "isolated controlled dependencies; no live exploit",
+  "results": [
+    {
+      "id": "S02/S03/E01",
+      "finding": "Schema descarta campos de configuração e não declara índices únicos normalizados/compostos; username ausente recebe string vazia."
+    },
+    {
+      "id": "S01",
+      "finding": "Duas requisições com a mesma leitura concedem a diária: +6 baús e +2 chaves; filtro da gravação contém apenas userId."
+    },
+    {
+      "id": "E02",
+      "finding": "rollSkin retorna prêmio quando addSkinToInventory retorna null; débito não é reembolsado nesse caso."
+    },
+    {
+      "id": "S04/S05",
+      "finding": "Callback sem cookie da transação aceita state assinado e emite sessão para conta banida/bloqueada encontrada pelo fallback de email. Rotas com checagem de conta ainda podem recusá-la."
+    },
+    {
+      "id": "E03",
+      "finding": "Scheduler aponta para punishlists, diferente de banlists/mutelists/warnlists; require relativo de LuminaApiService não resolve."
+    }
+  ]
+}

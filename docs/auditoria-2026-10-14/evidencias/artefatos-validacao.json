@@ -1,0 +1,8 @@
+{
+  "postgresqlSyntax": "passed with pglast",
+  "tables": 49,
+  "foreignKeyTargetsChecked": 70,
+  "localMarkdownLinksChecked": 20,
+  "mermaidSvgFiles": 2,
+  "note": "DDL parsed and FK targets checked; not executed against PostgreSQL. Two diagrams rendered successfully with Mermaid in local browser, then exported as SVG."
+}

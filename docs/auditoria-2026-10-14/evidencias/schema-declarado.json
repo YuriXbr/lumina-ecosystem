@@ -1,0 +1,3383 @@
+{
+  "schemas": [
+    {
+      "schemaName": "bot",
+      "collections": [
+        "bots"
+      ],
+      "fields": [
+        {
+          "name": "clientId",
+          "type": "String",
+          "required": false,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "prefix",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "activityStatus",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "activityType",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "activityName",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "activityUrl",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "clientSecret",
+          "type": "String",
+          "required": false,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "redirectUri",
+          "type": "String",
+          "required": false,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "owners",
+          "type": "Array",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "admins",
+          "type": "Array",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "moderators",
+          "type": "Array",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "staffPermissions",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "object"
+          ]
+        },
+        {
+          "name": "mainGuild",
+          "type": "String",
+          "required": false,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "logGuild",
+          "type": "String",
+          "required": false,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "logStartChannel",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "logErrorChannel",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "logEventsChannel",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "logDebugChannel",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "logStaffChannel",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "logDashboardChannel",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "logAllChannel",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "logDataBaseChannel",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "deployGuilds",
+          "type": "Array",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "devMode",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "maintenanceMode",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "webhookUrl",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "githubwebhookUrl",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "inventory",
+      "collections": [
+        "inventories"
+      ],
+      "fields": [
+        {
+          "name": "userId",
+          "type": "String",
+          "required": true,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "hextechChests",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "masterWorkChests",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "keys",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "mythicEssece",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "blueEssence",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "orangeEssence",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "championShards",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "object"
+          ]
+        },
+        {
+          "name": "champions",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "object"
+          ]
+        },
+        {
+          "name": "skinShards",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "object"
+          ]
+        },
+        {
+          "name": "dailyRewardClaim",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date",
+            "null"
+          ]
+        },
+        {
+          "name": "nextDailyReward",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date",
+            "null"
+          ]
+        },
+        {
+          "name": "dailyRewardStreak",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "skins",
+          "type": "Array",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "guilds",
+      "collections": [
+        "guilds"
+      ],
+      "fields": [
+        {
+          "name": "guildId",
+          "type": "String",
+          "required": true,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "guildReferenceName",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "muteRoleId",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "banRoleId",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "moderationChannelId",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "usersInventory",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "gachaRollsLastRefresh",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "gachaRollsRefreshInterval",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "gachaRolls",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "gachaMaxRolls",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "gachaGameMode",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "guildOwnerId",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "prefix",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "blockedChannels",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "djEnabled",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "djRoleId",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "persistentMute",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "persistentWarns",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "warnsToMute",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "warnsToTimeOut",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "warnsToKick",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "warnsToBan",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "autoWarnPunishment",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "botInfoChannelId",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "eventLogChannelId",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "guildLocale",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "canPunishStaff",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "memberDmToggle",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "memberWelcomeToggle",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "memberJoinChannelId",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "memberJoinMessage",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "memberLeaveChannelId",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "memberLeaveMessage",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "memberJoinDmMessage",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "warnDuration",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "double"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "punishList",
+      "collections": [
+        "banlists",
+        "mutelists",
+        "warnlists"
+      ],
+      "fields": [
+        {
+          "name": "guildId",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "targetId",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "staffId",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "reason",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "startTime",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "endTime",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "null"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "userHistory",
+      "collections": [
+        "userhistories"
+      ],
+      "fields": [
+        {
+          "name": "userId",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "warns",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "lastWarn",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "lastMute",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "lastKick",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "lastBan",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "lastUnmute",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "lastUnban",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "lastPunishment",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "punishmentCount",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "punishmentDuration",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "botBanned",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "botBanReason",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "botBanDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "botBanEndDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "botBanStaff",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "isBot",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "role",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "experience",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "level",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        }
+      ]
+    },
+    {
+      "schemaName": "skins",
+      "collections": [
+        "skins"
+      ],
+      "fields": [
+        {
+          "name": "championId",
+          "type": "String",
+          "required": true,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "quantity",
+          "type": "Number",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "legacy",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "epic",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "legendary",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "ultimate",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "transcendent",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "mythic",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "legacyQuantity",
+          "type": "Number",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "epicQuantity",
+          "type": "Number",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "legendaryQuantity",
+          "type": "Number",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "ultimateQuantity",
+          "type": "Number",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "transcendentQuantity",
+          "type": "Number",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "mythicQuantity",
+          "type": "Number",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "updatePatch",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "updateDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "skinsIdList",
+      "collections": [
+        "skinsidlists"
+      ],
+      "fields": [
+        {
+          "name": "id",
+          "type": "Number",
+          "required": true,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "championId",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "championName",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "isBase",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "rarity",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "isLegacy",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "skinLines",
+          "type": "Array",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "splashPath",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "loadScreenPath",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "tilePath",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "uncenteredSplashPath",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "updatePatch",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "updateDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "championdata",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "object"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "champions",
+      "collections": [
+        "champions"
+      ],
+      "fields": [
+        {
+          "name": "championId",
+          "type": "String",
+          "required": true,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "championName",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "updatePatch",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "updateDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "skinlines",
+      "collections": [
+        "skinslines"
+      ],
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "required": true,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "updatePatch",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "updateDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "universes",
+      "collections": [
+        "universes"
+      ],
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "required": true,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "skinsSets",
+          "type": "Array",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "updatePatch",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "updateDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "dashboardAccounts",
+      "collections": [
+        "dashboardaccounts"
+      ],
+      "fields": [
+        {
+          "name": "accountId",
+          "type": "String",
+          "required": true,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "firstName",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "lastName",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "email",
+          "type": "String",
+          "required": true,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "password",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "accessType",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "authProviders",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "object"
+          ]
+        },
+        {
+          "name": "emailVerified",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "emailVerificationToken",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "emailVerificationTokenExpires",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "emailVerificationTokenUsed",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "emailVerificationTokenUsedDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "twoFactorAuth",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "twoFactorAuthToken",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "twoFactorAuthSecret",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "twoFactorAuthBackupCodes",
+          "type": "Array",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "twoFactorAuthBackupCodesUsed",
+          "type": "Array",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "array"
+          ]
+        },
+        {
+          "name": "twoFactorAuthBackupCodesGenerated",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "twoFactorAuthBackupCodesExpires",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "twoFactorAuthBackupCodesUsedDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "discordOauth2Id",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "discordOauth2Token",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "discordOauth2RefreshToken",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "discordOauth2TokenExpiresAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date",
+            "null"
+          ]
+        },
+        {
+          "name": "discordOauth2TokenScope",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "discordOauth2TokenType",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "discordOauth2TokenRequestDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date",
+            "null"
+          ]
+        },
+        {
+          "name": "discordOauth2TokenRequestIp",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "governamentId",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "phoneNumber",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "birthDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "null"
+          ]
+        },
+        {
+          "name": "country",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "state",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "city",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "street",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "number",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "complement",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "zipCode",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "lastLogin",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "lastLoginIp",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "lastLoginUserAgent",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "lastLoginLocation",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "lastLoginCountry",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "lastLoginCity",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "registrationIp",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "registrationDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "registrationUserAgent",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "registrationLocation",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "registrationCountry",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "registrationCity",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "passwordResetToken",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "passwordResetTokenExpires",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "passwordResetTokenUsed",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "passwordResetTokenUsedDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "passwordResetTokenUsedIp",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "passwordResetTokenUsedUserAgent",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "passwordResetTokenUsedLocation",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "passwordResetTokenUsedCountry",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "passwordResetTokenUsedCity",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "browserFingerprint",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "browserFingerprintDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "browserAgent",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "blocked",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "blockAuthor",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "blockDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "blockReason",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "blockExpiration",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "blockCounter",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "banned",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "banAuthor",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "banDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "banReason",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "banExpiration",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "banAppeal",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "banAppealDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "banAppealResponse",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "banAppealResponseDate",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "banAppealResponseBy",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "banAppealResponseIp",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "banCounter",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "emailNotifications",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "discordNotifications",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "botActivityAlerts",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "publicProfile",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "showOnlineStatus",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "language",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "timezone",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "lastPasswordChange",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "passwordAttempts",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "passwordLockedUntil",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "null"
+          ]
+        },
+        {
+          "name": "username",
+          "type": "String",
+          "required": false,
+          "unique": true,
+          "sparse": true,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "usernameLower",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": true,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "usernameChangedAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "displayName",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "displayNameChangedAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "deletionRequestedAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "null"
+          ]
+        },
+        {
+          "name": "deletionScheduledFor",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "null"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "newsPosts",
+      "collections": [
+        "newsposts"
+      ],
+      "fields": [
+        {
+          "name": "title",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "body",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "excerpt",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "imageUrl",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "tag",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "pinned",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        },
+        {
+          "name": "publishedAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "updatedAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "authorEmail",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "authorName",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "badges",
+      "collections": [
+        "badges"
+      ],
+      "fields": [
+        {
+          "name": "code",
+          "type": "String",
+          "required": true,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "imageUrl",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "rarity",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "highlightColor",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "availableFrom",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "expiresAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "null"
+          ]
+        },
+        {
+          "name": "maxRedemptions",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "minAccessLevel",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "createdBy",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "updatedAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "active",
+          "type": "Boolean",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "bool"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "userBadges",
+      "collections": [
+        "userbadges"
+      ],
+      "fields": [
+        {
+          "name": "userEmail",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "badgeCode",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "redeemedAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "redeemedVia",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "apiLogs",
+      "collections": [
+        "apilogs"
+      ],
+      "fields": [
+        {
+          "name": "requestId",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "level",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "type",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "action",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "route",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "method",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "statusCode",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "durationMs",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "double",
+            "int"
+          ]
+        },
+        {
+          "name": "ip",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "userEmail",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "userId",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "userAgent",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "extra",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "environment",
+          "type": "String",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "string"
+          ]
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        },
+        {
+          "name": "expiresAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": [
+            "date"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "apiCache",
+      "collections": [
+        "apicaches"
+      ],
+      "fields": [
+        {
+          "name": "key",
+          "type": "String",
+          "required": true,
+          "unique": true,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "value",
+          "type": "Object",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "expiresAt",
+          "type": "Date",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        }
+      ]
+    },
+    {
+      "schemaName": "ipRateLimits",
+      "collections": [
+        "ipratelimits"
+      ],
+      "fields": [
+        {
+          "name": "ip",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "route",
+          "type": "String",
+          "required": true,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "windowStart",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "requestCount",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "blockCount",
+          "type": "Number",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "blockedUntil",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        },
+        {
+          "name": "updatedAt",
+          "type": "Date",
+          "required": false,
+          "unique": false,
+          "sparse": false,
+          "indexed": false,
+          "observedTypes": []
+        }
+      ]
+    }
+  ]
+}

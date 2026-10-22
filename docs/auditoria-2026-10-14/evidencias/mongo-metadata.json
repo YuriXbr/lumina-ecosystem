@@ -1,0 +1,2069 @@
+{
+  "capturedAt": "2026-10-14T11:50:46.658Z",
+  "mode": "read-only",
+  "collections": [
+    {
+      "name": "apicaches",
+      "count": 0,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "expiresAt_1",
+          "key": {
+            "expiresAt": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "expireAfterSeconds": 0
+        },
+        {
+          "name": "key_1",
+          "key": {
+            "key": 1
+          },
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "apilogs",
+      "count": 15103,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "expiresAt_1",
+          "key": {
+            "expiresAt": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "expireAfterSeconds": 0
+        },
+        {
+          "name": "requestId_1",
+          "key": {
+            "requestId": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "level_1_createdAt_-1",
+          "key": {
+            "level": 1,
+            "createdAt": -1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "route_1_createdAt_-1",
+          "key": {
+            "route": 1,
+            "createdAt": -1
+          },
+          "unique": false,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 1000
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 1000
+        },
+        {
+          "field": "action",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "createdAt",
+          "type": "date",
+          "occurrences": 1000
+        },
+        {
+          "field": "durationMs",
+          "type": "double",
+          "occurrences": 991
+        },
+        {
+          "field": "durationMs",
+          "type": "int",
+          "occurrences": 9
+        },
+        {
+          "field": "environment",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "expiresAt",
+          "type": "date",
+          "occurrences": 1000
+        },
+        {
+          "field": "ip",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "level",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "message",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "method",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "requestId",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "route",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "statusCode",
+          "type": "int",
+          "occurrences": 1000
+        },
+        {
+          "field": "type",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "userAgent",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "userEmail",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "userId",
+          "type": "string",
+          "occurrences": 1000
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "badges",
+      "count": 1,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "code_1",
+          "key": {
+            "code": 1
+          },
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 1
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 1
+        },
+        {
+          "field": "active",
+          "type": "bool",
+          "occurrences": 1
+        },
+        {
+          "field": "availableFrom",
+          "type": "date",
+          "occurrences": 1
+        },
+        {
+          "field": "code",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "createdAt",
+          "type": "date",
+          "occurrences": 1
+        },
+        {
+          "field": "createdBy",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "description",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "expiresAt",
+          "type": "null",
+          "occurrences": 1
+        },
+        {
+          "field": "highlightColor",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "imageUrl",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "maxRedemptions",
+          "type": "int",
+          "occurrences": 1
+        },
+        {
+          "field": "minAccessLevel",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "name",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "rarity",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "updatedAt",
+          "type": "date",
+          "occurrences": 1
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "banlists",
+      "count": 17,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 17
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 17
+        },
+        {
+          "field": "endTime",
+          "type": "null",
+          "occurrences": 17
+        },
+        {
+          "field": "guildId",
+          "type": "string",
+          "occurrences": 17
+        },
+        {
+          "field": "reason",
+          "type": "string",
+          "occurrences": 17
+        },
+        {
+          "field": "staffId",
+          "type": "string",
+          "occurrences": 17
+        },
+        {
+          "field": "startTime",
+          "type": "date",
+          "occurrences": 17
+        },
+        {
+          "field": "targetId",
+          "type": "string",
+          "occurrences": 17
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "bots",
+      "count": 1,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "clientSecret_1",
+          "key": {
+            "clientSecret": 1
+          },
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "name": "redirectUri_1",
+          "key": {
+            "redirectUri": 1
+          },
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "name": "mainGuild_1",
+          "key": {
+            "mainGuild": 1
+          },
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "name": "logGuild_1",
+          "key": {
+            "logGuild": 1
+          },
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "name": "token_1",
+          "key": {
+            "token": 1
+          },
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "name": "clientId_1",
+          "key": {
+            "clientId": 1
+          },
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 1
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 1
+        },
+        {
+          "field": "activityName",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "activityStatus",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "activityType",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "activityUrl",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "admins",
+          "type": "array",
+          "occurrences": 1
+        },
+        {
+          "field": "clientId",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "deployGuilds",
+          "type": "array",
+          "occurrences": 1
+        },
+        {
+          "field": "devMode",
+          "type": "bool",
+          "occurrences": 1
+        },
+        {
+          "field": "githubwebhookUrl",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "logAllChannel",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "logDashboardChannel",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "logDataBaseChannel",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "logDebugChannel",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "logErrorChannel",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "logEventsChannel",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "logGuild",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "logStaffChannel",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "logStartChannel",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "mainGuild",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "maintenanceMode",
+          "type": "bool",
+          "occurrences": 1
+        },
+        {
+          "field": "moderators",
+          "type": "array",
+          "occurrences": 1
+        },
+        {
+          "field": "owners",
+          "type": "array",
+          "occurrences": 1
+        },
+        {
+          "field": "prefix",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "staffPermissions",
+          "type": "object",
+          "occurrences": 1
+        },
+        {
+          "field": "webhookUrl",
+          "type": "string",
+          "occurrences": 1
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "champions",
+      "count": 174,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "championId_1",
+          "key": {
+            "championId": 1
+          },
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 174
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 174
+        },
+        {
+          "field": "championId",
+          "type": "string",
+          "occurrences": 174
+        },
+        {
+          "field": "championName",
+          "type": "string",
+          "occurrences": 174
+        },
+        {
+          "field": "updateDate",
+          "type": "date",
+          "occurrences": 174
+        },
+        {
+          "field": "updatePatch",
+          "type": "string",
+          "occurrences": 174
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "dashboardaccounts",
+      "count": 5,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "email_1",
+          "key": {
+            "email": 1
+          },
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "name": "accountId_1",
+          "key": {
+            "accountId": 1
+          },
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "name": "username_1",
+          "key": {
+            "username": 1
+          },
+          "unique": true,
+          "sparse": true
+        },
+        {
+          "name": "usernameLower_1",
+          "key": {
+            "usernameLower": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "deletionScheduledFor_1",
+          "key": {
+            "deletionScheduledFor": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "expireAfterSeconds": 0,
+          "partialFilterExpression": {
+            "deletionScheduledFor": {
+              "$type": "date"
+            }
+          }
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 5
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 5
+        },
+        {
+          "field": "accessType",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "accountId",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "authProviders",
+          "type": "object",
+          "occurrences": 2
+        },
+        {
+          "field": "banAppeal",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "banAppealResponse",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "banAppealResponseBy",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "banAppealResponseIp",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "banAuthor",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "banCounter",
+          "type": "int",
+          "occurrences": 5
+        },
+        {
+          "field": "banDate",
+          "type": "date",
+          "occurrences": 5
+        },
+        {
+          "field": "banReason",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "banned",
+          "type": "bool",
+          "occurrences": 5
+        },
+        {
+          "field": "birthDate",
+          "type": "null",
+          "occurrences": 5
+        },
+        {
+          "field": "blockAuthor",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "blockCounter",
+          "type": "int",
+          "occurrences": 5
+        },
+        {
+          "field": "blockDate",
+          "type": "date",
+          "occurrences": 5
+        },
+        {
+          "field": "blockReason",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "blocked",
+          "type": "bool",
+          "occurrences": 5
+        },
+        {
+          "field": "botActivityAlerts",
+          "type": "bool",
+          "occurrences": 5
+        },
+        {
+          "field": "browserAgent",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "browserFingerprint",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "browserFingerprintDate",
+          "type": "date",
+          "occurrences": 5
+        },
+        {
+          "field": "city",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "complement",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "country",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "deletionRequestedAt",
+          "type": "null",
+          "occurrences": 2
+        },
+        {
+          "field": "deletionScheduledFor",
+          "type": "null",
+          "occurrences": 2
+        },
+        {
+          "field": "discordNotifications",
+          "type": "bool",
+          "occurrences": 5
+        },
+        {
+          "field": "discordOauth2Id",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "discordOauth2RefreshToken",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "discordOauth2Token",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "discordOauth2TokenExpiresAt",
+          "type": "date",
+          "occurrences": 2
+        },
+        {
+          "field": "discordOauth2TokenExpiresAt",
+          "type": "null",
+          "occurrences": 3
+        },
+        {
+          "field": "discordOauth2TokenRequestDate",
+          "type": "date",
+          "occurrences": 2
+        },
+        {
+          "field": "discordOauth2TokenRequestDate",
+          "type": "null",
+          "occurrences": 3
+        },
+        {
+          "field": "discordOauth2TokenRequestIp",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "discordOauth2TokenScope",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "discordOauth2TokenType",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "displayName",
+          "type": "string",
+          "occurrences": 3
+        },
+        {
+          "field": "displayNameChangedAt",
+          "type": "date",
+          "occurrences": 3
+        },
+        {
+          "field": "email",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "emailNotifications",
+          "type": "bool",
+          "occurrences": 5
+        },
+        {
+          "field": "emailVerificationToken",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "emailVerificationTokenExpires",
+          "type": "date",
+          "occurrences": 5
+        },
+        {
+          "field": "emailVerificationTokenUsed",
+          "type": "bool",
+          "occurrences": 5
+        },
+        {
+          "field": "emailVerificationTokenUsedDate",
+          "type": "date",
+          "occurrences": 5
+        },
+        {
+          "field": "emailVerified",
+          "type": "bool",
+          "occurrences": 5
+        },
+        {
+          "field": "firstName",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "governamentId",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "language",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "lastLogin",
+          "type": "date",
+          "occurrences": 5
+        },
+        {
+          "field": "lastLoginCity",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "lastLoginCountry",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "lastLoginIp",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "lastLoginLocation",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "lastLoginUserAgent",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "lastName",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "lastPasswordChange",
+          "type": "date",
+          "occurrences": 5
+        },
+        {
+          "field": "number",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "password",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "passwordAttempts",
+          "type": "int",
+          "occurrences": 2
+        },
+        {
+          "field": "passwordLockedUntil",
+          "type": "null",
+          "occurrences": 2
+        },
+        {
+          "field": "passwordResetToken",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "passwordResetTokenExpires",
+          "type": "date",
+          "occurrences": 5
+        },
+        {
+          "field": "passwordResetTokenUsed",
+          "type": "bool",
+          "occurrences": 5
+        },
+        {
+          "field": "passwordResetTokenUsedCity",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "passwordResetTokenUsedCountry",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "passwordResetTokenUsedDate",
+          "type": "date",
+          "occurrences": 5
+        },
+        {
+          "field": "passwordResetTokenUsedIp",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "passwordResetTokenUsedLocation",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "passwordResetTokenUsedUserAgent",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "phoneNumber",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "publicProfile",
+          "type": "bool",
+          "occurrences": 5
+        },
+        {
+          "field": "registrationCity",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "registrationCountry",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "registrationDate",
+          "type": "date",
+          "occurrences": 5
+        },
+        {
+          "field": "registrationIp",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "registrationLocation",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "registrationUserAgent",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "showOnlineStatus",
+          "type": "bool",
+          "occurrences": 5
+        },
+        {
+          "field": "state",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "street",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "timezone",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "twoFactorAuth",
+          "type": "bool",
+          "occurrences": 5
+        },
+        {
+          "field": "twoFactorAuthBackupCodes",
+          "type": "array",
+          "occurrences": 5
+        },
+        {
+          "field": "twoFactorAuthBackupCodesExpires",
+          "type": "date",
+          "occurrences": 5
+        },
+        {
+          "field": "twoFactorAuthBackupCodesGenerated",
+          "type": "date",
+          "occurrences": 5
+        },
+        {
+          "field": "twoFactorAuthBackupCodesUsed",
+          "type": "array",
+          "occurrences": 5
+        },
+        {
+          "field": "twoFactorAuthBackupCodesUsedDate",
+          "type": "date",
+          "occurrences": 5
+        },
+        {
+          "field": "twoFactorAuthSecret",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "twoFactorAuthToken",
+          "type": "string",
+          "occurrences": 5
+        },
+        {
+          "field": "username",
+          "type": "string",
+          "occurrences": 3
+        },
+        {
+          "field": "usernameChangedAt",
+          "type": "date",
+          "occurrences": 3
+        },
+        {
+          "field": "usernameLower",
+          "type": "string",
+          "occurrences": 3
+        },
+        {
+          "field": "zipCode",
+          "type": "string",
+          "occurrences": 5
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "guilds",
+      "count": 7,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "guildId_1",
+          "key": {
+            "guildId": 1
+          },
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 7
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 7
+        },
+        {
+          "field": "autoWarnPunishment",
+          "type": "bool",
+          "occurrences": 7
+        },
+        {
+          "field": "blockedChannels",
+          "type": "array",
+          "occurrences": 7
+        },
+        {
+          "field": "botInfoChannelId",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "canPunishStaff",
+          "type": "bool",
+          "occurrences": 7
+        },
+        {
+          "field": "djEnabled",
+          "type": "bool",
+          "occurrences": 7
+        },
+        {
+          "field": "djRoleId",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "eventLogChannelId",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "gachaGameMode",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "gachaMaxRolls",
+          "type": "int",
+          "occurrences": 7
+        },
+        {
+          "field": "gachaRollsLastRefresh",
+          "type": "date",
+          "occurrences": 7
+        },
+        {
+          "field": "gachaRollsRefreshInterval",
+          "type": "int",
+          "occurrences": 7
+        },
+        {
+          "field": "guildId",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "guildLocale",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "guildOwnerId",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "guildReferenceName",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "memberDmToggle",
+          "type": "bool",
+          "occurrences": 7
+        },
+        {
+          "field": "memberJoinChannelId",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "memberJoinDmMessage",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "memberJoinMessage",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "memberLeaveChannelId",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "memberLeaveMessage",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "memberWelcomeToggle",
+          "type": "bool",
+          "occurrences": 7
+        },
+        {
+          "field": "persistentMute",
+          "type": "bool",
+          "occurrences": 7
+        },
+        {
+          "field": "persistentWarns",
+          "type": "bool",
+          "occurrences": 7
+        },
+        {
+          "field": "prefix",
+          "type": "string",
+          "occurrences": 7
+        },
+        {
+          "field": "warnDuration",
+          "type": "double",
+          "occurrences": 7
+        },
+        {
+          "field": "warnsToBan",
+          "type": "int",
+          "occurrences": 7
+        },
+        {
+          "field": "warnsToKick",
+          "type": "int",
+          "occurrences": 7
+        },
+        {
+          "field": "warnsToMute",
+          "type": "int",
+          "occurrences": 7
+        },
+        {
+          "field": "warnsToTimeOut",
+          "type": "int",
+          "occurrences": 7
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "inventories",
+      "count": 9,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "userId_1",
+          "key": {
+            "userId": 1
+          },
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 9
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 9
+        },
+        {
+          "field": "blueEssence",
+          "type": "int",
+          "occurrences": 9
+        },
+        {
+          "field": "championShards",
+          "type": "object",
+          "occurrences": 3
+        },
+        {
+          "field": "champions",
+          "type": "object",
+          "occurrences": 3
+        },
+        {
+          "field": "dailyRewardClaim",
+          "type": "date",
+          "occurrences": 2
+        },
+        {
+          "field": "dailyRewardClaim",
+          "type": "null",
+          "occurrences": 7
+        },
+        {
+          "field": "dailyRewardStreak",
+          "type": "int",
+          "occurrences": 9
+        },
+        {
+          "field": "hextechChests",
+          "type": "int",
+          "occurrences": 9
+        },
+        {
+          "field": "keys",
+          "type": "int",
+          "occurrences": 9
+        },
+        {
+          "field": "masterWorkChests",
+          "type": "int",
+          "occurrences": 9
+        },
+        {
+          "field": "mythicEssece",
+          "type": "int",
+          "occurrences": 9
+        },
+        {
+          "field": "nextDailyReward",
+          "type": "date",
+          "occurrences": 2
+        },
+        {
+          "field": "nextDailyReward",
+          "type": "null",
+          "occurrences": 7
+        },
+        {
+          "field": "orangeEssence",
+          "type": "int",
+          "occurrences": 9
+        },
+        {
+          "field": "skinShards",
+          "type": "object",
+          "occurrences": 3
+        },
+        {
+          "field": "skins",
+          "type": "array",
+          "occurrences": 9
+        },
+        {
+          "field": "userId",
+          "type": "string",
+          "occurrences": 9
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "ipratelimits",
+      "count": 0,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "ip_1_route_1",
+          "key": {
+            "ip": 1,
+            "route": 1
+          },
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "name": "updatedAt_1",
+          "key": {
+            "updatedAt": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "expireAfterSeconds": 604800
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "mutelists",
+      "count": 0,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "newsposts",
+      "count": 1,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 1
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 1
+        },
+        {
+          "field": "authorEmail",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "authorName",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "body",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "excerpt",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "imageUrl",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "pinned",
+          "type": "bool",
+          "occurrences": 1
+        },
+        {
+          "field": "publishedAt",
+          "type": "date",
+          "occurrences": 1
+        },
+        {
+          "field": "tag",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "title",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "updatedAt",
+          "type": "date",
+          "occurrences": 1
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "skins",
+      "count": 173,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "championId_1",
+          "key": {
+            "championId": 1
+          },
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 173
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 173
+        },
+        {
+          "field": "championId",
+          "type": "string",
+          "occurrences": 173
+        },
+        {
+          "field": "epic",
+          "type": "array",
+          "occurrences": 173
+        },
+        {
+          "field": "epicQuantity",
+          "type": "int",
+          "occurrences": 173
+        },
+        {
+          "field": "legacy",
+          "type": "array",
+          "occurrences": 173
+        },
+        {
+          "field": "legacyQuantity",
+          "type": "int",
+          "occurrences": 173
+        },
+        {
+          "field": "legendary",
+          "type": "array",
+          "occurrences": 173
+        },
+        {
+          "field": "legendaryQuantity",
+          "type": "int",
+          "occurrences": 173
+        },
+        {
+          "field": "mythic",
+          "type": "array",
+          "occurrences": 173
+        },
+        {
+          "field": "mythicQuantity",
+          "type": "int",
+          "occurrences": 173
+        },
+        {
+          "field": "quantity",
+          "type": "int",
+          "occurrences": 173
+        },
+        {
+          "field": "transcendent",
+          "type": "array",
+          "occurrences": 173
+        },
+        {
+          "field": "transcendentQuantity",
+          "type": "int",
+          "occurrences": 173
+        },
+        {
+          "field": "ultimate",
+          "type": "array",
+          "occurrences": 173
+        },
+        {
+          "field": "ultimateQuantity",
+          "type": "int",
+          "occurrences": 173
+        },
+        {
+          "field": "updateDate",
+          "type": "date",
+          "occurrences": 173
+        },
+        {
+          "field": "updatePatch",
+          "type": "string",
+          "occurrences": 173
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "skinsidlists",
+      "count": 1920,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "id_1",
+          "key": {
+            "id": 1
+          },
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 1000
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 1000
+        },
+        {
+          "field": "championId",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "championName",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "championdata",
+          "type": "object",
+          "occurrences": 1000
+        },
+        {
+          "field": "description",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "id",
+          "type": "int",
+          "occurrences": 1000
+        },
+        {
+          "field": "isBase",
+          "type": "bool",
+          "occurrences": 1000
+        },
+        {
+          "field": "isLegacy",
+          "type": "bool",
+          "occurrences": 1000
+        },
+        {
+          "field": "loadScreenPath",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "name",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "rarity",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "skinLines",
+          "type": "array",
+          "occurrences": 1000
+        },
+        {
+          "field": "splashPath",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "tilePath",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "uncenteredSplashPath",
+          "type": "string",
+          "occurrences": 1000
+        },
+        {
+          "field": "updateDate",
+          "type": "date",
+          "occurrences": 1000
+        },
+        {
+          "field": "updatePatch",
+          "type": "string",
+          "occurrences": 1000
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "skinslines",
+      "count": 218,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "id_1",
+          "key": {
+            "id": 1
+          },
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 218
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 218
+        },
+        {
+          "field": "description",
+          "type": "string",
+          "occurrences": 218
+        },
+        {
+          "field": "id",
+          "type": "string",
+          "occurrences": 218
+        },
+        {
+          "field": "name",
+          "type": "string",
+          "occurrences": 218
+        },
+        {
+          "field": "updateDate",
+          "type": "date",
+          "occurrences": 218
+        },
+        {
+          "field": "updatePatch",
+          "type": "string",
+          "occurrences": 218
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "universes",
+      "count": 121,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "name": "id_1",
+          "key": {
+            "id": 1
+          },
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 121
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 121
+        },
+        {
+          "field": "description",
+          "type": "string",
+          "occurrences": 121
+        },
+        {
+          "field": "id",
+          "type": "string",
+          "occurrences": 121
+        },
+        {
+          "field": "name",
+          "type": "string",
+          "occurrences": 121
+        },
+        {
+          "field": "skinsSets",
+          "type": "array",
+          "occurrences": 121
+        },
+        {
+          "field": "updateDate",
+          "type": "date",
+          "occurrences": 121
+        },
+        {
+          "field": "updatePatch",
+          "type": "string",
+          "occurrences": 121
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "userbadges",
+      "count": 1,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [
+        {
+          "field": "__v",
+          "type": "int",
+          "occurrences": 1
+        },
+        {
+          "field": "_id",
+          "type": "objectId",
+          "occurrences": 1
+        },
+        {
+          "field": "badgeCode",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "redeemedAt",
+          "type": "date",
+          "occurrences": 1
+        },
+        {
+          "field": "redeemedVia",
+          "type": "string",
+          "occurrences": 1
+        },
+        {
+          "field": "userEmail",
+          "type": "string",
+          "occurrences": 1
+        }
+      ],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "userhistories",
+      "count": 0,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [],
+      "unlistedTopLevelFields": 0
+    },
+    {
+      "name": "warnlists",
+      "count": 0,
+      "indexes": [
+        {
+          "name": "_id_",
+          "key": {
+            "_id": 1
+          },
+          "unique": false,
+          "sparse": false
+        }
+      ],
+      "sampleLimit": 1000,
+      "fields": [],
+      "unlistedTopLevelFields": 0
+    }
+  ],
+  "integrity": {
+    "accountsWithoutUsername": 2,
+    "duplicateNormalizedUsernames": 0,
+    "duplicateProviderIds": 0,
+    "duplicateBadgePairs": 0,
+    "badgesWithoutAccount": 0,
+    "redemptionsWithoutBadge": 0,
+    "negativeInventoryBalances": 0,
+    "inventoriesWithoutLinkedDashboard": 7,
+    "skinsidlistsWithoutChampion": 0,
+    "skinsWithoutChampion": 0
+  },
+  "catalogArrayShapes": {
+    "skinsidlists.skinLines": [
+      {
+        "_id": {
+          "type": "object"
+        },
+        "occurrences": 1917
+      }
+    ],
+    "universes.skinsSets": [
+      {
+        "_id": {
+          "type": "int"
+        },
+        "occurrences": 215
+      }
+    ],
+    "inventories.skins": [
+      {
+        "_id": {
+          "type": "int"
+        },
+        "occurrences": 397
+      }
+    ]
+  }
+}

@@ -1,0 +1,52 @@
+<svg xmlns="http://w3.org" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Gradiente Cyberpunk Roxo-Rosa Oficial Lumina -->
+    <linearGradient id="luminaGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="45%" stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </linearGradient>
+    
+    <!-- Gradiente de Brilho Translúcido -->
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F472B6" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#7C3AED" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Filtro Neon Soft -->
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#7C3AED" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Fundo Escuro Deep Tech Fixo -->
+  <rect width="100%" height="100%" fill="#0a0f1d" rx="16"/>
+
+  <!-- ICONE CENTRALIZADO -->
+  <g transform="translate(140, 140)" filter="url(#neonGlow)">
+    <!-- Linhas de circuito/Antena sutil de fundo -->
+    <path d="M 110,20 L 110,-20" fill="none" stroke="#7C3AED" stroke-width="4" stroke-opacity="0.3"/>
+    <path d="M 50,170 L 50,190 M 170,170 L 170,190" fill="none" stroke="#7C3AED" stroke-width="3" stroke-opacity="0.2"/>
+
+    <!-- Antena / Nó de Rede Principal -->
+    <circle cx="110" cy="-20" r="10" fill="#F472B6" />
+    <circle cx="110" cy="-20" r="22" fill="none" stroke="#F472B6" stroke-width="2" opacity="0.4"/>
+
+    <!-- Face Esquerda da Cabeça (Base Angular Lumina) -->
+    <path d="M 110,20 L 30,50 L 30,140 L 110,180 Z" fill="url(#luminaGrad)" />
+    
+    <!-- Face Direita da Cabeça (Projeção / Recorte 3D de Luz) -->
+    <path d="M 110,20 L 190,50 L 190,140 L 110,180 Z" fill="url(#glowGrad)" />
+    
+    <!-- Orelhas Geométricas Amigáveis (Conectores Laterais) -->
+    <path d="M 30,75 L 15,85 L 15,105 L 30,115 Z" fill="#4F46E5" />
+    <path d="M 190,75 L 205,85 L 205,105 L 190,115 Z" fill="#EC4899" />
+
+    <!-- Olhos Digitais Expressivos e Amigáveis (Vazados/Acesos em Branco Neon) -->
+    <polygon points="60,80 80,70 80,95 60,105" fill="#ffffff" opacity="0.95" />
+    <polygon points="140,70 160,80 160,105 140,95" fill="#ffffff" opacity="0.95" />
+    
+    <!-- Sorriso Digital Sutil (Linha de Código) -->
+    <path d="M 95,135 L 110,142 L 125,135" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
+  </g>
+</svg>

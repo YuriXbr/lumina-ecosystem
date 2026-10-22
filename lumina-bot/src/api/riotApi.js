@@ -106,11 +106,10 @@ async function fetchChampionName(key, commandOrigin = "unknown") {
  * @returns {Promise<Array<number>|undefined>} The list of free champion IDs or undefined if an error occurs.
  */
 async function getChampionRotation(commandOrigin = "unknown") {
-    // Champion rotation é global (mesma em todas as regiões).
-    // Usamos br1 como servidor regional para a chamada.
-    const url = `https://br1.api.riotgames.com/lol/platform/v3/champion-rotations`;
+
+    const url = `https://br1.api.riotgames.com/lol/platform/v3/champion-rotations?api_key=${apiKey}`;
     try {
-        const response = await axios.get(url, { headers: { 'X-Riot-Token': apiKey } });
+        const response = await axios.get(url);
         logApiCall(commandOrigin, 'getChampionRotation', {}, response.data, response.data.freeChampionIds);
         return response.data.freeChampionIds;
     } catch (err) {
@@ -182,7 +181,9 @@ async function getSummonerInfo(server, PUUID, commandOrigin = "unknown") {
  * @returns {Promise<Object|undefined>} The league entries or undefined if an error occurs.
  */
 async function getLeagueEntries(server, summonerId, commandOrigin = "unknown") {
-    const url = `https://${server}.${process.env.RIOT_BASE_URL}/lol/league/v4/entries/by-summoner/${summonerId}?api_key=${apiKey}`;
+    // BUG #3: summonerId não estava sendo encoded. Em alguns casos o ID pode
+    // conter caracteres que quebram a URL, resultando em 403/404.
+    const url = `https://${server}.${process.env.RIOT_BASE_URL}/lol/league/v4/entries/by-summoner/${encodeURIComponent(summonerId)}?api_key=${apiKey}`;
     try {
         const response = await axios.get(url);
         logApiCall(commandOrigin, 'getLeagueEntries', { server, summonerId }, response.data, response.data);
@@ -245,13 +246,21 @@ async function getRankedQueues(server, elo, division, commandOrigin = "unknown")
     } else if (elo === 'MASTER') {
         url = `https://${server}.${process.env.RIOT_BASE_URL}/lol/league/v4/masterleagues/by-queue/RANKED_SOLO_5x5?api_key=${apiKey}`;
     } else {
-        url = `https://${server}.${process.env.RIOT_BASE_URL}/lol/league/v4/entries/RANKED_SOLO_5x5/${elo}/${division}?api_key=${apiKey}`;
+        url = `https://${server}.${process.env.RIOT_BASE_URL}/lol/league/v4/entries/RANKED_SOLO_5x5/${encodeURIComponent(elo)}/${encodeURIComponent(division)}?api_key=${apiKey}`;
     }
 
     try {
         const response = await axios.get(url);
         logApiCall(commandOrigin, 'getRankedQueues', { server, elo, division }, response.data, response.data);
-        return response.data;
+        // A Riot API retorna um array para entries, mas um objeto para challenger/grandmaster/master
+        // Padroniza para sempre retornar array
+        if (Array.isArray(response.data)) {
+            return response.data;
+        }
+        if (response.data && response.data.entries) {
+            return response.data.entries;
+        }
+        return [];
     } catch (err) {
         logApiCallError(commandOrigin, 'getRankedQueues', { server, elo, division }, err);
         logApiCall(commandOrigin, 'getRankedQueues', { server, elo, division }, err, null);
@@ -292,9 +301,17 @@ async function getAccountByPUUID(region, PUUID, commandOrigin = "unknown") {
     console.log(`Fetching account info from URL: ${url}`);
     try {
         const response = await axios.get(url);
-        const reducedResponse = response.data.gameName;
-        logApiCall(commandOrigin, 'getAccountByPUUID', { region, PUUID }, response.data, reducedResponse);
-        return reducedResponse;
+        // BUG #4: antes retornava apenas `response.data.gameName`, que é null
+        // quando o jogador não definiu um Riot ID (contas antigas). O bot
+        // exibia "undefined" na embed. Agora retorna o objeto completo para
+        // que o caller possa fazer fallback para `gameName#tagLine` ou usar
+        // o `puuid` como identificador.
+        const accountData = response.data;
+        const display = accountData.gameName
+            ? `${accountData.gameName}#${accountData.tagLine}`
+            : `Player`;
+        logApiCall(commandOrigin, 'getAccountByPUUID', { region, PUUID }, accountData, display);
+        return display;
     } catch (err) {
         logApiCallError(commandOrigin, 'getAccountByPUUID', { region, PUUID }, err);
         logApiCall(commandOrigin, 'getAccountByPUUID', { region, PUUID }, err, null);

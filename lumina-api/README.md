@@ -11,28 +11,64 @@
 
 ## Índice
 
-1. [Visão Geral](#1-visão-geral)
-2. [Estrutura de Pastas](#2-estrutura-de-pastas)
-3. [Bootstrap: como o servidor sobe](#3-bootstrap-como-o-servidor-sobe)
-4. [Camada de Segurança (a parte mais importante)](#4-camada-de-segurança-a-parte-mais-importante)
-   - 4.1 [Autenticação: Cookie httpOnly + JWT](#41-autenticação-cookie-httponly--jwt)
-   - 4.2 [CSRF: Double-Submit Cookie](#42-csrf-double-submit-cookie)
-   - 4.3 [Rate Limiting](#43-rate-limiting)
-   - 4.4 [Helmet e Security Headers](#44-helmet-e-security-headers)
-   - 4.5 [CORS](#45-cors)
-   - 4.6 [Per-Account Lockout](#46-per-account-lockout)
-5. [Sistema de Rotas (auto-loading)](#5-sistema-de-rotas-auto-loading)
-6. [OAuth2 (Discord)](#6-oauth2-discord)
-7. [Banco de Dados (MongoDB + Mongoose)](#7-banco-de-dados-mongodb--mongoose)
-8. [Sistema de Logging e Observabilidade](#8-sistema-de-logging-e-observabilidade)
-9. [Identidade Pública (username + displayName)](#9-identidade-pública-username--displayname)
-10. [Fechamento de Conta (TTL 30 dias)](#10-fechamento-de-conta-ttl-30-dias)
-11. [Rotas Internas (Bot ↔ API)](#11-rotas-internas-bot--api)
-12. [Dashboard (Frontend React)](#12-dashboard-frontend-react)
-13. [Variáveis de Ambiente](#13-variáveis-de-ambiente)
-14. [Deploy (Vercel)](#14-deploy-vercel)
-15. [Checklist de Segurança](#15-checklist-de-segurança)
-16. [FAQ de Desenvolvimento](#16-faq-de-desenvolvimento)
+- [Lumina Bot API — Documentação Completa de Arquitetura](#lumina-bot-api--documentação-completa-de-arquitetura)
+  - [Índice](#índice)
+  - [1. Visão Geral](#1-visão-geral)
+    - [Stack](#stack)
+  - [2. Estrutura de Pastas](#2-estrutura-de-pastas)
+  - [3. Bootstrap: como o servidor sobe](#3-bootstrap-como-o-servidor-sobe)
+    - [Detalhe importante: loadRoutes](#detalhe-importante-loadroutes)
+  - [4. Camada de Segurança (a parte mais importante)](#4-camada-de-segurança-a-parte-mais-importante)
+    - [4.1 Autenticação: Cookie httpOnly + JWT](#41-autenticação-cookie-httponly--jwt)
+    - [4.2 CSRF: Double-Submit Cookie](#42-csrf-double-submit-cookie)
+    - [4.3 Rate Limiting](#43-rate-limiting)
+    - [4.4 Helmet e Security Headers](#44-helmet-e-security-headers)
+    - [4.5 CORS](#45-cors)
+    - [4.6 Per-Account Lockout](#46-per-account-lockout)
+  - [5. Sistema de Rotas (auto-loading)](#5-sistema-de-rotas-auto-loading)
+  - [6. OAuth2 (Discord)](#6-oauth2-discord)
+    - [Fluxo completo](#fluxo-completo)
+    - [Scopes do Discord](#scopes-do-discord)
+    - [Peculiaridades](#peculiaridades)
+  - [7. Banco de Dados (MongoDB + Mongoose)](#7-banco-de-dados-mongodb--mongoose)
+    - [Conexão](#conexão)
+    - [Schema principal: `dashboardAccounts`](#schema-principal-dashboardaccounts)
+    - [Demais collections](#demais-collections)
+    - [Service pattern](#service-pattern)
+  - [8. Sistema de Logging e Observabilidade](#8-sistema-de-logging-e-observabilidade)
+    - [Request Logger (middleware global)](#request-logger-middleware-global)
+    - [routeError (helper de erro padronizado)](#routeerror-helper-de-erro-padronizado)
+    - [Métricas (em memória)](#métricas-em-memória)
+  - [9. Identidade Pública (username + displayName)](#9-identidade-pública-username--displayname)
+    - [Regras](#regras)
+    - [Resolução de perfil público](#resolução-de-perfil-público)
+  - [10. Fechamento de Conta (TTL 30 dias)](#10-fechamento-de-conta-ttl-30-dias)
+    - [Fluxo](#fluxo)
+    - [Peculiaridade](#peculiaridade)
+  - [11. Rotas Internas (Bot ↔ API)](#11-rotas-internas-bot--api)
+  - [12. Dashboard (Frontend React)](#12-dashboard-frontend-react)
+    - [Auth flow (cookie-based)](#auth-flow-cookie-based)
+    - [Helper centralizado: `src/utils/apiFetch.js`](#helper-centralizado-srcutilsapifetchjs)
+    - [withAuth e withPermission (HOCs)](#withauth-e-withpermission-hocs)
+    - [Páginas principais](#páginas-principais)
+  - [13. Variáveis de Ambiente](#13-variáveis-de-ambiente)
+    - [Críticas (NUNCA commitar)](#críticas-nunca-commitar)
+    - [Configuração](#configuração)
+    - [Importante](#importante)
+  - [14. Deploy (Vercel)](#14-deploy-vercel)
+    - [API](#api)
+    - [Dashboard](#dashboard)
+    - [Variáveis na Vercel](#variáveis-na-vercel)
+  - [15. Checklist de Segurança](#15-checklist-de-segurança)
+  - [16. FAQ de Desenvolvimento](#16-faq-de-desenvolvimento)
+    - [Como adiciono uma nova rota?](#como-adiciono-uma-nova-rota)
+    - [Como testo uma rota com CSRF em dev?](#como-testo-uma-rota-com-csrf-em-dev)
+    - [Como testo uma rota autenticada?](#como-testo-uma-rota-autenticada)
+    - [Como adiciono um novo provider OAuth (ex: Google)?](#como-adiciono-um-novo-provider-oauth-ex-google)
+    - [Por que o WebSocket do Console foi desativado?](#por-que-o-websocket-do-console-foi-desativado)
+    - [Por que as métricas resetam a cada cold start?](#por-que-as-métricas-resetam-a-cada-cold-start)
+    - [Como debugo um erro 500?](#como-debugo-um-erro-500)
+  - [Documentação da API (Swagger)](#documentação-da-api-swagger)
 
 ---
 
@@ -389,7 +425,7 @@ app.use(cors({
 
 `credentials: true` é necessário para o browser enviar cookies
 cross-origin (dashboard em `bot.luminasink.com` → API em
-`api.bot.luminasink.com`).
+`api-bot.luminasink.com`).
 
 ### 4.6 Per-Account Lockout
 
@@ -733,7 +769,7 @@ PORT=3000
 DASHBOARD_PROTOCOL=https
 DASHBOARD_DOMAIN=bot.luminasink.com
 DISCORD_CLIENT_ID=<do Discord Dev Portal>
-DISCORD_AUTH_REDIRECT_URI=https://api.bot.luminasink.com/expapi/oauth2/discord/auth/callback
+DISCORD_AUTH_REDIRECT_URI=https://api-bot.luminasink.com/expapi/oauth2/discord/auth/callback
 ```
 
 ### Importante

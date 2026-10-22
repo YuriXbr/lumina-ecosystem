@@ -1,0 +1,59 @@
+<svg xmlns="http://w3.org" viewBox="0 0 800 400" width="100%" height="100%">
+  <defs>
+    <!-- Gradiente Cyberpunk Roxo-Rosa -->
+    <linearGradient id="luminaGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="45%" stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </linearGradient>
+    
+    <!-- Gradiente de Brilho Translúcido -->
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F472B6" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#7C3AED" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Sombra/Brilho Neon Suave -->
+    <filter id="neonShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#7C3AED" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- SEM RECT DE FUNDO = TRANSPARENTE -->
+
+  <!-- ICONE (Alinhado à esquerda na proporção horizontal) -->
+  <g transform="translate(80, 85)" filter="url(#neonShadow)">
+    <!-- Linhas de circuito ocultas em roxo sutil -->
+    <path d="M 60,-20 L 60,60 L 140,100" fill="none" stroke="#7C3AED" stroke-width="3" stroke-opacity="0.2" stroke-dasharray="6 4"/>
+    <path d="M 140,140 L 60,180 L -20,180" fill="none" stroke="#7C3AED" stroke-width="3" stroke-opacity="0.2" stroke-dasharray="6 4"/>
+
+    <!-- O "L" em Prisma -->
+    <path d="M 30,20 L 90,50 L 90,130 L 30,190 L 30,110 Z" fill="url(#luminaGrad)" />
+    <path d="M 90,50 L 150,20 L 150,100 L 90,130 Z" fill="url(#glowGrad)" />
+    
+    <!-- Ponto Luminoso de Conexão -->
+    <circle cx="150" cy="20" r="10" fill="#F472B6" />
+    <circle cx="150" cy="20" r="22" fill="none" stroke="#F472B6" stroke-width="2" opacity="0.4"/>
+    
+    <!-- Detalhe interno geométrico -->
+    <path d="M 50,60 L 75,72 L 75,120 L 50,145 Z" fill="#ffffff" opacity="0.15"/>
+  </g>
+
+  <!-- TIPOGRAFIA DA MARCA UTILIZANDO A TAG <text> -->
+  <!-- Nome principal com gradiente roxo-rosa -->
+  <text x="340" y="210" 
+        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="64" 
+        font-weight="900" 
+        letter-spacing="2" 
+        fill="url(#luminaGrad)">LUMINA</text>
+        
+  <!-- Subtítulo "System" espaçado em tom roxo claro -->
+  <text x="345" y="265" 
+        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="32" 
+        font-weight="400" 
+        letter-spacing="12" 
+        fill="#A78BFA">SYSTEM</text>
+
+</svg>

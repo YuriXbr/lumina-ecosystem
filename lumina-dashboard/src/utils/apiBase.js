@@ -4,7 +4,7 @@
  * Em desenvolvimento: '' (vazio) — o proxy do Vite encaminha /expapi e /api
  * para localhost:3000.
  *
- * Em produção: 'https://api.bot.luminasink.com/' — configurado via
+ * Em produção: 'https://api-bot.luminasink.com/' — configurado via
  * VITE_API_BASE_URL no painel da Vercel ou .env.production.
  *
  * Fallback: se VITE_API_BASE_URL não estiver definido (build sem env),

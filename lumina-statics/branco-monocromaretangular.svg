@@ -1,0 +1,48 @@
+<svg xmlns="http://w3.org" viewBox="0 0 800 400" width="100%" height="100%">
+  <defs>
+    <!-- Sombra suave monocromática para dar profundidade ao ícone -->
+    <filter id="monoShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- SEM RECT DE FUNDO = TRANSPARENTE -->
+
+  <!-- ICONE MONOCROMÁTICO -->
+  <g transform="translate(80, 85)" filter="url(#monoShadow)">
+    <!-- Linhas de circuito em branco com baixa opacidade -->
+    <path d="M 60,-20 L 60,60 L 140,100" fill="none" stroke="#ffffff" stroke-width="3" stroke-opacity="0.1" stroke-dasharray="6 4"/>
+    <path d="M 140,140 L 60,180 L -20,180" fill="none" stroke="#ffffff" stroke-width="3" stroke-opacity="0.1" stroke-dasharray="6 4"/>
+
+    <!-- O "L" em Prisma (Branco Sólido) -->
+    <path d="M 30,20 L 90,50 L 90,130 L 30,190 L 30,110 Z" fill="#ffffff" />
+    
+    <!-- Face de reflexo tridimensional (Branco Translúcido para criar o efeito de corte) -->
+    <path d="M 90,50 L 150,20 L 150,100 L 90,130 Z" fill="#ffffff" fill-opacity="0.3" />
+    
+    <!-- Ponto Luminoso de Conexão -->
+    <circle cx="150" cy="20" r="10" fill="#ffffff" />
+    <circle cx="150" cy="20" r="22" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.2"/>
+    
+    <!-- Detalhe interno geométrico vazado -->
+    <path d="M 50,60 L 75,72 L 75,120 L 50,145 Z" fill="#000000" opacity="0.2"/>
+  </g>
+
+  <!-- TIPOGRAFIA DA MARCA UTILIZANDO A TAG <text> -->
+  <!-- Nome principal em Branco Puro -->
+  <text x="340" y="210" 
+        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="64" 
+        font-weight="900" 
+        letter-spacing="2" 
+        fill="#ffffff">LUMINA</text>
+        
+  <!-- Subtítulo "System" em Cinza Claro -->
+  <text x="345" y="265" 
+        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="32" 
+        font-weight="400" 
+        letter-spacing="12" 
+        fill="#e2e8f0">SYSTEM</text>
+
+</svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://w3.org" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <filter id="darkShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- PRETA CENTRALIZADA SEM FUNDO -->
+  <g transform="translate(170, 140)" filter="url(#darkShadow)">
+    <path d="M 60,-20 L 60,60 L 140,100" fill="none" stroke="#0f172a" stroke-width="3" stroke-opacity="0.1" stroke-dasharray="6 4"/>
+    <path d="M 140,140 L 60,180 L -20,180" fill="none" stroke="#0f172a" stroke-width="3" stroke-opacity="0.1" stroke-dasharray="6 4"/>
+    <path d="M 30,20 L 90,50 L 90,130 L 30,190 L 30,110 Z" fill="#0f172a" />
+    <path d="M 90,50 L 150,20 L 150,100 L 90,130 Z" fill="#0f172a" fill-opacity="0.4" />
+    <circle cx="150" cy="20" r="10" fill="#0f172a" />
+    <circle cx="150" cy="20" r="22" fill="none" stroke="#0f172a" stroke-width="2" opacity="0.15"/>
+    <path d="M 50,60 L 75,72 L 75,120 L 50,145 Z" fill="#ffffff" opacity="0.3"/>
+  </g>
+</svg>

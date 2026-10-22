@@ -16,7 +16,7 @@ const ALLOWED_ORIGINS = [
     'https://luminasink.me',
     'https://www.luminasink.me',
     'https://bot.luminasink.com',
-    'https://api.bot.luminasink.com',
+    'https://api-bot.luminasink.com',
     // API Vercel
     'https://lumina-api-tau.vercel.app',
     // Dev local / Docker

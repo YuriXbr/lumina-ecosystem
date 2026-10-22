@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
   }
 
   // Proxy só em desenvolvimento — em produção, VITE_API_BASE_URL aponta
-  // para a API real (api.bot.luminasink.com) e não precisa de proxy.
+  // para a API real (api-bot.luminasink.com) e não precisa de proxy.
   if (mode === 'development' && !env.VITE_API_BASE_URL) {
     config.server = {
       proxy: {

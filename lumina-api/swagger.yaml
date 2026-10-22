@@ -118,7 +118,7 @@ info:
     - All other routes: no global limiter (relies on Vercel edge + bot-side throttling)
 
 servers:
-  - url: https://api.bot.luminasink.com
+  - url: https://api-bot.luminasink.com
     description: Production
   - url: http://localhost:3000
     description: Local development

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   SparklesIcon, ServerIcon, GiftIcon, TicketIcon,
   ArrowRightIcon
@@ -8,6 +8,7 @@ import { useUser } from '../../contexts/UserContext'
 import { useT } from '../../i18n/LanguageContext.jsx';
 import { fetchNews } from '../../utils/membersApi';
 import AppShell from '../../components/AppShell';
+import PageState from '../../components/PageState';
 import DiscordBanner from '../../components/DiscordBanner';
 import MutualGuildsList from '../../components/MutualGuildsList';
 import InventoryPreview from '../../components/InventoryPreview';
@@ -125,6 +126,7 @@ function AnonymousHero({ news, newsLoading, newsError, onRetryNews }) {
 function MembersContent() {
   const t = useT();
   const { user } = useUser();
+  const hasDiscord = !!(user?.discordOauth2Id || user?.id);
   const [activeTab, setActiveTab] = useState('servers');
 
   // Inventário
@@ -133,6 +135,7 @@ function MembersContent() {
   const [invError, setInvError] = useState(null);
 
   const loadInventory = useCallback(async () => {
+    if (!hasDiscord) { setInvLoading(false); return; }
     setInvLoading(true);
     setInvError(null);
     try {
@@ -148,7 +151,7 @@ function MembersContent() {
     } finally {
       setInvLoading(false);
     }
-  }, []);
+  }, [hasDiscord]);
 
   useEffect(() => { loadInventory(); }, [loadInventory]);
 
@@ -169,7 +172,11 @@ function MembersContent() {
       <div className="space-y-6">
         {/* Banner Discord no topo */}
         <DiscordBanner user={user} />
-        {user?.discordNeedsReauth && <div role="status" className="lumina-card p-4 text-sm text-gray-700 flex flex-wrap items-center justify-between gap-3">
+        {!hasDiscord && <div role="status" className="lumina-card p-4 text-sm text-gray-700 flex flex-wrap items-center justify-between gap-3">
+          <p>{t('apiError.discordNotLinked')}</p>
+          <Link to="/settings" className="lumina-button">{t('inventory.connectDiscord')}</Link>
+        </div>}
+        {hasDiscord && user?.discordNeedsReauth && <div role="status" className="lumina-card p-4 text-sm text-gray-700 flex flex-wrap items-center justify-between gap-3">
           <p>Autorize o acesso aos seus servidores para gerenciá-los no dashboard.</p>
           <button className="lumina-button" onClick={()=>setShowReauth(true)}>Reconectar Discord</button>
         </div>}
@@ -210,7 +217,7 @@ function MembersContent() {
             </div>
 
             {/* Conteúdo da tab */}
-            {activeTab === 'servers' && <MutualGuildsList />}
+            {activeTab === 'servers' && hasDiscord && <MutualGuildsList />}
 
             {activeTab === 'badges' && <BadgesTab />}
 
@@ -223,7 +230,7 @@ function MembersContent() {
             )}
 
             {/* Inventário preview (só na tab de servidores) */}
-            {activeTab === 'servers' && (
+            {activeTab === 'servers' && hasDiscord && (
               <InventoryPreview
                 inventory={inventory}
                 loading={invLoading}
@@ -257,7 +264,8 @@ function MembersContent() {
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function MembersAreaPage() {
   const t = useT();
-  const { user, loading } = useUser();
+  const { user, loading, error, refreshUser } = useUser();
+  const isAuthenticated = !!user;
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState(null);
@@ -275,19 +283,10 @@ export default function MembersAreaPage() {
     }
   }, []);
 
-  useEffect(() => { loadNews(); }, [loadNews]);
+  useEffect(() => { if (!loading && !error && !isAuthenticated) loadNews(); }, [loadNews, loading, error, isAuthenticated]);
 
-  // Loading state (verificando auth)
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto" />
-          <p className="mt-4 text-sm text-gray-500">{t("common.loading")}</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <PageState title={t('common.loading')} loading />;
+  if (error) return <AppShell><PageState title="Não foi possível verificar sua sessão" message={error} onRetry={() => refreshUser().catch(() => {})} /></AppShell>;
 
   // Não logado → hero anônima + feed público
   if (!user) {

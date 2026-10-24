@@ -898,34 +898,29 @@
       "f11": "Detailed analytics"
     },
     "faq": {
-      "title": "Frequently Asked Questions",
-      "items": {
-        "1": {
-          "q": "Can I change plans anytime?",
-          "a": "Yes, you can upgrade or downgrade at any time. Changes take effect immediately."
-        },
-        "2": {
-          "q": "Do you offer refunds?",
-          "a": "We offer a 7-day money-back guarantee on all paid plans."
-        },
-        "3": {
-          "q": "What payment methods do you accept?",
-          "a": "We accept all major credit cards and PayPal."
-        }
-      },
-      "q1": "Can I cancel my subscription at any time?",
-      "a1": "Yes, you can cancel your subscription at any time without additional fees. You will keep access to premium features until the end of the paid period.",
-      "q2": "Do the prices include all mentioned features?",
-      "a2": "Yes, all features listed in each plan are included in the monthly price. There are no hidden costs or additional fees.",
-      "q3": "Can I upgrade or downgrade my plan?",
-      "a3": "Absolutely! You can change your plan at any time. Changes will be applied in the next billing cycle.",
-      "q4": "Do you offer a discount for annual payment?",
-      "a4": "Yes, we offer a 20% discount for annual subscription on all paid plans. Contact us for more details."
+      "q1": "Can I use Lumina for free?",
+      "a1": "Yes. The free plan is available through the official bot invite. No payment card is required.",
+      "q2": "Can I subscribe to VIP or Enterprise?",
+      "a2": "Not yet. Paid plans and their features are under consideration. This site has no checkout or billing.",
+      "q3": "Are the planned features already available?",
+      "a3": "No. The list contains ideas for the project and may change before launch.",
+      "q4": "Where can I ask questions?",
+      "a4": "Contact suporte@luminasink.com for help with available features and bot configuration."
     },
     "popular": "Most Popular",
     "badge": "Plans for every need",
     "faqTitle": "Frequently Asked Questions",
-    "faqSubtitle": "Everything you need to know about our plans"
+    "faqSubtitle": "Everything you need to know about our plans",
+    "availability": {
+      "title": "Lumina plans",
+      "intro": "Use Lumina for free. VIP and Enterprise are being planned.",
+      "notice": "Only the free plan is available. Paid plans cannot be purchased or subscribed to on this site.",
+      "planned": "Being planned",
+      "pricePending": "Pricing to be defined",
+      "futureFeatures": "Features under consideration, not included in an available plan.",
+      "notOpen": "{plan}: subscription unavailable",
+      "plannedDescription": "A proposal for Lumina’s future, with no launch date or subscription available."
+    }
   },
   "about": {
     "title": "About Lumina",

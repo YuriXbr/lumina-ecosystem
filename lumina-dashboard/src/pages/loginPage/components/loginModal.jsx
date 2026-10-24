@@ -81,9 +81,9 @@ export default function LoginModal() {
 
           <div className="sm:mx-auto px-3 sm:w-full sm:max-w-sm">
             <img src="/new-purple.svg" className="mx-auto h-20 w-auto" alt="Logo" />
-            <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
+            <h1 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
               {t("auth.login.title")} <span className="text-purple-500 underline underline-offset-4">{t("nav.members")}</span>!
-            </h2>
+            </h1>
 
             <button
               type="button"

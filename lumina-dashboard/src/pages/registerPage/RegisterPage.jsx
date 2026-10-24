@@ -312,7 +312,7 @@ function Step1Account({ form, errors, updateField, showPassword, setShowPassword
           required
         />
         <Field
-          label={t("auth.register.firstName")}
+          label={t("auth.register.lastName")}
           value={form.lastName}
           onChange={v => updateField('lastName', v)}
           error={errors.lastName}

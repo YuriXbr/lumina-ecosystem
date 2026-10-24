@@ -17,7 +17,7 @@ function fmtUptime(s) {
 }
 
 function fmtNumber(n) {
-  if (n == null) return '—';
+  if (n == null || !Number.isFinite(Number(n))) return '—';
   return Number(n).toLocaleString('pt-BR');
 }
 
@@ -92,7 +92,7 @@ function RoutesBarChart({ data = [], color = '#8B5CF6' }) {
 // ─── Card de estatística ─────────────────────────────────────────────────────
 function StatCard({ name, value, icon: Icon, color = 'text-purple-500', bg = 'bg-purple-50', sub }) {
   return (
-    <div className="bg-white overflow-hidden shadow rounded-lg border border-gray-100">
+    <div className="lumina-card overflow-hidden">
       <div className="p-5">
         <div className="flex items-center">
           <div className={`flex-shrink-0 ${bg} p-3 rounded-lg`}>
@@ -171,15 +171,16 @@ export default function MetricsTab() {
   const recentErrors = metrics?.recentErrors?.slice(0, 6) || [];
 
   const mem = metrics?.memory;
-  const memUsedMB  = mem ? (mem.heapUsed  / 1024 / 1024).toFixed(1) : '—';
-  const memTotalMB = mem ? (mem.heapTotal / 1024 / 1024).toFixed(1) : '—';
+  const memoryMb = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? (value / 1024 / 1024).toFixed(1) : null;
+  const memUsedMB = memoryMb(mem?.heapUsed);
+  const memTotalMB = memoryMb(mem?.heapTotal);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 max-w-7xl">
 
       {/* Cabeçalho */}
-      <div className="bg-white shadow rounded-lg border border-gray-100">
+      <div className="lumina-card overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-purple-100 rounded-t-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h3 className="text-lg font-semibold text-gray-900">📊 Métricas da API</h3>
           <div className="flex items-center gap-3 flex-wrap">
@@ -238,13 +239,13 @@ export default function MetricsTab() {
       {/* Skeleton no primeiro carregamento */}
       {loading && !metrics && (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <SkeletonCard />
             <SkeletonCard />
             <SkeletonCard />
             <SkeletonCard />
           </div>
-          <div className="bg-white shadow rounded-lg border border-gray-100">
+          <div className="lumina-card overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
               <SkeletonLine width="180px" height="1.1rem" />
             </div>
@@ -257,7 +258,7 @@ export default function MetricsTab() {
       {metrics && (<>
 
         {/* Cards de resumo */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <StatCard
             name="Total de Requisições"
             value={fmtNumber(metrics.totalRequests)}
@@ -279,15 +280,15 @@ export default function MetricsTab() {
           />
           <StatCard
             name="Heap Usado"
-            value={`${memUsedMB} MB`}
+            value={memUsedMB === null ? 'Indisponível' : `${memUsedMB} MB`}
             icon={ServerIcon}
             color="text-blue-500" bg="bg-blue-50"
-            sub={`de ${memTotalMB} MB alocados`}
+            sub={memTotalMB === null ? 'Memória não informada pela API' : `de ${memTotalMB} MB alocados`}
           />
         </div>
 
         {/* Top Rotas por volume */}
-        <div className="bg-white shadow rounded-lg border border-gray-100">
+        <div className="lumina-card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-lg flex items-center justify-between">
             <h3 className="text-base font-semibold text-gray-900">🔀 Rotas Mais Acessadas</h3>
             <span className="text-xs text-gray-500">Top {topRoutes.length} por volume</span>
@@ -335,7 +336,7 @@ export default function MetricsTab() {
         </div>
 
         {/* Tabela de status codes por rota */}
-        <div className="bg-white shadow rounded-lg border border-gray-100">
+        <div className="lumina-card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
             <h3 className="text-base font-semibold text-gray-900">📋 Status Codes por Rota</h3>
           </div>
@@ -378,7 +379,7 @@ export default function MetricsTab() {
 
         {/* Erros recentes */}
         {recentErrors.length > 0 && (
-          <div className="bg-white shadow rounded-lg border border-gray-100">
+          <div className="lumina-card overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 bg-red-50 rounded-t-lg">
               <h3 className="text-base font-semibold text-red-800">🔴 Erros Recentes (últimos {recentErrors.length})</h3>
             </div>

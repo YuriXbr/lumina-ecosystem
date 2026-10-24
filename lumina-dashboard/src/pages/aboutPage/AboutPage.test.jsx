@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import AboutPage from './AboutPage';
+import SiteFooter from '../../components/SiteFooter';
 import { renderWithProviders } from '../../test/testUtils';
 
 describe('AboutPage', () => {
@@ -32,22 +33,22 @@ describe('AboutPage', () => {
     expect(badges.length).toBeGreaterThan(0);
   });
 
-  it('renderiza footer com copyright', () => {
-    renderWithProviders(<AboutPage />);
-    expect(screen.getByText(/2024 LUMINA BOT/i)).toBeInTheDocument();
+  it('usa somente o footer global com políticas', () => {
+    renderWithProviders(<><AboutPage /><SiteFooter /></>);
+    expect(screen.getAllByRole('contentinfo')).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Privacidade' })).toHaveAttribute('href', '/privacy');
+    expect(screen.queryByText(/2024 LUMINA BOT/i)).not.toBeInTheDocument();
   });
 
-  it('renderiza links sociais no footer (GitHub, Twitter, LinkedIn)', () => {
+  it('oferece link nomeado para o repositório real', () => {
     renderWithProviders(<AboutPage />);
-    const footer = document.querySelector('footer');
-    const socialLinks = footer.querySelectorAll('a[target="_blank"]');
-    expect(socialLinks.length).toBeGreaterThanOrEqual(3);
+    expect(screen.getByRole('link', { name: 'Código do Lumina no GitHub' })).toHaveAttribute('href', 'https://github.com/YuriXbr/lumina-ecosystem');
   });
 
   it('renderiza ícones de skills', () => {
     const { container } = renderWithProviders(<AboutPage />);
     // Skills são renderizadas como <span> com SVG icons (react-icons)
-    const skillSpans = container.querySelectorAll('.flex.space-x-4 span');
+    const skillSpans = container.querySelectorAll('[aria-hidden="true"] svg');
     expect(skillSpans.length).toBeGreaterThan(0);
   });
 });

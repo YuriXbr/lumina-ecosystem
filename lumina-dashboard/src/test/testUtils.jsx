@@ -16,7 +16,7 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { UserProvider } from '../contexts/UserContext';
+import { UserContext, ACCESS_LEVELS } from '../contexts/UserContext';
 import { LanguageProvider } from '../i18n/LanguageContext';
 import { vi } from 'vitest';
 
@@ -171,22 +171,38 @@ export function makeNewsPost(overrides = {}) {
  * @param {boolean} options.loading - Estado de loading inicial (default: false)
  * @returns {object} RTL render result + helpers
  */
+function TestUserProvider({ user, loading, children }) {
+  const [currentUser, setUser] = React.useState(user);
+  const level = ACCESS_LEVELS[currentUser?.accessType];
+  const value = {
+    user: currentUser, loading, error: null, ACCESS_LEVELS,
+    refreshUser: vi.fn().mockResolvedValue(currentUser),
+    onLoginSuccess: vi.fn(async next => setUser(next)),
+    logout: vi.fn(async () => setUser(null)),
+    hasPermission: permission => !!currentUser && !!level?.permissions.some(p => p === 'all' || p === permission),
+    isStaff: () => !!currentUser && level?.level >= 5,
+    isAdmin: () => !!currentUser && level?.level >= 7,
+    getUserLevel: () => currentUser ? level || null : null,
+  };
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
+}
+
 export function renderWithProviders(ui, options = {}) {
   const {
     route = '/',
     user = null,
     loading = false,
-  } = options;
+  } = options || {};
 
   // Wrapper que seta o user inicial via mock do checkSession
   function Wrapper({ children }) {
     return (
       <MemoryRouter initialEntries={[route]}>
-        <UserProvider initialUser={user} initialLoading={loading}>
+        <TestUserProvider user={user} loading={loading}>
           <LanguageProvider>
             {children}
           </LanguageProvider>
-        </UserProvider>
+        </TestUserProvider>
       </MemoryRouter>
     );
   }
@@ -199,14 +215,14 @@ export function renderWithProviders(ui, options = {}) {
  * (sem Router). Útil para componentes que não usam react-router.
  */
 export function renderWithI18n(ui, options = {}) {
-  const { user = null, loading = false } = options;
+  const { user = null, loading = false } = options || {};
   function Wrapper({ children }) {
     return (
-      <UserProvider initialUser={user} initialLoading={loading}>
+      <TestUserProvider user={user} loading={loading}>
         <LanguageProvider>
           {children}
         </LanguageProvider>
-      </UserProvider>
+      </TestUserProvider>
     );
   }
   return render(ui, { wrapper: Wrapper });

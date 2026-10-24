@@ -15,7 +15,7 @@ import ErrorState from '../../../../components/ui/ErrorState';
 import { SkeletonRow } from '../../../../components/ui/Skeleton';
 import { useT } from '../../../../i18n/LanguageContext.jsx';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+import { API_BASE } from '../../../../utils/apiBase';
 const GUILDS_PER_PAGE = 10;
 
 export default function GuildConfigTab() {

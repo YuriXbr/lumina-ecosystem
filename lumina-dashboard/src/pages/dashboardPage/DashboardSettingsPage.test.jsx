@@ -11,8 +11,8 @@ describe('DashboardSettingsPage', () => {
     expect(() => renderWithProviders(<DashboardSettingsPage />, { user: makeUser() })).not.toThrow();
   });
 
-  it('renderiza spinner quando formData.bot é null', () => {
+  it('mantém links legais no formulário de configurações', () => {
     renderWithProviders(<DashboardSettingsPage />, { user: makeUser() });
-    expect(document.querySelector('.animate-spin')).toBeInTheDocument();
+    expect(document.querySelector('a[href="/privacy"]')).toBeInTheDocument();
   });
 });

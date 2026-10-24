@@ -473,7 +473,7 @@
       "notEnoughKeys": "Você não tem chaves suficientes.",
       "noChest": "Você não tem esse baú disponível.",
       "open": "Abrir baú",
-      "masterworkDesc": "Garante raridade épica ou superior",
+      "masterworkDesc": "Mais chances de raridades altas",
       "hextechDesc": "Qualquer raridade possível",
       "discordRequired": "Abrir baús exige que sua conta esteja vinculada ao Discord, já que seu inventário de skins vive lá.",
       "amountAvailable": "{count} disponível(is)",
@@ -1147,7 +1147,7 @@
       "dashboard": "Dashboard próprio"
     },
     "continueToDiscord": "Continuar para Discord",
-    "confirmText": "Entendo que o bot será adicionado com permissões para gerenciar cargos, canais e mensagens, e que terei acesso às configurações específicas deste servidor através do painel web."
+    "confirmText": "Entendo que o bot será adicionado com permissões para moderar membros, gerenciar cargos e mensagens, e que terei acesso às configurações específicas deste servidor através do painel web."
   },
   "guild": {
     "notConfigured": "Guilda não configurada — registre-a via bot antes de configurar",

@@ -12,7 +12,7 @@ import { ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outl
  *   {error && <ErrorBanner error={error} onRetry={load} />}
  *   {error && <ErrorBanner error={error} variant="warning" />}
  */
-export default function ErrorBanner({ error, onRetry, variant = 'error' }) {
+export default function ErrorBanner({ error, onRetry, onDismiss, variant = 'error' }) {
   if (!error) return null;
 
   const styles = variant === 'warning'
@@ -20,10 +20,10 @@ export default function ErrorBanner({ error, onRetry, variant = 'error' }) {
     : 'bg-red-50 border-red-200 text-red-700';
 
   return (
-    <div className={`${styles} border rounded-lg px-4 py-3 flex items-start justify-between gap-3`}>
+    <div role="alert" className={`${styles} border rounded-lg px-4 py-3 flex items-start justify-between gap-3`}>
       <div className="flex items-start gap-2 text-sm min-w-0">
         <ExclamationTriangleIcon className="h-4 w-4 flex-shrink-0 mt-0.5" />
-        <span className="truncate">{error}</span>
+        <span className="break-words">{error}</span>
       </div>
       {onRetry && (
         <button
@@ -36,6 +36,7 @@ export default function ErrorBanner({ error, onRetry, variant = 'error' }) {
           Tentar novamente
         </button>
       )}
+      {onDismiss && <button type="button" aria-label="Fechar alerta" onClick={onDismiss} className="shrink-0 rounded p-1 hover:bg-red-100">×</button>}
     </div>
   );
 }

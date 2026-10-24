@@ -12,7 +12,7 @@
 # ──────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Build do React ──────────────────────────────────────────────────
-FROM node:20-slim AS builder
+FROM node:24-slim AS builder
 
 WORKDIR /app
 
@@ -21,7 +21,7 @@ COPY package.json package-lock.json* ./
 
 # Instala TODAS as dependências (incluindo devDependencies — Vite, Tailwind, etc.)
 # Usa `npm install` (não `npm ci`) para tolerar dessincronização do lock file.
-RUN npm install
+RUN npm ci
 
 # Copia o código fonte
 COPY . .

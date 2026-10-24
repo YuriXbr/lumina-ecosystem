@@ -6,7 +6,7 @@ import {
 import { useT } from '../../../i18n/LanguageContext.jsx';
 import { translateApiError } from '../../../i18n/apiErrors.js';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+import { API_BASE } from '../../../utils/apiBase';
 
 const RARITIES = ['common', 'rare', 'epic', 'legendary', 'mythic'];
 const ACCESS_LEVELS = [

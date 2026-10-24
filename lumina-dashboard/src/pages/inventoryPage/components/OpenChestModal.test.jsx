@@ -6,5 +6,5 @@ import { renderWithI18n } from '../../../test/testUtils';
 
 describe('OpenChestModal', () => {
   it('renderiza sem crashar quando aberto', () => { renderWithI18n(<OpenChestModal isOpen={true} onClose={vi.fn()} />); });
-  it('renderiza conteúdo modal', () => { const { container } = renderWithI18n(<OpenChestModal isOpen={true} onClose={vi.fn()} />); expect(container.querySelector('div')).not.toBeNull(); });
+  it('renderiza conteúdo modal', () => { const { container } = renderWithI18n(<OpenChestModal isOpen={true} onClose={vi.fn()} />); expect(screen.getByRole('dialog')).toHaveAttribute('aria-labelledby'); });
 });

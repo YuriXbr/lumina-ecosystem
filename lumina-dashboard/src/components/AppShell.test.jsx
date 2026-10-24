@@ -8,9 +8,9 @@ import AppShell from './AppShell';
 import { renderWithProviders } from '../test/testUtils';
 
 describe('AppShell', () => {
-  it('renderiza Header', () => {
+  it('não duplica o Header global', () => {
     renderWithProviders(<AppShell><div>Content</div></AppShell>);
-    expect(document.querySelector('header')).toBeInTheDocument();
+    expect(document.querySelector('header')).toBeNull();
   });
 
   it('renderiza children', () => {
@@ -46,17 +46,17 @@ describe('AppShell', () => {
   it('renderiza subheader em rota /admin', () => {
     renderWithProviders(<AppShell><div>Content</div></AppShell>, { route: '/admin' });
     // Subheader deve aparecer
-    expect(document.querySelectorAll('.bg-white.border-b.border-gray-200').length).toBeGreaterThan(1);
+    expect(document.querySelectorAll('.bg-white.border-b.border-gray-200').length).toBe(1);
   });
 
   it('renderiza subheader em rota /settings', () => {
     renderWithProviders(<AppShell><div>Content</div></AppShell>, { route: '/settings' });
-    expect(document.querySelectorAll('.bg-white.border-b.border-gray-200').length).toBeGreaterThan(1);
+    expect(document.querySelectorAll('.bg-white.border-b.border-gray-200').length).toBe(1);
   });
 
   it('renderiza subheader em rota /server/:id', () => {
     renderWithProviders(<AppShell><div>Content</div></AppShell>, { route: '/server/123' });
-    expect(document.querySelectorAll('.bg-white.border-b.border-gray-200').length).toBeGreaterThan(1);
+    expect(document.querySelectorAll('.bg-white.border-b.border-gray-200').length).toBe(1);
   });
 
   it('aceita maxWidth customizado', () => {

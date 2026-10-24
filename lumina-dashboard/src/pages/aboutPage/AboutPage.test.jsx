@@ -28,7 +28,7 @@ describe('AboutPage', () => {
   it('renderiza badges de role', () => {
     const { container } = renderWithProviders(<AboutPage />);
     // Badges usam classe bg-indigo-600
-    const badges = container.querySelectorAll('.bg-indigo-600.text-white');
+    const badges = container.querySelectorAll('.bg-purple-600.text-white');
     expect(badges.length).toBeGreaterThan(0);
   });
 

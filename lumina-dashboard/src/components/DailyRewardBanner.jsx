@@ -6,7 +6,7 @@ import { GiftIcon, FireIcon, ClockIcon } from '@heroicons/react/24/outline';
  * Em dev: o proxy do Vite encaminha /expapi → localhost:3000.
  * Em prod: VITE_API_BASE_URL configurado no painel da Vercel.
  */
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+import { API_BASE } from '../utils/apiBase';
 
 /**
  * Formata o tempo restante até `targetDate` no formato HH:MM:SS.
@@ -119,7 +119,7 @@ export default function DailyRewardBanner({ onClaim, inventory: inventoryProp })
   if (available) {
     // ─── Banner roxo: recompensa disponível ────────────────────────────────
     return (
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 shadow-lg">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-purple-600 via-fuchsia-600 to-purple-600 shadow-lg">
         {/* Brilho animado de fundo */}
         <div
           className="absolute inset-0 opacity-30 pointer-events-none"

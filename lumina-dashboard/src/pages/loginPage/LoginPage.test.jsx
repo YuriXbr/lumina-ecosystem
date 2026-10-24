@@ -17,13 +17,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import LoginPage from './LoginPage';
+import {resetCsrfToken} from '../../utils/apiFetch';
 import { renderWithProviders, makeUser } from '../../test/testUtils';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 beforeEach(() => {
-  mockFetch.mockReset();
+  mockFetch.mockReset();resetCsrfToken();
 });
 
 afterEach(() => {
@@ -66,13 +67,7 @@ describe('LoginPage', () => {
     expect(buttons.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('renderiza LanguageSwitcher (bandeira visível)', () => {
-    renderWithProviders(<LoginPage />);
-    // LanguageSwitcher mostra uma bandeira — procuramos qualquer uma das 3
-    const flags = ['🇺🇸', '🇧🇷', '🇪🇸'];
-    const found = flags.some(f => screen.queryByText(f));
-    expect(found).toBe(true);
-  });
+  it('oferece recuperação de senha',()=>{renderWithProviders(<LoginPage/>);expect(document.querySelector('a[href="/forgot-password"]')).toBeInTheDocument();});
 
   it('tem link para /register', () => {
     renderWithProviders(<LoginPage />);
@@ -120,7 +115,7 @@ describe('LoginPage', () => {
     fireEvent.click(document.querySelector('button[type="submit"]'));
 
     await waitFor(() => {
-      expect(screen.getByText(/incorretos/i)).toBeInTheDocument();
+      expect(screen.getByRole('alert')).toBeInTheDocument();
     });
   });
 

@@ -6,7 +6,7 @@ import { XMarkIcon, GiftIcon, FireIcon, KeyIcon, CubeIcon } from '@heroicons/rea
  * Em dev: o proxy do Vite encaminha /expapi → localhost:3000.
  * Em prod: VITE_API_BASE_URL configurado no painel da Vercel.
  */
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+import { API_BASE } from '../utils/apiBase';
 
 // ─── Estilos / Keyframes (CSS-only) ──────────────────────────────────────────
 function ModalStyles() {
@@ -165,7 +165,7 @@ function ChestAnimation() {
 
       {/* Baú */}
       <div
-        className="relative h-24 w-24 rounded-2xl bg-gradient-to-br from-purple-500 via-fuchsia-500 to-indigo-500 flex items-center justify-center"
+        className="relative h-24 w-24 rounded-2xl bg-gradient-to-br from-purple-500 via-fuchsia-500 to-purple-500 flex items-center justify-center"
         style={{
           animation: 'drmChestGlow 2s ease-in-out infinite, drmChestPulse 2s ease-in-out infinite',
         }}
@@ -233,7 +233,7 @@ function ClaimedView({ result }) {
           label="Baús Hextech"
           value={hextech}
           delay={0.2}
-          gradient="from-indigo-500 to-purple-600"
+          gradient="from-purple-500 to-purple-600"
         />
         {masterwork > 0 && (
           <RewardCard
@@ -421,7 +421,7 @@ export default function DailyRewardModal({ isOpen, onClose, onClaimed }) {
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header com gradiente roxo */}
-          <div className="relative bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
+          <div className="relative bg-gradient-to-r from-purple-600 via-fuchsia-600 to-purple-600 px-6 py-4 flex items-center justify-between">
             <div className="absolute inset-0 opacity-25 pointer-events-none"
               style={{
                 background: 'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)',

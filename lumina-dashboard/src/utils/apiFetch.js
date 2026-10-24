@@ -1,213 +1,71 @@
-/**
- * Helper centralizado para chamadas de API do dashboard.
- *
- * Mudanças principais vs fetch direto:
- *   1. `credentials: 'include'` SEMPRE — necessário para enviar o cookie httpOnly
- *      que carrega o JWT. Sem isso, o browser não envia o cookie cross-origin.
- *   2. Não usa mais `Authorization: Bearer` header (o JWT está no cookie).
- *   3. Tratamento centralizado de 401 (sessão expirada) — limpa estado e redireciona.
- *   4. Helpers para GET/POST/PUT/DELETE com JSON automático.
- *   5. Helper para pegar CSRF token (necessário para rotas state-changing).
- */
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
-
-let csrfTokenCache = null;
-let csrfTokenPromise = null;
-
-/**
- * Busca e cacheia o CSRF token (necessário para POST/PUT/DELETE com cookies).
- * O token é um double-submit cookie: o backend seta um cookie `_csrf` e
- * espera o mesmo valor no header `X-CSRF-Token`.
- */
-export async function getCsrfToken() {
-    if (csrfTokenCache) return csrfTokenCache;
-    if (csrfTokenPromise) return csrfTokenPromise;
-
-    csrfTokenPromise = fetch(`${API_BASE}expapi/v1/csrf-token`, {
-        credentials: 'include',
-    })
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-            csrfTokenCache = data?.csrfToken || '';
-            return csrfTokenCache;
-        })
-        .catch(() => {
-            csrfTokenCache = '';
-            return '';
-        });
-
-    return csrfTokenPromise;
+import { API_BASE } from './apiBase';
+let csrfTokenCache;
+let csrfTokenPromise;
+let sessionRequest;
+export function resetCsrfToken() { csrfTokenCache = undefined; csrfTokenPromise = undefined; }
+function apiUrl(path) {
+  const base = new URL(API_BASE || '/', window.location.origin);
+  const url = new URL(path, base);
+  if (url.origin !== base.origin) throw new Error('Origem de API inválida.');
+  return url.href;
 }
-
-/**
- * Wrapper de fetch que sempre inclui credentials: include.
- * Se a resposta for 401, dispara um evento para o UserContext limpar o estado.
- */
-export async function apiFetch(url, options = {}) {
-    const fullUrl = url.startsWith('http') ? url : `${API_BASE}${url}`;
-
-    const mergedOptions = {
-        ...options,
-        credentials: 'include',
-        headers: {
-            ...options.headers,
-        },
-    };
-
-    // Se tem body, assume JSON
-    if (mergedOptions.body && typeof mergedOptions.body === 'object') {
-        mergedOptions.headers['Content-Type'] = 'application/json';
-        mergedOptions.body = JSON.stringify(mergedOptions.body);
-    }
-
-    const response = await fetch(fullUrl, mergedOptions);
-
-    // 401 = sessão expirada ou token inválido
-    if (response.status === 401) {
-        // Dispara evento para UserContext limpar
-        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-    }
-
-    // 403 com CSRF_INVALID = token CSRF expirou — invalida cache para regenerar
-    if (response.status === 403) {
-        try {
-            const body = await response.clone().json();
-            if (body.code === 'CSRF_INVALID') {
-                csrfTokenCache = null;
-                csrfTokenPromise = null;
-            }
-        } catch {}
-    }
-
+export async function apiFetch(path, options = {}) {
+  const { timeout = 12000, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const abort = () => controller.abort(options.signal?.reason);
+  options.signal?.addEventListener('abort', abort, { once: true });
+  if (options.signal?.aborted) abort();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  const headers = new Headers(options.headers);
+  let body = options.body;
+  if (body && typeof body === 'object' && !(body instanceof FormData)) {
+    headers.set('Content-Type','application/json'); body = JSON.stringify(body);
+  }
+  const trace = crypto.randomUUID?.().replaceAll('-','');
+  if (trace) headers.set('traceparent', `00-${trace}-${trace.slice(0,16)}-00`);
+  try {
+    const response = await fetch(apiUrl(path), { ...fetchOptions, body, headers, credentials:'include', signal:controller.signal });
+    if (response.status === 401) window.dispatchEvent(new CustomEvent('auth:unauthorized'));
     return response;
+  } finally { clearTimeout(timer); options.signal?.removeEventListener('abort',abort); }
 }
-
-/**
- * GET request.
- */
-export async function apiGet(url) {
-    return apiFetch(url, { method: 'GET' });
+export async function getCsrfToken() {
+  if (csrfTokenCache) return csrfTokenCache;
+  if (!csrfTokenPromise) csrfTokenPromise = (async () => {
+    const response = await apiFetch('expapi/v1/csrf-token');
+    if (!response.ok) throw new Error('Não foi possível proteger a solicitação. Tente novamente.');
+    const data = await response.json();
+    if (!data.csrfToken) throw new Error('Resposta de segurança inválida.');
+    csrfTokenCache = data.csrfToken; return csrfTokenCache;
+  })().finally(() => { csrfTokenPromise = undefined; });
+  return csrfTokenPromise;
 }
-
-/**
- * GET request que já faz parse do JSON.
- */
-export async function apiGetJson(url) {
-    const res = await apiGet(url);
-    if (!res.ok) {
-        let detail = `HTTP ${res.status}`;
-        try {
-            const body = await res.json();
-            if (body?.error) detail = body.error;
-        } catch {}
-        const err = new Error(detail);
-        err.status = res.status;
-        err.response = res;
-        throw err;
-    }
-    return res.json();
+export const apiGet = (url, options = {}) => apiFetch(url, { ...options, method:'GET' });
+async function jsonResponse(response) {
+  if (!response.ok) {
+    let data; try { data = await response.json(); } catch { /* Non-JSON upstream failure */ }
+    const error = new Error(data?.error || `Não foi possível concluir a solicitação (${response.status}).`);
+    Object.assign(error,{status:response.status,code:data?.code,requestId:response.headers?.get('X-Request-Id'),response}); throw error;
+  }
+  return response.status === 204 ? null : response.json();
 }
-
-/**
- * POST/PUT/DELETE request com CSRF token automático.
- */
-export async function apiMutation(url, { method = 'POST', body } = {}) {
-    const csrfToken = await getCsrfToken();
-    return apiFetch(url, {
-        method,
-        headers: {
-            'X-CSRF-Token': csrfToken,
-        },
-        body: body || undefined,
-    });
+export async function apiGetJson(url,options) { return jsonResponse(await apiGet(url,options)); }
+export async function apiMutation(url,{method='POST',body,signal}={}) {
+  const send = async () => apiFetch(url,{method,body,signal,headers:{'X-CSRF-Token':await getCsrfToken()}});
+  let response = await send();
+  if (response.status === 403) {
+    const data = await response.clone().json().catch(() => null);
+    // A CSRF rejection happens before the action executes; other writes are never retried.
+    if (data?.code === 'CSRF_INVALID') { resetCsrfToken(); response = await send(); }
+  }
+  return response;
 }
-
-/**
- * POST request com body JSON + CSRF.
- */
-export async function apiPost(url, body) {
-    const res = await apiMutation(url, { method: 'POST', body });
-    if (!res.ok) {
-        let detail = `HTTP ${res.status}`;
-        try {
-            const errBody = await res.json();
-            if (errBody?.error) detail = errBody.error;
-        } catch {}
-        const err = new Error(detail);
-        err.status = res.status;
-        err.response = res;
-        throw err;
-    }
-    return res.json();
-}
-
-/**
- * PUT request com body JSON + CSRF.
- */
-export async function apiPut(url, body) {
-    const res = await apiMutation(url, { method: 'PUT', body });
-    if (!res.ok) {
-        let detail = `HTTP ${res.status}`;
-        try {
-            const errBody = await res.json();
-            if (errBody?.error) detail = errBody.error;
-        } catch {}
-        const err = new Error(detail);
-        err.status = res.status;
-        err.response = res;
-        throw err;
-    }
-    return res.json();
-}
-
-/**
- * DELETE request com CSRF.
- */
-export async function apiDelete(url) {
-    const res = await apiMutation(url, { method: 'DELETE' });
-    if (!res.ok) {
-        let detail = `HTTP ${res.status}`;
-        try {
-            const errBody = await res.json();
-            if (errBody?.error) detail = errBody.error;
-        } catch {}
-        const err = new Error(detail);
-        err.status = res.status;
-        err.response = res;
-        throw err;
-    }
-    return res.json();
-}
-
-/**
- * Verifica se há sessão ativa chamando /session.
- * Retorna { authenticated, user }.
- */
+export async function apiPost(url,body) { return jsonResponse(await apiMutation(url,{body})); }
+export async function apiPut(url,body) { return jsonResponse(await apiMutation(url,{method:'PUT',body})); }
+export async function apiDelete(url) { return jsonResponse(await apiMutation(url,{method:'DELETE'})); }
 export async function checkSession() {
-    try {
-        const res = await apiGet('expapi/v1/session');
-        if (!res.ok) return { authenticated: false };
-        const data = await res.json();
-        return data;
-    } catch {
-        return { authenticated: false };
-    }
+  if (!sessionRequest) sessionRequest = apiGetJson('expapi/v1/session').finally(() => { sessionRequest = undefined; });
+  return sessionRequest;
 }
-
-/**
- * Faz logout chamando o endpoint backend (que limpa o cookie).
- */
-export async function apiLogout() {
-    try {
-        const csrfToken = await getCsrfToken();
-        await apiFetch('expapi/v1/logout', {
-            method: 'POST',
-            headers: { 'X-CSRF-Token': csrfToken },
-        });
-    } catch {
-        // Mesmo se falhar, o frontend deve limpar o estado
-    }
-}
-
+export async function apiLogout() { await apiPost('expapi/v1/logout'); resetCsrfToken(); }
 export { API_BASE };

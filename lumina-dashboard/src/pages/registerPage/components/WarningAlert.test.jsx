@@ -29,6 +29,6 @@ describe('WarningAlert (register)', () => {
 
   it('tem classe de fundo vermelho', () => {
     const { container } = render(<WarningAlert message="Erro" />);
-    expect(container.querySelector('.bg-red-light-6')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveClass('bg-red-50');
   });
 });

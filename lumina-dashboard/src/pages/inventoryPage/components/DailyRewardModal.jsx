@@ -1,3 +1,5 @@
+import {API_BASE} from '../../../utils/apiBase';
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { useState, useEffect, useCallback } from 'react';
 import { useT } from '../../../i18n/LanguageContext.jsx';
 
@@ -84,8 +86,7 @@ export default function DailyRewardModal({
         setStatusLoading(true);
         setStatusError(null);
         try {
-            const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/myinventory`, {
-                headers: { Authorization: `Bearer ${token}` },
+            const response = await fetch(`${API_BASE}expapi/v1/myinventory`, {
                 credentials: 'include',
             });
             if (!response.ok) {
@@ -125,11 +126,14 @@ export default function DailyRewardModal({
     const handleClaim = async () => {
         setClaiming(true);
         setClaimError(null);
-        const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/');
+        const baseUrl = API_BASE;
         try {
             const csrfToken = await fetchCsrfToken(baseUrl, t);
 
-            const response = await fetch(`${baseUrl}expapi/v1/dailyreward`, { credentials: 'include' })
+            const response = await fetch(`${baseUrl}expapi/v1/dailyreward`, {
+                method: 'POST', credentials: 'include',
+                headers: {'X-CSRF-Token':csrfToken},
+            });
 
             if (!response.ok) {
                 const message = await readErrorMessage(
@@ -159,20 +163,20 @@ export default function DailyRewardModal({
     };
 
     return (
-        <div
+        <Dialog open={isOpen} onClose={handleClose}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
             onClick={handleClose}
         >
-            <div
+            <DialogPanel
                 className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-5 flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <div className="bg-purple-700 px-6 py-5 flex items-center justify-between">
+                    <DialogTitle as="h2" className="text-xl font-bold text-white flex items-center gap-2">
                         <span className="text-2xl">🎁</span>
                         {t('inventory.daily.title')}
-                    </h2>
+                    </DialogTitle>
                     <button
                         onClick={handleClose}
                         className="text-white/80 hover:text-white transition-colors"
@@ -199,7 +203,7 @@ export default function DailyRewardModal({
                             action={
                                 <button
                                     onClick={loginWithDiscord}
-                                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
                                 >
                                     {t('inventory.connectDiscord')}
                                 </button>
@@ -222,8 +226,8 @@ export default function DailyRewardModal({
                         />
                     )}
                 </div>
-            </div>
-        </div>
+            </DialogPanel>
+        </Dialog>
     );
 }
 
@@ -269,7 +273,7 @@ function StatusView({
                 action={
                     <button
                         onClick={onRetry}
-                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
                     >
                         {t('common.tryAgain')}
                     </button>
@@ -314,7 +318,7 @@ function StatusView({
                 disabled={!canClaim || claiming}
                 className={`w-full py-3 rounded-lg font-semibold text-white transition-all ${
                     canClaim && !claiming
-                        ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-lg'
+                        ? 'bg-purple-700 hover:bg-purple-800 shadow-sm'
                         : 'bg-gray-300 cursor-not-allowed'
                 }`}
             >

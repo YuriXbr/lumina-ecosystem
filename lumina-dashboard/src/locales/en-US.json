@@ -473,7 +473,7 @@
       "notEnoughKeys": "You don't have enough keys.",
       "noChest": "You don't have this chest available.",
       "open": "Open chest",
-      "masterworkDesc": "Guaranteed epic or higher rarity",
+      "masterworkDesc": "Improved odds for higher rarities",
       "hextechDesc": "Any rarity possible",
       "discordRequired": "Opening chests requires your Discord account to be linked, since your skin inventory lives there.",
       "amountAvailable": "{count} available",
@@ -1147,7 +1147,7 @@
       "dashboard": "Custom dashboard"
     },
     "continueToDiscord": "Continue to Discord",
-    "confirmText": "I understand that the bot will be added with permissions to manage roles, channels, and messages, and that I will have access to server-specific settings through the web panel."
+    "confirmText": "I understand that the bot will be added with permissions to moderate members and manage roles and messages, and that I will have access to server-specific settings through the web panel."
   },
   "guild": {
     "notConfigured": "Guild not configured — register it via the bot before configuring",

@@ -232,12 +232,12 @@ describe('SetPasswordModal', () => {
     });
   });
 
-  it('maxLength dos inputs é 128', () => {
+  it('maxLength dos inputs é 72', () => {
     renderWithI18n(<SetPasswordModal onSuccess={vi.fn()} onSkip={vi.fn()} />, {
       loading: true,
     });
     const inputs = document.querySelectorAll('input[type="password"]');
-    expect(inputs[0].maxLength).toBe(128);
-    expect(inputs[1].maxLength).toBe(128);
+    expect(inputs[0].maxLength).toBe(72);
+    expect(inputs[1].maxLength).toBe(72);
   });
 });

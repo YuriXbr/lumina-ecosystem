@@ -1,7 +1,6 @@
 /* eslint-disable react/jsx-key */
 import { FaReact, FaNodeJs, FaHtml5, FaCss3Alt, FaFigma, FaGithub, FaTwitter, FaLinkedin } from 'react-icons/fa';
 import { DiMongodb } from "react-icons/di";
-import HomeNavBar from '../components/homeNavBar/HomeNavBar';
 import { useT } from '../../i18n/LanguageContext.jsx';
 
 // Module-level data: skills (icons) are static, but text uses t() so must be
@@ -21,7 +20,7 @@ const AboutPage = () => {
   const t = useT();
   return (
     <div className="flex flex-col min-h-screen">
-      <HomeNavBar />
+
       <div className="flex-grow container mt-3 mx-auto px-4 pt-24">
         <h1 className="text-4xl font-bold text-center mb-10">{t("about.title")}</h1>
         <p className="text-center text-lg text-gray-700 mb-10">
@@ -38,7 +37,7 @@ const AboutPage = () => {
                     <FaGithub className="text-2xl" />
                   </a>
                   {dev.badgeKeys.map((badgeKey, i) => (
-                    <span key={i} className="bg-indigo-600 text-white text-sm font-semibold px-2 py-1 rounded mr-2">{t(badgeKey)}</span>
+                    <span key={i} className="bg-purple-600 text-white text-sm font-semibold px-2 py-1 rounded mr-2">{t(badgeKey)}</span>
                   ))}
                 </div>
                 <p className="text-gray-700 mb-4">{t(dev.descKey)}</p>

@@ -8,7 +8,6 @@ import { useUser } from '../../contexts/UserContext'
 import { useT } from '../../i18n/LanguageContext.jsx';
 import { fetchNews } from '../../utils/membersApi';
 import AppShell from '../../components/AppShell';
-import Header from '../../components/Header';
 import DiscordBanner from '../../components/DiscordBanner';
 import MutualGuildsList from '../../components/MutualGuildsList';
 import InventoryPreview from '../../components/InventoryPreview';
@@ -17,7 +16,7 @@ import UsernameOnboardingModal from './components/UsernameOnboardingModal';
 import ReauthModal from './components/ReauthModal';
 import BadgesTab from './components/BadgesTab';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+import { API_BASE } from '../../utils/apiBase';
 
 // ─── Tabs da coluna principal ────────────────────────────────────────────────
 const TABS = [
@@ -48,8 +47,8 @@ function AnonymousHero({ news, newsLoading, newsError, onRetryNews }) {
   const t = useT();
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
-      <Header />
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-50">
+
 
       {/* Hero */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
@@ -162,25 +161,18 @@ function MembersContent() {
     }
   }, [user]);
 
-  // Modal de re-autorização do Discord (escopo antigo sem guilds.members.read)
+  // Reconnection is explicit; an absent DTO field must never interrupt login.
   const [showReauth, setShowReauth] = useState(false);
-  useEffect(() => {
-    if (user && user.discordOauth2Id) {
-      const scope = user.discordOauth2TokenScope || '';
-      // Se tem Discord vinculado mas o scope não inclui guilds.members.read
-      // (ou não tem scope registrado — contas muito antigas), pede re-auth
-      if (!scope.includes('guilds.members.read')) {
-        const timer = setTimeout(() => setShowReauth(true), 1200);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [user]);
 
   return (
     <AppShell maxWidth="max-w-7xl">
       <div className="space-y-6">
         {/* Banner Discord no topo */}
         <DiscordBanner user={user} />
+        {user?.discordNeedsReauth && <div role="status" className="lumina-card p-4 text-sm text-gray-700 flex flex-wrap items-center justify-between gap-3">
+          <p>Autorize o acesso aos seus servidores para gerenciá-los no dashboard.</p>
+          <button className="lumina-button" onClick={()=>setShowReauth(true)}>Reconectar Discord</button>
+        </div>}
 
         {/* Aviso de exclusão agendada */}
         {user?.deletionScheduledFor && (

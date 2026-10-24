@@ -7,7 +7,7 @@ import { useT } from '../../../i18n/LanguageContext.jsx';
 import { translateApiError } from '../../../i18n/apiErrors.js';
 import ErrorState from '../../../components/ui/ErrorState.jsx';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+import { API_BASE } from '../../../utils/apiBase';
 
 const RARITY_STYLES = {
   common:     { border: 'border-gray-300',    bg: 'bg-gray-50',      text: 'text-gray-700',      glow: '' },

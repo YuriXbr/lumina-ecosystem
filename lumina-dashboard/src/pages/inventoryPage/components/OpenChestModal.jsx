@@ -1,3 +1,5 @@
+import {API_BASE} from '../../../utils/apiBase';
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { useState, useEffect, useCallback } from 'react';
 import { useT } from '../../../i18n/LanguageContext.jsx';
 
@@ -79,11 +81,11 @@ const CHEST_CONFIG = {
         descKey: 'inventory.openChest.hextechDesc',
         openingEmoji: '📦',
         cardEmoji: '📦',
-        gradient: 'from-indigo-500 to-purple-600',
-        selectedBorder: 'border-indigo-500',
-        selectedBg: 'bg-indigo-50',
-        selectedText: 'text-indigo-700',
-        badgeBg: 'bg-indigo-100 text-indigo-700',
+        gradient: 'from-purple-500 to-purple-600',
+        selectedBorder: 'border-purple-500',
+        selectedBg: 'bg-purple-50',
+        selectedText: 'text-purple-700',
+        badgeBg: 'bg-purple-100 text-purple-700',
         ringColor: 'rgba(99,102,241,0.7)',
     },
 };
@@ -184,7 +186,7 @@ export default function OpenChestModal({
         setInventoryLoading(true);
         setInventoryError(null);
         try {
-            const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/myinventory`, {
+            const response = await fetch(`${API_BASE}expapi/v1/myinventory`, {
                 credentials: 'include',
             });
             if (!response.ok) {
@@ -216,7 +218,7 @@ export default function OpenChestModal({
         setOpenPhase('shaking');
         setRollError(null);
 
-        const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/');
+        const baseUrl = API_BASE;
         const animStart = Date.now();
         const MIN_SHAKE_MS = 1500;
         const FLASH_MS = 400;
@@ -298,20 +300,20 @@ export default function OpenChestModal({
     return (
         <>
             <AnimationStyles />
-            <div
+            <Dialog open={isOpen} onClose={handleClose}
                 className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
                 onClick={handleClose}
             >
-                <div
+                <DialogPanel
                     className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header do modal */}
-                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5 flex items-center justify-between">
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <div className="bg-gradient-to-r from-purple-600 to-purple-600 px-6 py-5 flex items-center justify-between">
+                        <DialogTitle as="h2" className="text-xl font-bold text-white flex items-center gap-2">
                             <span className="text-2xl">🗝️</span>
                             {t('inventory.openChest.title')}
-                        </h2>
+                        </DialogTitle>
                         <button
                             onClick={handleClose}
                             disabled={rolling}
@@ -339,7 +341,7 @@ export default function OpenChestModal({
                                 action={
                                     <button
                                         onClick={loginWithDiscord}
-                                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
                                     >
                                         {t('inventory.connectDiscord')}
                                     </button>
@@ -370,8 +372,8 @@ export default function OpenChestModal({
                             />
                         )}
                     </div>
-                </div>
-            </div>
+                </DialogPanel>
+            </Dialog>
         </>
     );
 }
@@ -400,7 +402,7 @@ function ChestOpeningView({ chestType, phase }) {
             {!isFlashing && [0, 0.45, 0.9].map((delay, i) => (
                 <div
                     key={i}
-                    className="absolute w-20 h-20 rounded-full border-2 border-indigo-400/20"
+                    className="absolute w-20 h-20 rounded-full border-2 border-purple-400/20"
                     style={{ animation: `pulseRing 1.45s ease-out ${delay}s infinite` }}
                 />
             ))}
@@ -458,7 +460,7 @@ function ChestSelectionView({
     if (inventoryLoading) {
         return (
             <div className="flex flex-col items-center py-10">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-3" />
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mb-3" />
                 <span className="text-gray-600">{t("inventory.openChest.loadingInventory")}</span>
             </div>
         );
@@ -473,7 +475,7 @@ function ChestSelectionView({
                 action={
                     <button
                         onClick={onRetryInventory}
-                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
                     >
                         {t('common.tryAgain')}
                     </button>
@@ -487,10 +489,10 @@ function ChestSelectionView({
     return (
         <>
             {/* Saldo de chaves */}
-            <div className="flex items-center justify-center gap-2 mb-5 px-4 py-3 bg-indigo-50 rounded-xl border border-indigo-100">
+            <div className="flex items-center justify-center gap-2 mb-5 px-4 py-3 bg-purple-50 rounded-xl border border-purple-100">
                 <span className="text-xl">🔑</span>
-                <span className="font-bold text-indigo-700 text-lg tabular-nums">{inventory.keys}</span>
-                <span className="text-sm text-indigo-500">
+                <span className="font-bold text-purple-700 text-lg tabular-nums">{inventory.keys}</span>
+                <span className="text-sm text-purple-500">
                     {t('inventory.openChest.keysAvailable', { count: inventory.keys })}
                 </span>
             </div>
@@ -572,7 +574,7 @@ function ChestSelectionView({
                 disabled={!canRoll}
                 className={`w-full py-3.5 rounded-xl font-bold text-white text-base transition-all duration-200 ${
                     canRoll
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0'
+                        ? 'bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0'
                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 }`}
             >
@@ -709,7 +711,7 @@ function ResultView({ skin, onRollAgain }) {
             <div style={{ animation: 'textFadeUp 0.4s ease-out 0.48s both' }}>
                 <button
                     onClick={onRollAgain}
-                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-xl text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
+                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-xl text-white bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
                 >
                     🗝️ {t('inventory.openChest.openAnother')}
                 </button>

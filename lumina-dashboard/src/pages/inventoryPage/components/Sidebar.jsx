@@ -1,91 +1,67 @@
 import React from 'react';
 import { useT } from '../../../i18n/LanguageContext.jsx';
 
-function Sidebar({ 
+function Sidebar({
     skins = [],
-    generalSearch, 
-    setGeneralSearch, 
-    championSearch, 
-    setChampionSearch, 
-    availableChampions, 
-    selectedChampions, 
-    toggleChampion, 
-    raritySearch, 
-    setRaritySearch, 
-    selectedRarities, 
-    toggleRarity, 
-    rarityOptions 
+    generalSearch,
+    setGeneralSearch,
+    championSearch,
+    setChampionSearch,
+    availableChampions,
+    selectedChampions,
+    setSelectedChampions,
+    toggleChampion,
+    raritySearch,
+    setRaritySearch,
+    selectedRarities,
+    setSelectedRarities,
+    toggleRarity,
+    rarityOptions
 }) {
   const t = useT();
     return (
         <div className="space-y-6">
-            {/* Busca Geral */}
-            <div>
-                <label className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                    <span className="text-lg mr-2">🔍</span>
-                    {t('inventory.generalSearch')}
-                </label>
-                <div className="relative">
-                    <input
-                        type="text"
-                        value={generalSearch}
-                        onChange={(e) => setGeneralSearch(e.target.value)}
-                        placeholder={t("inventory.searchPlaceholder")}
-                        className="w-full pl-4 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                    />
-                    {generalSearch && (
-                        <button
-                            onClick={() => setGeneralSearch('')}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    )}
-                </div>
-            </div>
-
             {/* Filtro por Campeões */}
             <div>
                 <label className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
                     <span className="text-lg mr-2">⚔️</span>
                     {t('inventory.champions')}
                     {selectedChampions.length > 0 && (
-                        <span className="ml-2 px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded-full">
+                        <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
                             {selectedChampions.length}
                         </span>
                     )}
                 </label>
-                
+
                 <div className="space-y-3">
                     <div className="relative">
                         <input
                             type="text"
                             value={championSearch}
                             onChange={(e) => setChampionSearch(e.target.value)}
+                            aria-label={t("inventory.filterChampions")}
                             placeholder={t("inventory.filterChampions")}
-                            className="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
+                            className="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-sm"
                         />
                     </div>
-                    
+
                     <div className="max-h-48 overflow-y-auto space-y-2 bg-gray-50 rounded-lg p-3">
                         {availableChampions.length > 0 ? (
                             availableChampions.map(champion => {
                                 // Contar quantas skins este campeão tem
                                 const championSkins = skins?.filter(skin => skin.championName === champion) || [];
                                 const skinCount = championSkins.length;
-                                
+
                                 return (
-                                    <label 
-                                        key={champion} 
+                                    <label
+                                        key={champion}
                                         className="flex items-center space-x-3 cursor-pointer hover:bg-white rounded-md p-2 transition-colors"
                                     >
                                         <input
                                             type="checkbox"
                                             checked={selectedChampions.includes(champion)}
                                             onChange={() => toggleChampion(champion)}
-                                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                            className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                                         />
                                         <span className="text-sm text-gray-700 flex-1">{champion}</span>
                                         {skinCount > 0 && (
@@ -116,7 +92,7 @@ function Sidebar({
                         </span>
                     )}
                 </label>
-                
+
                 <div className="space-y-3">
                     <div className="relative">
                         <input
@@ -124,16 +100,16 @@ function Sidebar({
                             value={raritySearch}
                             onChange={(e) => setRaritySearch(e.target.value)}
                             placeholder={t("common.rarity")}
-                            className="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
+                            className="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-sm"
                         />
                     </div>
-                    
+
                     <div className="space-y-2">
                         {rarityOptions
                             .filter(option => t(option.labelKey).toLowerCase().includes(raritySearch.toLowerCase()))
                             .map(option => (
-                                <label 
-                                    key={option.key} 
+                                <label
+                                    key={option.key}
                                     className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 rounded-md p-2 transition-colors"
                                 >
                                     <input

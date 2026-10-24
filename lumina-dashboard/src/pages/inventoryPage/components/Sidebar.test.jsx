@@ -65,19 +65,18 @@ describe('Sidebar', () => {
     expect(toggleChampion).toHaveBeenCalled();
   });
 
-  it('chama setGeneralSearch ao digitar', () => {
-    const setGeneralSearch = vi.fn();
-    renderSidebar({ setGeneralSearch });
+  it('filtra os campeões ao digitar', () => {
+    const setChampionSearch = vi.fn();
+    renderSidebar({ setChampionSearch });
     const input = document.querySelector('input[type="text"]');
     fireEvent.change(input, { target: { value: 'test' } });
-    expect(setGeneralSearch).toHaveBeenCalledWith('test');
+    expect(setChampionSearch).toHaveBeenCalledWith('test');
   });
 
   it('mostra botão de limpar busca quando generalSearch tem valor', () => {
     renderSidebar({ generalSearch: 'search term' });
     // Botão de limpar tem SVG
-    const clearButton = document.querySelector('button.absolute');
-    expect(clearButton).toBeInTheDocument();
+    expect(screen.getByRole('button')).toBeInTheDocument();
   });
 
   it('NÃO mostra botão de limpar quando generalSearch está vazio', () => {

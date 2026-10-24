@@ -10,5 +10,5 @@ beforeEach(() => { mockFetch.mockResolvedValue(new Response(JSON.stringify({ csr
 
 describe('DailyRewardModal (inventory)', () => {
   it('renderiza sem crashar quando aberto', () => { renderWithI18n(<DailyRewardModal isOpen={true} onClose={vi.fn()} />); });
-  it('renderiza conteúdo modal', () => { const { container } = renderWithI18n(<DailyRewardModal isOpen={true} onClose={vi.fn()} />); expect(container.querySelector('div')).not.toBeNull(); });
+  it('renderiza conteúdo modal', () => { const { container } = renderWithI18n(<DailyRewardModal isOpen={true} onClose={vi.fn()} />); expect(screen.getByRole('dialog')).toHaveAttribute('aria-labelledby'); });
 });

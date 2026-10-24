@@ -6,7 +6,7 @@ import {
 import ErrorState from '../../../../components/ui/ErrorState';
 import { SkeletonCard, SkeletonChart, SkeletonLine } from '../../../../components/ui/Skeleton';
 
-const API = import.meta.env.VITE_API_BASE_URL || '/';
+import { API_BASE as API } from '../../../../utils/apiBase';
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 function fmtUptime(s) {
@@ -132,7 +132,7 @@ export default function MetricsTab() {
     try {
       const res = await fetch(`${API}expapi/v1/admin/metrics`, {
         headers: {}, credentials: 'include',
-        credentials: 'include',
+
       });
       if (!res.ok) {
         // Tenta ler a mensagem de erro do corpo quando possível

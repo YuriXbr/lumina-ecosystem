@@ -1,3 +1,4 @@
+import {API_BASE} from '../../../../utils/apiBase';
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../../../../contexts/UserContext';
 import { 
@@ -48,7 +49,7 @@ export default function UserManagementTab() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/admin/users?page=${currentPage}&limit=${usersPerPage}&search=${encodeURIComponent(searchTerm)}`, {
+      const response = await fetch(`${API_BASE}expapi/v1/admin/users?page=${currentPage}&limit=${usersPerPage}&search=${encodeURIComponent(searchTerm)}`, {
         credentials: 'include',
       });
 
@@ -81,12 +82,10 @@ export default function UserManagementTab() {
 
   const updateUser = async (userId, updateData) => {
     try {
-      console.log('Iniciando atualização do usuário:', userId, updateData);
-      
+
       const csrfToken = await getCsrfToken();
-      console.log('CSRF Token obtido:', csrfToken);
-      
-      const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/admin/users/${userId}`, {
+
+      const response = await fetch(`${API_BASE}expapi/v1/admin/users/${userId}`, {
         method: 'PUT',
         headers: {
           
@@ -97,11 +96,9 @@ export default function UserManagementTab() {
         credentials: 'include',
       });
 
-      console.log('Response status:', response.status);
-      
       if (response.ok) {
         const result = await response.json();
-        console.log('Sucesso na atualização:', result);
+
         await loadUsers();
         return true;
       } else {
@@ -113,7 +110,7 @@ export default function UserManagementTab() {
           throw new Error(error.error || 'Erro ao atualizar usuário');
         } else {
           const text = await response.text();
-          console.error('Resposta não-JSON:', text);
+
           throw new Error(`Erro HTTP ${response.status}: Resposta inesperada do servidor`);
         }
       }
@@ -126,7 +123,7 @@ export default function UserManagementTab() {
 
   const getCsrfToken = async () => {
     try {
-      const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/csrf-token`, { credentials: 'include' })
+      const response = await fetch(`${API_BASE}expapi/v1/csrf-token`, { credentials: 'include' })
       if (response.ok) {
         const data = await response.json();
         return data.csrfToken;

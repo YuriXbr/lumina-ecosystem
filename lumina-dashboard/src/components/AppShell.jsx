@@ -2,7 +2,6 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Cog6ToothIcon, ShieldCheckIcon, UserIcon, ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
-import Header from './Header';
 import { useT } from '../i18n/LanguageContext.jsx';
 
 /**
@@ -29,7 +28,7 @@ export default function AppShell({ children, maxWidth = 'max-w-7xl', title, subt
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+
 
       {/* Subheader contextual */}
       {(title || isAdmin || isSettings || isServer) && (

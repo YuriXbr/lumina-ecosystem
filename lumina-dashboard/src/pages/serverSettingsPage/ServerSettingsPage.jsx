@@ -10,7 +10,7 @@ import AppShell from '../../components/AppShell';
 import ErrorState from '../../components/ui/ErrorState';
 import { SkeletonLine } from '../../components/ui/Skeleton';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+import { API_BASE } from '../../utils/apiBase';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Static configuration
@@ -38,11 +38,11 @@ const COMMAND_GROUPS = [
   {
     id: 'league', name: 'League of Legends', icon: '🎮',
     commands: [
-      { id: 'league.profile',           name: '/leagueprofile',          desc: 'Exibe o perfil de um jogador' },
-      { id: 'league.matchhistory',      name: '/leaguematchhistory',     desc: 'Histórico de partidas' },
-      { id: 'league.mastery',           name: '/leaguemastery',          desc: 'Maestria de campeões' },
-      { id: 'league.championrotation',  name: '/leaguechampionrotation', desc: 'Rotação gratuita de campeões' },
-      { id: 'league.queuesearch',       name: '/leaguequeuesearch',      desc: 'Busca por filas ranqueadas' },
+      { id: 'league.leagueprofile',           name: '/leagueprofile',          desc: 'Exibe o perfil de um jogador' },
+      { id: 'league.leaguematchhistory',      name: '/leaguematchhistory',     desc: 'Histórico de partidas' },
+      { id: 'league.leaguemastery',           name: '/leaguemastery',          desc: 'Maestria de campeões' },
+      { id: 'league.leaguechampionrotation',  name: '/leaguechampionrotation', desc: 'Rotação gratuita de campeões' },
+      { id: 'league.leaguequeuesearch',       name: '/leaguequeuesearch',      desc: 'Busca por filas ranqueadas' },
     ],
   },
   {
@@ -59,19 +59,19 @@ const COMMAND_GROUPS = [
   {
     id: 'skins', name: 'Sistema de Skins', icon: '💎',
     commands: [
-      { id: 'skins.openchest',  name: '/openchest',  desc: 'Abrir baús' },
-      { id: 'skins.daily',      name: '/daily',      desc: 'Recompensa diária' },
-      { id: 'skins.inventory',  name: '/inventory',  desc: 'Ver inventário' },
+      { id: 'chests.openchest',  name: '/openchest',  desc: 'Abrir baús' },
+      { id: 'chests.daily',      name: '/daily',      desc: 'Recompensa diária' },
+      { id: 'league.inventory',  name: '/inventory',  desc: 'Ver inventário' },
     ],
   },
   {
     id: 'util', name: 'Utilidades', icon: '🔧',
     commands: [
-      { id: 'util.ping',      name: '/ping',      desc: 'Latência do bot' },
-      { id: 'util.server',    name: '/server',    desc: 'Informações do servidor' },
-      { id: 'util.user',      name: '/user',      desc: 'Informações de usuário' },
-      { id: 'util.help',      name: '/help',      desc: 'Lista de comandos' },
-      { id: 'util.dashboard', name: '/dashboard', desc: 'Link do dashboard' },
+      { id: 'utility.ping',      name: '/ping',      desc: 'Latência do bot' },
+      { id: 'utility.server',    name: '/server',    desc: 'Informações do servidor' },
+      { id: 'utility.user',      name: '/user',      desc: 'Informações de usuário' },
+      { id: 'utility.help',      name: '/help',      desc: 'Lista de comandos' },
+      { id: 'utility.dashboard', name: '/dashboard', desc: 'Link do dashboard' },
     ],
   },
 ];
@@ -135,7 +135,7 @@ const SECTION_BACKEND_FIELDS = {
     // O schema não tem toggle "moderationEnabled" — usamos o channelId como
     // flag (string não-vazia = módulo ativo), no mesmo espírito do código
     // original e do getGuilds.js (`!!guild.moderationChannelId`).
-    moderationChannelId: cfg.moderationEnabled ? 'configured' : '',
+    moderationEnabled: cfg.moderationEnabled,
     djEnabled: cfg.musicEnabled,
   }),
   comandos: (cfg) => ({
@@ -145,7 +145,7 @@ const SECTION_BACKEND_FIELDS = {
     gachaEnabled: cfg.gachaEnabled,
     gachaChestsEnabled: cfg.gachaChestsEnabled,
     gachaMaxRolls: Number(cfg.gachaMaxRolls) || 0,
-    gachaRefreshInterval: Number(cfg.gachaRefreshInterval) || 0,
+    gachaRollsRefreshInterval: Math.round(Number(cfg.gachaRefreshInterval) * 60000),
   }),
   automsg: (cfg) => ({
     autoMessages: cfg.autoMessages,
@@ -155,7 +155,6 @@ const SECTION_BACKEND_FIELDS = {
     blockedRoles: cfg.blockedRoles,
     // Aproveitamos o campo existente no schema (blockedChannels) para
     // persistir a lista combinada caso o backend queira consumir.
-    blockedChannels: [...cfg.blockedUsers, ...cfg.blockedRoles],
   }),
   moderacao: (cfg) => ({
     warnsToMute: Number(cfg.warnsToMute) || 0,
@@ -394,7 +393,7 @@ export default function ServerSettingsPage() {
         try {
           const body = await guildRes.json();
           if (body?.error) detail = body.error;
-        } catch {}
+        } catch { /* Optional state unavailable; the main flow remains usable. */ }
         throw new Error(detail);
       }
       const guildData = await guildRes.json();
@@ -426,48 +425,14 @@ export default function ServerSettingsPage() {
         musicEnabled: !!botConfig.musicEnabled,
       };
 
-      // 3) Tentamos buscar campos estendidos via /admin/guilds (requer admin
-      //    level >= 7). Se o usuário não for admin, caímos silenciosamente nos
-      //    defaults — a página ainda funciona para os campos básicos.
-      try {
-        const adminRes = await fetch(
-          `${API_BASE}expapi/v1/admin/guilds?search=${encodeURIComponent(guildId)}&limit=1`,
-          { credentials: 'include' }
-        );
-        if (adminRes.ok) {
-          const adminData = await adminRes.json();
-          const found = (adminData.guilds || []).find(g => g.guildId === guildId);
-          if (found) {
-            if (typeof found.persistentMute === 'boolean') base.persistentMute = found.persistentMute;
-            if (typeof found.autoWarnPunishment === 'boolean') base.autoWarnPunishment = found.autoWarnPunishment;
-            if (found.prefix) base.prefix = found.prefix;
-            if (found.language) base.language = found.language;
-            if (typeof found.welcomeEnabled === 'boolean') base.welcomeEnabled = found.welcomeEnabled;
-            if (typeof found.moderationEnabled === 'boolean') base.moderationEnabled = found.moderationEnabled;
-            if (typeof found.musicEnabled === 'boolean') base.musicEnabled = found.musicEnabled;
-            // Extended fields from admin response
-            if (Array.isArray(found.autoMessages)) base.autoMessages = found.autoMessages;
-            if (found.commandsEnabled) base.commandsEnabled = found.commandsEnabled;
-            if (Array.isArray(found.blockedUsers)) base.blockedUsers = found.blockedUsers;
-            if (Array.isArray(found.blockedRoles)) base.blockedRoles = found.blockedRoles;
-            if (typeof found.gachaEnabled === 'boolean') base.gachaEnabled = found.gachaEnabled;
-            if (typeof found.gachaChestsEnabled === 'boolean') base.gachaChestsEnabled = found.gachaChestsEnabled;
-            if (typeof found.gachaMaxRolls === 'number') base.gachaMaxRolls = found.gachaMaxRolls;
-            if (typeof found.gachaRefreshInterval === 'number') base.gachaRefreshInterval = found.gachaRefreshInterval;
-            if (typeof found.warnsToMute === 'number') base.warnsToMute = found.warnsToMute;
-            if (typeof found.warnsToTimeOut === 'number') base.warnsToTimeOut = found.warnsToTimeOut;
-            if (typeof found.warnsToKick === 'number') base.warnsToKick = found.warnsToKick;
-            if (typeof found.warnsToBan === 'number') base.warnsToBan = found.warnsToBan;
-            if (typeof found.persistentMute === 'boolean') base.persistentMute = found.persistentMute;
-            if (typeof found.persistentWarns === 'boolean') base.persistentWarns = found.persistentWarns;
-            if (typeof found.autoWarnPunishment === 'boolean') base.autoWarnPunishment = found.autoWarnPunishment;
-            if (found.muteRoleId) base.muteRoleId = found.muteRoleId;
-            if (found.banRoleId) base.banRoleId = found.banRoleId;
-          }
-        }
-      } catch {
-        // Ignora — não é crítico, fallback para defaults.
-      }
+      Object.assign(base, {
+        commandsEnabled: botConfig.commandsEnabled || {}, autoMessages: botConfig.autoMessages || [],
+        blockedUsers: botConfig.blockedUsers || [], blockedRoles: botConfig.blockedRoles || [],
+        gachaEnabled: botConfig.gachaEnabled ?? true, gachaChestsEnabled: botConfig.gachaChestsEnabled ?? true,
+        gachaMaxRolls: botConfig.gachaMaxRolls ?? 8,
+        gachaRefreshInterval: (botConfig.gachaRollsRefreshInterval ?? botConfig.gachaRefreshInterval ?? 10800000) / 60000,
+      });
+      for (const field of ['warnsToMute','warnsToTimeOut','warnsToKick','warnsToBan','persistentMute','persistentWarns','autoWarnPunishment','muteRoleId','banRoleId']) if (botConfig[field] !== undefined) base[field] = botConfig[field];
 
       setConfig(base);
       setOriginal(base);
@@ -532,7 +497,7 @@ export default function ServerSettingsPage() {
         return;
       }
 
-      const res = await fetch(`${API_BASE}expapi/v1/admin/guilds/${guildId}`, {
+      const res = await fetch(`${API_BASE}expapi/v1/guilds/${guildId}/config`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -615,7 +580,7 @@ export default function ServerSettingsPage() {
   }
 
   // ─── Render: página ──────────────────────────────────────────────────────
-  const canEdit = guild?.canManage !== false;
+  const canEdit = guild?.canManage === true && guild?.hasBot === true;
 
   return (
     <AppShell
@@ -860,7 +825,7 @@ function GachaSection({ config, update, opts }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-gray-100">
         <Field
           label="Rolls máximos por ciclo"
-          hint="Quantas vezes um membro pode rolar antes do reset."
+          hint="Em planejamento. O limite por ciclo ainda não é aplicado pelo bot."
         >
           <input
             type="number"
@@ -869,12 +834,12 @@ function GachaSection({ config, update, opts }) {
             value={config.gachaMaxRolls}
             onChange={(e) => update({ gachaMaxRolls: e.target.value })}
             className={inputClass}
-            disabled={opts.disabled || !config.gachaEnabled}
+            disabled
           />
         </Field>
         <Field
           label="Intervalo de refresh (minutos)"
-          hint="A cada quantos minutos os rolls são resetados. Padrão: 180 (3h)."
+          hint="Em planejamento. O reset por ciclo ainda não está disponível."
         >
           <input
             type="number"
@@ -883,7 +848,7 @@ function GachaSection({ config, update, opts }) {
             value={config.gachaRefreshInterval}
             onChange={(e) => update({ gachaRefreshInterval: e.target.value })}
             className={inputClass}
-            disabled={opts.disabled || !config.gachaEnabled}
+            disabled
           />
         </Field>
       </div>

@@ -473,7 +473,7 @@
       "notEnoughKeys": "No tienes suficientes llaves.",
       "noChest": "No tienes este cofre disponible.",
       "open": "Abrir cofre",
-      "masterworkDesc": "Garantiza rareza épica o superior",
+      "masterworkDesc": "Mayor probabilidad de rarezas altas",
       "hextechDesc": "Cualquier rareza posible",
       "discordRequired": "Abrir cofres requiere que tu cuenta de Discord esté vinculada, ya que tu inventario de skins vive allí.",
       "amountAvailable": "{count} disponible(s)",
@@ -1147,7 +1147,7 @@
       "dashboard": "Dashboard propio"
     },
     "continueToDiscord": "Continuar a Discord",
-    "confirmText": "Entiendo que el bot será añadido con permisos para gestionar roles, canales y mensajes, y que tendré acceso a configuraciones específicas de este servidor a través del panel web."
+    "confirmText": "Entiendo que el bot será añadido con permisos para moderar miembros y gestionar roles y mensajes, y que tendré acceso a configuraciones específicas de este servidor a través del panel web."
   },
   "guild": {
     "notConfigured": "Servidor no configurado — regístralo vía bot antes de configurar",

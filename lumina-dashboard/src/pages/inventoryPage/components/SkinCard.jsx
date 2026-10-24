@@ -1,8 +1,9 @@
-import React from 'react';
+import {useState} from 'react';
 import { useT } from '../../../i18n/LanguageContext.jsx';
 
 function SkinCard({ skin }) {
   const t = useT();
+    const [imageFailed,setImageFailed]=useState(false);
     const getRarityColor = (rarity) => {
         const colors = {
             kNoRarity: 'from-gray-500 to-gray-600',
@@ -30,17 +31,18 @@ function SkinCard({ skin }) {
         <div className="group bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
             {/* Imagem da Skin */}
             <div className="relative aspect-[9/16] overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
-                <img
-                    src={`https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${skin.championId}_${skin.id.toString().slice(-3).replace(/^0+/, '')}.jpg`}
+                {imageFailed ? <div role="img" aria-label={`${skin.name}: imagem indisponível`} className="flex h-full items-center justify-center px-5 text-center text-sm text-gray-500">Imagem indisponível</div> : <img
+                    src={`https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${skin.championId}_${Number(String(skin.id).slice(-3))}.jpg`}
                     alt={skin.name}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     loading="lazy"
-                />
-                
+                    onError={()=>setImageFailed(true)}
+                />}
+
                 {/* Frame overlay */}
                 <img
                     src="/shardframe.png"
-                    alt="Skin Frame"
+                    alt=""
                     className="absolute inset-0 pointer-events-none object-cover w-full h-full"
                 />
 
@@ -68,10 +70,10 @@ function SkinCard({ skin }) {
             <div className="p-4">
                 <div className="space-y-2">
                     {/* Nome da skin */}
-                    <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                    <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2 group-hover:text-purple-600 transition-colors">
                         {skin.name}
                     </h3>
-                    
+
                     {/* Campeão */}
                     <p className="text-gray-600 text-xs font-medium">
                         {skin.championName}
@@ -82,7 +84,7 @@ function SkinCard({ skin }) {
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white bg-gradient-to-r ${getRarityColor(skin.rarity)}`}>
                             {getRarityLabel(skin.rarity)}
                         </span>
-                        
+
                         {/* ID da skin (pequeno) */}
                         <span className="text-gray-400 text-xs font-mono">
                             #{skin.id.toString().slice(-3)}

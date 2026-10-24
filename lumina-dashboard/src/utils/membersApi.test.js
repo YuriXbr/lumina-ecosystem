@@ -14,6 +14,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+import { resetCsrfToken } from './apiFetch';
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
@@ -24,12 +25,12 @@ import {
   deleteNewsPost,
   getDiscordAvatarUrl,
   getDiscordBannerUrl,
-  _resetCsrfCacheForTests,
+
 } from '../utils/membersApi';
 
 beforeEach(() => {
   mockFetch.mockReset();
-  _resetCsrfCacheForTests();
+  resetCsrfToken();
 });
 
 afterEach(() => {
@@ -64,7 +65,7 @@ describe('fetchMyGuilds', () => {
   it('lança Error com HTTP status quando body não tem error', async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({ unrelated: true }, 500));
 
-    await expect(fetchMyGuilds()).rejects.toThrow('HTTP 500');
+    await expect(fetchMyGuilds()).rejects.toThrow('(500)');
   });
 
   it('lança Error quando fetch falha (não-JSON)', async () => {
@@ -129,8 +130,8 @@ describe('createNewsPost', () => {
     expect(result.post.title).toBe('New Post');
     const createCall = mockFetch.mock.calls[1];
     expect(createCall[1].method).toBe('POST');
-    expect(createCall[1].headers['X-CSRF-Token']).toBe('csrf-tok');
-    expect(createCall[1].headers['Content-Type']).toBe('application/json');
+    expect(createCall[1].headers.get('X-CSRF-Token')).toBe('csrf-tok');
+    expect(createCall[1].headers.get('Content-Type')).toBe('application/json');
     const sentBody = JSON.parse(createCall[1].body);
     expect(sentBody.title).toBe('New Post');
   });
@@ -156,7 +157,7 @@ describe('deleteNewsPost', () => {
     const deleteCall = mockFetch.mock.calls[1];
     expect(deleteCall[1].method).toBe('DELETE');
     expect(deleteCall[0]).toContain('id=65a1b2c3d4e5f6a7b8c9d0e1');
-    expect(deleteCall[1].headers['X-CSRF-Token']).toBe('csrf-tok');
+    expect(deleteCall[1].headers.get('X-CSRF-Token')).toBe('csrf-tok');
   });
 
   it('encoda id na URL (encodeURIComponent)', async () => {

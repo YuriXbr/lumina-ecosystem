@@ -1,5 +1,5 @@
+import { botInviteUrl } from '../../utils/botInvite';
 import { CheckIcon, StarIcon } from '@heroicons/react/20/solid'
-import HomeNavBar from '../components/homeNavBar/HomeNavBar'
 import { useT } from '../../i18n/LanguageContext.jsx';
 
 // Module-level static config — only keys, no t() calls
@@ -7,7 +7,7 @@ const TIER_KEYS = [
   {
     nameKey: 'pricing.free.name',
     id: 'tier-free',
-    href: `https://discord.com/oauth2/authorize?client_id=${import.meta.env.VITE_DISCORD_CLIENT_ID}`,
+    href: botInviteUrl() || 'mailto:suporte@luminasink.com',
     priceMonthly: '0',
     descKey: 'pricing.free.desc',
     featureKeys: ['pricing.free.f1', 'pricing.free.f2', 'pricing.free.f4', 'pricing.free.f5', 'pricing.free.f3'],
@@ -64,15 +64,15 @@ export default function PricingPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
-      <HomeNavBar />
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100">
+
 
       {/* Hero Section */}
       <section className="relative px-6 pt-14 lg:px-8">
         <div className="mx-auto max-w-7xl py-24 sm:py-32">
           <div className="text-center">
             <div className="mb-8 flex justify-center">
-              <div className="relative rounded-full px-3 py-1 text-sm leading-6 text-gray-600 ring-2 ring-indigo-600/20 hover:ring-indigo-600/30 bg-white/50 backdrop-blur-sm">
+              <div className="relative rounded-full px-3 py-1 text-sm leading-6 text-gray-600 ring-2 ring-purple-600/20 hover:ring-purple-600/30 bg-white/50 backdrop-blur-sm">
                 {t('pricing.badge', { defaultValue: 'Plans for every need' })}
               </div>
             </div>

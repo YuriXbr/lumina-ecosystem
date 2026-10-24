@@ -1,3 +1,4 @@
+import {API_BASE} from '../../../utils/apiBase';
 import { useState } from "react";
 import { parseApiError, statusFallbackMessage, isNetworkError } from "../../../utils/apiError";
 import { useT } from '../../../i18n/LanguageContext.jsx';
@@ -35,7 +36,7 @@ export default function SetPasswordModal({ onSuccess, onSkip }) {
         e.preventDefault();
         setError("");
 
-        if (password.length < 8 || password.length > 128) {
+        if (password.length < 8 || new TextEncoder().encode(password).length > 72) {
             setError(t("membersArea.setPassword.lengthError"));
             return;
         }
@@ -50,17 +51,17 @@ export default function SetPasswordModal({ onSuccess, onSkip }) {
 
         setIsLoading(true);
         try {
-            const csrfRes = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/csrf-token`, { credentials: 'include' })
+            const csrfRes = await fetch(`${API_BASE}expapi/v1/csrf-token`, { credentials: 'include' })
             const { csrfToken } = await csrfRes.json();
 
-            const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/user/set-password`, {
+            const response = await fetch(`${API_BASE}expapi/v1/user/set-password`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                                 'X-CSRF-Token': csrfToken,
                             },
                             credentials: 'include',
-                            body: JSON.stringify({ password, confirmPassword }),
+                            body: JSON.stringify({ newPassword:password }),
                         })
 
             if (response.ok) {
@@ -94,7 +95,7 @@ export default function SetPasswordModal({ onSuccess, onSkip }) {
                         type="password"
                         placeholder={t("membersArea.setPassword.newPassword")}
                         value={password}
-                        maxLength={128}
+                        maxLength={72}
                         disabled={isLoading}
                         onChange={(e) => setPassword(e.target.value)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 disabled:opacity-50"
@@ -103,7 +104,7 @@ export default function SetPasswordModal({ onSuccess, onSkip }) {
                         type="password"
                         placeholder={t("membersArea.setPassword.confirmPassword")}
                         value={confirmPassword}
-                        maxLength={128}
+                        maxLength={72}
                         disabled={isLoading}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 disabled:opacity-50"
@@ -121,7 +122,7 @@ export default function SetPasswordModal({ onSuccess, onSkip }) {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 disabled:opacity-60"
+                            className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-500 disabled:opacity-60"
                         >
                             {isLoading ? t("membersArea.setPassword.saving") : t("membersArea.setPassword.save")}
                         </button>

@@ -1,4 +1,4 @@
-import HomeNavBar from '../components/homeNavBar/HomeNavBar'
+import { botInviteUrl } from '../../utils/botInvite';
 import { useT } from '../../i18n/LanguageContext.jsx'
 
 export default function CommandsPage() {
@@ -173,15 +173,15 @@ export default function CommandsPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
-      <HomeNavBar />
-      
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100">
+
+
       <div className="px-6 py-24 sm:py-32 lg:px-8">
         <div className="mx-auto max-w-7xl">
           {/* Header */}
           <div className="text-center mb-16">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-              {t('commands.title')} <span className="text-indigo-600">Lumina Bot</span>
+              {t('commands.title')} <span className="text-purple-600">Lumina Bot</span>
             </h1>
             <p className="mt-6 text-xl leading-8 text-gray-600 max-w-3xl mx-auto">
               {t('commands.subtitle')}
@@ -207,19 +207,19 @@ export default function CommandsPage() {
                 <div className="p-8">
                   <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
                     {category.commands.map((command, commandIndex) => (
-                      <div key={command.name} className="group border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-indigo-300 transition-all duration-200 bg-gradient-to-br from-white to-gray-50/50">
+                      <div key={command.name} className="group border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-purple-300 transition-all duration-200 bg-gradient-to-br from-white to-gray-50/50">
                         <div className="mb-6">
                           <div className="flex items-center gap-3 mb-3">
-                            <div className="bg-indigo-100 p-2 rounded-lg">
-                              <span className="text-indigo-600 font-mono text-sm font-bold">/</span>
+                            <div className="bg-purple-100 p-2 rounded-lg">
+                              <span className="text-purple-600 font-mono text-sm font-bold">/</span>
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900 font-mono group-hover:text-indigo-600 transition-colors">
+                            <h3 className="text-lg font-bold text-gray-900 font-mono group-hover:text-purple-600 transition-colors">
                               {command.name.slice(1)}
                             </h3>
                           </div>
                           <p className="text-gray-600 leading-relaxed">{command.description}</p>
                         </div>
-                        
+
                         <div className="space-y-4">
                           {/* Sintaxe */}
                           <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-gray-300">
@@ -228,15 +228,15 @@ export default function CommandsPage() {
                               {command.usage}
                             </code>
                           </div>
-                          
+
                           {/* Exemplo */}
-                          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border-l-4 border-indigo-400">
+                          <div className="bg-gradient-to-r from-purple-50 to-purple-50 rounded-lg p-4 border-l-4 border-purple-400">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="text-indigo-500">⚡</span>
-                              <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">{t("commands.example")}</p>
+                              <span className="text-purple-500">⚡</span>
+                              <p className="text-xs font-semibold text-purple-600 uppercase tracking-wide">{t("commands.example")}</p>
                             </div>
-                            <div className="bg-white/70 rounded-md p-3 border border-indigo-200/50">
-                              <code className="text-sm text-indigo-800 font-mono break-all">
+                            <div className="bg-white/70 rounded-md p-3 border border-purple-200/50">
+                              <code className="text-sm text-purple-800 font-mono break-all">
                                 {command.example}
                               </code>
                             </div>
@@ -245,7 +245,7 @@ export default function CommandsPage() {
 
                         {/* Hover effect indicator */}
                         <div className="mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="h-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"></div>
+                          <div className="h-0.5 bg-gradient-to-r from-purple-500 to-purple-500 rounded-full"></div>
                         </div>
                       </div>
                     ))}
@@ -266,8 +266,8 @@ export default function CommandsPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <a
-                  href={`https://discord.com/oauth2/authorize?client_id=${import.meta.env.VITE_DISCORD_CLIENT_ID}`}
-                  className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-6 py-3 text-lg font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
+                  href={botInviteUrl() || 'mailto:suporte@luminasink.com'}
+                  className="inline-flex items-center justify-center rounded-md bg-purple-600 px-6 py-3 text-lg font-semibold text-white shadow-sm hover:bg-purple-500 transition-colors"
                 >
                   🔗 {t('commands.addBot')}
                 </a>

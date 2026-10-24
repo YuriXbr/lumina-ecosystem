@@ -10,14 +10,14 @@
   "api": {
     "command": "npm test -- --runInBand --silent --json",
     "suites": 70,
-    "passed": 1001,
+    "passed": 1002,
     "failed": 0,
     "after_full_run": "47 tests from gacha and internal routes passed in randomized order, seed 24, after removing mock state dependencies"
   },
   "dashboard": {
     "command": "npm test -- --reporter=json",
     "files": 79,
-    "passed": 517,
+    "passed": 518,
     "failed": 0
   },
   "bot": {
@@ -28,13 +28,13 @@
   "build": {
     "command": "npm run build",
     "passed": true,
-    "initial_js_kb": 419.82,
-    "initial_js_gzip_kb": 136.22
+    "initial_js_kb": 420.09,
+    "initial_js_gzip_kb": 136.34
   },
   "lint": {
     "command": "npm run lint",
     "errors": 0,
-    "warnings": 137
+    "warnings": 133
   },
   "sql": {
     "parser": "pglast 8.7",
@@ -60,7 +60,8 @@
       "privacy/cookies/settings legal links",
       "about single footer and wrapped role badges",
       "commands long syntax",
-      "paid plan availability"
+      "paid plan availability",
+      "admin user/guild dialogs with populated data and second page"
     ],
     "production": "Discord login and opening Lumina Bot server configuration; previous published version",
     "remaining": "full desktop/mobile page-state matrix and deployed integration validation",
@@ -73,6 +74,9 @@
   "release": {
     "deployed": false,
     "production_migration_applied": false,
-    "paid_services_activated": false
+    "paid_services_activated": false,
+    "pull_request": "https://github.com/YuriXbr/lumina-ecosystem/pull/9",
+    "branch_pushed": true,
+    "deployment_scope": "Production not deployed; branch push triggered automatic Vercel previews, which are separate from this local validation"
   }
 }

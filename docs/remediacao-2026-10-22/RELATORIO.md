@@ -24,17 +24,19 @@ Atualizado em 24/10/2026. Responsável público: **LuminaInk**. Base local: main
 
 O convite de instalação usava parâmetros do login e podia retornar a um callback incorreto. Todos os convites passaram a usar um gerador sem callback. O login por senha omitia os escopos do Discord e acionava um pedido automático de reautenticação; agora há DTO único e reconexão explícita quando necessária. Servidores adicionados durante uma queda passaram a ser recuperados pela reconciliação automática.
 
-Na revisão visual, a página Sobre perdeu o footer duplicado e seus selos passaram a quebrar linha no celular. Falhas de sessão na área de membros agora mostram nova tentativa, sem aparentar logout; foi removida uma consulta duplicada de novidades. Planos pagos sem checkout foram identificados como propostas indisponíveis, com preços a definir, enquanto a preferência do proprietário não chega.
+Na revisão visual, a página Sobre perdeu o footer duplicado e seus selos passaram a quebrar linha no celular. Falhas de sessão na área de membros agora mostram nova tentativa, sem aparentar logout; foi removida uma consulta duplicada de novidades. A revisão administrativa corrigiu a paginação que reaplicava um recorte local sobre resultados já paginados da API, os campos antigos do editor de guildas e a remontagem dos modais durante digitação. Botões de ícone têm área de toque consistente e os títulos contextuais compartilham a mesma hierarquia. A presença inativa do bot agora também aparece corretamente na lista administrativa.
+
+Planos pagos sem checkout foram identificados como propostas indisponíveis, com preços a definir, enquanto a preferência do proprietário não chega.
 
 Também foi corrigido o uso de ID ausente em sessões legadas na desvinculação do Discord, e o callback de vínculo passou a conferir revogação/versão atual da sessão antes de alterar a identidade vinculada.
 
 ## Validação
 
-- **Frontend completo:** 79 arquivos, **517 testes aprovados**, zero falhas na rodada final de 24/10. Inclui conta sem Discord, sessão indisponível, memória ausente, footer único em Sobre, login/cadastro e disponibilidade dos planos. Testes de markup redundantes foram substituídos por verificações de comportamento.
+- **Frontend completo:** 79 arquivos, **518 testes aprovados**, zero falhas na rodada final de 24/10. Inclui conta sem Discord, sessão indisponível, memória ausente, footer único em Sobre, login/cadastro e disponibilidade dos planos. Testes de markup redundantes foram substituídos por verificações de comportamento.
 - **Build do dashboard:** aprovado; bundle principal aproximadamente 420 kB, gzip 136 kB. Na comparação anterior, o JavaScript inicial passou de 740.637 para 431.861 bytes (gzip 195.631 para 140.283), com dependências equivalentes. Isso não comprova melhoria de latência, LCP ou INP em produção.
-- **Lint:** zero erros e 137 avisos de código legado na última execução. Os avisos não são apresentados como revisão concluída de todos os componentes.
+- **Lint:** zero erros e 133 avisos de código legado na última execução. Os avisos não são apresentados como revisão concluída de todos os componentes.
 - **Bot:** 13 testes aprovados para autorização de comandos, mensagens automáticas, punições, reconciliação e transporte do console.
-- **API completa:** **70 suítes e 1.001 testes aprovados**, zero falhas. A triagem das 144 falhas iniciais incluiu correções de sessão/vínculo, resposta de permissão administrativa, CSRF real, nonce/cookie OAuth e testes atualizados para as gravações atômicas de inventário e badges. As proteções do runtime não foram relaxadas para atender aos contratos antigos.
+- **API completa:** **70 suítes e 1.002 testes aprovados**, zero falhas. A triagem das 144 falhas iniciais incluiu correções de sessão/vínculo, resposta de permissão administrativa, CSRF real, nonce/cookie OAuth e testes atualizados para as gravações atômicas de inventário e badges. As proteções do runtime não foram relaxadas para atender aos contratos antigos.
 - **SQL complementar:** sintaxe PostgreSQL aprovada com `pglast 8.7`; proposta documental, sem execução ou criação de banco. A validação não equivale a uma migração de dados testada.
 - Resumo reproduzível em [validacao.json](validacao.json).
 - Nenhum teste de escrita utilizou o Atlas de produção. Não foram executados comandos de moderação em membros reais.
@@ -47,6 +49,7 @@ Também foi corrigido o uso de ID ausente em sessões legadas na desvinculação
 | Configurações | Perfil e links legais ao final; retorno a termos com scroll no início. | Dados simulados. |
 | Membros | Desktop e 390×844; servidores presentes/ausentes/sem permissão, vazio e conta sem Discord. | Dados simulados. Login real e abertura da configuração do servidor Lumina Bot também conferidos na versão publicada anterior. |
 | Inventário | Mobile preenchido/vazio, recursos, filtros e seletor de baús; shell compartilhado com membros. | Dados simulados; a inspeção não cobre toda combinação de coleção/erro/idioma. |
+| Administração | Paginação de usuários/guildas com dados preenchidos; registros legados sem nome; modais mobile, foco, Escape, labels e payload canônico. | Dados simulados. Modificações de contas/servidores reais não foram executadas. |
 | Console | Desktop e 390×844; eventos, métricas do processo, pausa e navegação administrativa. | Dados simulados; não comprova ingestão do novo transporte em produção. |
 | Páginas públicas | Comandos em desktop/mobile, Sobre corrigido em mobile, planos em desktop/mobile e 404 em desktop. | VIP/Enterprise ficam em planejamento; preços aguardam preferência do proprietário. Não existe contratação integrada. |
 | Login, cadastro e recuperação | Login/cadastro mobile; solicitação de código, cooldown de reenvio e confirmação de recusa por 24h com footer legal. | Recuperação e recusa usam API simulada, sem modificar senha ou bloquear conta real. |
@@ -67,4 +70,8 @@ Não é correto afirmar que todas as páginas e todos os estados já foram revis
 
 O [modelo lógico e relacional original](../auditoria-2026-10-14/MODELOS.md) permanece disponível, com dicionário, diagramas e proposta SQL. O [adendo desta implementação](MODELO-ADENDO.md) descreve códigos de email, OAuth, sessões, console e presença de guilda. Propostas SQL não foram aplicadas ao MongoDB.
 
-O [estudo de concorrentes](CONCORRENTES.md) compara referências oficiais de Dyno, Carl-bot, Tatsu, Statbot e OP.GG. Prioriza diagnóstico de configuração, histórico de casos, AutoMod com simulação, desejos/conquistas de coleção e perfis/estatísticas de jogos. São propostas de evolução, sem promessa de recursos já disponíveis ou contratação de serviços.
+O [estudo de concorrentes](CONCORRENTES.md) compara referências oficiais de Dyno, Carl-bot, Tatsu, Karuta, Statbot e OP.GG. Prioriza diagnóstico de configuração, histórico de casos, AutoMod com simulação, desejos/conquistas de coleção e perfis/estatísticas de jogos. São propostas de evolução, sem promessa de recursos já disponíveis ou contratação de serviços.
+
+## Revisão no repositório
+
+Branch enviada e [PR #9 em rascunho](https://github.com/YuriXbr/lumina-ecosystem/pull/9). O envio acionou previews automáticos da Vercel; isso não equivale a merge/publicação em produção nem à validação das integrações em staging. Segredos e arquivos de `.private` continuam fora do Git.

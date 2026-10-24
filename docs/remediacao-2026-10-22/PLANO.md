@@ -49,8 +49,10 @@ Base: main sincronizada (cbfa458). Branch: codex/security-design-observability.
 
 ## Resultado da validação final de 24/10
 
-- API: 70 suítes, 1.001 testes aprovados; contratos e fixtures isolados, sem relaxar o runtime.
-- Dashboard: 79 arquivos, 517 testes aprovados; build e lint sem erros (137 avisos legados).
+- API: 70 suítes, 1.002 testes aprovados; contratos e fixtures isolados, sem relaxar o runtime.
+- Dashboard: 79 arquivos, 518 testes aprovados; build e lint sem erros (133 avisos legados).
 - Revisão mobile ampliada para inventário preenchido/vazio, seletor/filtros, membros vinculados/sem Discord, email/recuperação/recusa, console, Sobre e planos. Sessão indisponível conferida em desktop.
 - SQL complementar: parser PostgreSQL aprovado e referências resolvidas contra a proposta original; sem executar migração.
 - Pendentes: matriz visual completa, confirmação comercial dos planos, staging e publicação coordenada. Nenhuma contratação ou compra.
+
+A revisão posterior incluiu paginação administrativa pela API, preservação de foco dos modais, campos canônicos de guilda, registros legados e presença do bot. As regressões foram cobertas por testes e os modais mobile foram capturados.

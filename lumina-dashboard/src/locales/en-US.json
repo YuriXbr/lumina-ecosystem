@@ -725,7 +725,8 @@
       "guildId": "Guild ID",
       "guildHeader": "Guild",
       "notLabel": "not",
-      "refreshError": "Failed to update: {error}"
+      "refreshError": "Failed to update: {error}",
+      "readOnlyStatus": "The Bot Active and Moderation indicators are read-only in this panel."
     },
     "users": {
       "title": "User Management",

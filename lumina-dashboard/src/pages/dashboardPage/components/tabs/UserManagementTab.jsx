@@ -1,5 +1,7 @@
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
+import ServerPagination from '../../../../components/ui/ServerPagination';
 import {API_BASE} from '../../../../utils/apiBase';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser } from '../../../../contexts/UserContext';
 import { 
   UsersIcon,
@@ -28,6 +30,8 @@ export default function UserManagementTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const [editingUser, setEditingUser] = useState(null);
   const usersPerPage = 10;
+  const [hasMore, setHasMore] = useState(false);
+  const requestIdRef = useRef(0);
 
   // Níveis de acesso
   const ACCESS_LEVELS = {
@@ -46,6 +50,7 @@ export default function UserManagementTab() {
   };
 
   const loadUsers = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -63,22 +68,30 @@ export default function UserManagementTab() {
       }
 
       const data = await response.json();
+      if (requestId !== requestIdRef.current) return;
+      setHasMore(!!data.pagination?.hasMore);
       const usersWithDiscordStatus = (data.users || []).map(user => ({
         ...user,
+        firstName: typeof user.firstName === 'string' ? user.firstName : '',
+        lastName: typeof user.lastName === 'string' ? user.lastName : '',
+        email: typeof user.email === 'string' ? user.email : '',
+        accountId: typeof user.accountId === 'string' ? user.accountId : '',
         discordLinked: !!(user.discordOauth2Id && user.discordOauth2Id.trim() !== '')
       }));
       setUsers(usersWithDiscordStatus);
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       console.error('Erro ao carregar usuários:', err);
       setError(err.message);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }, [currentPage, searchTerm]);
 
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    const timer = setTimeout(loadUsers, searchTerm ? 250 : 0);
+    return () => { clearTimeout(timer); requestIdRef.current += 1; };
+  }, [loadUsers, searchTerm]);
 
   const updateUser = async (userId, updateData) => {
     try {
@@ -210,16 +223,7 @@ export default function UserManagementTab() {
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.accountId.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
-  const startIndex = (currentPage - 1) * usersPerPage;
-  const paginatedUsers = filteredUsers.slice(startIndex, startIndex + usersPerPage);
+  const paginatedUsers = users;
 
   const getAccessLevelColor = (accessType) => {
     const level = ACCESS_LEVELS[accessType];
@@ -232,19 +236,22 @@ export default function UserManagementTab() {
   };
 
   // Modal de detalhes do usuário
-  const UserDetailModal = () => {
+  const renderUserDetailModal = () => {
     if (!selectedUser || !editingUser) return null;
 
     return (
-      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+      <Dialog open={isDetailModalOpen} onClose={closeUserDetails} className="relative z-50">
+        <div className="fixed inset-0 bg-gray-900/50" aria-hidden="true" />
+        <div className="fixed inset-0 overflow-y-auto p-4 sm:p-6"><div className="min-h-full flex items-center justify-center">
+        <DialogPanel className="lumina-card w-full max-w-3xl p-5 sm:p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">
+            <DialogTitle className="text-lg font-semibold text-gray-900">
               Detalhes do Usuário: {selectedUser.firstName} {selectedUser.lastName}
-            </h3>
+            </DialogTitle>
             <button
+              aria-label="Fechar detalhes do usuário"
               onClick={closeUserDetails}
-              className="text-gray-400 hover:text-gray-600"
+              className="lumina-icon-button text-gray-400 hover:text-gray-600"
             >
               <XMarkIcon className="h-6 w-6" />
             </button>
@@ -253,9 +260,10 @@ export default function UserManagementTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Nome */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Nome</label>
+              <label className="block text-sm font-medium text-gray-700" htmlFor="admin-user-firstName">Nome</label>
               <input
                 type="text"
+                id="admin-user-firstName"
                 value={editingUser.firstName}
                 onChange={(e) => setEditingUser({...editingUser, firstName: e.target.value})}
                 disabled={!canEditField('firstName', selectedUser)}
@@ -265,9 +273,10 @@ export default function UserManagementTab() {
 
             {/* Sobrenome */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Sobrenome</label>
+              <label className="block text-sm font-medium text-gray-700" htmlFor="admin-user-lastName">Sobrenome</label>
               <input
                 type="text"
+                id="admin-user-lastName"
                 value={editingUser.lastName}
                 onChange={(e) => setEditingUser({...editingUser, lastName: e.target.value})}
                 disabled={!canEditField('lastName', selectedUser)}
@@ -277,9 +286,10 @@ export default function UserManagementTab() {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <label className="block text-sm font-medium text-gray-700" htmlFor="admin-user-email">Email</label>
               <input
                 type="email"
+                id="admin-user-email"
                 value={editingUser.email}
                 disabled
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100"
@@ -288,14 +298,15 @@ export default function UserManagementTab() {
 
             {/* Nível de Acesso */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Nível de Acesso</label>
+              <label className="block text-sm font-medium text-gray-700" htmlFor="admin-user-accessType">Nível de Acesso</label>
               <select
+                id="admin-user-accessType"
                 value={editingUser.accessType}
                 onChange={(e) => setEditingUser({...editingUser, accessType: e.target.value})}
                 disabled={!canEditField('accessType', selectedUser)}
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 disabled:bg-gray-100"
               >
-                {Object.entries(ACCESS_LEVELS).map(([key, level]) => (
+                {Object.entries(ACCESS_LEVELS).filter(([key, level]) => key === editingUser.accessType || level.level < (getUserLevel()?.level || 0)).map(([key, level]) => (
                   <option key={key} value={key}>
                     {level.name}
                   </option>
@@ -307,73 +318,78 @@ export default function UserManagementTab() {
             <div className="flex items-center">
               <input
                 type="checkbox"
+                id="admin-user-emailVerified"
                 checked={editingUser.emailVerified}
                 onChange={(e) => setEditingUser({...editingUser, emailVerified: e.target.checked})}
                 disabled={!canEditField('emailVerified', selectedUser)}
                 className="h-4 w-4 text-purple-600 disabled:opacity-50"
               />
-              <label className="ml-2 text-sm text-gray-700">Email Verificado</label>
+              <label className="ml-2 text-sm text-gray-700" htmlFor="admin-user-emailVerified">Email Verificado</label>
             </div>
 
             {/* Bloqueado */}
             <div className="flex items-center">
               <input
                 type="checkbox"
+                id="admin-user-blocked"
                 checked={editingUser.blocked}
                 onChange={(e) => setEditingUser({...editingUser, blocked: e.target.checked})}
                 disabled={!canEditField('blocked', selectedUser)}
                 className="h-4 w-4 text-purple-600 disabled:opacity-50"
               />
-              <label className="ml-2 text-sm text-gray-700">Bloqueado</label>
+              <label className="ml-2 text-sm text-gray-700" htmlFor="admin-user-blocked">Bloqueado</label>
             </div>
 
             {/* Banido */}
             <div className="flex items-center">
               <input
                 type="checkbox"
+                id="admin-user-banned"
                 checked={editingUser.banned}
                 onChange={(e) => setEditingUser({...editingUser, banned: e.target.checked})}
                 disabled={!canEditField('banned', selectedUser)}
                 className="h-4 w-4 text-purple-600 disabled:opacity-50"
               />
-              <label className="ml-2 text-sm text-gray-700">Banido</label>
+              <label className="ml-2 text-sm text-gray-700" htmlFor="admin-user-banned">Banido</label>
             </div>
 
             {/* Discord Vinculado */}
             <div className="flex items-center">
               <input
                 type="checkbox"
+                id="admin-user-discordLinked"
                 checked={editingUser.discordLinked}
                 disabled
                 className="h-4 w-4 text-purple-600 opacity-50"
               />
-              <label className="ml-2 text-sm text-gray-700">Discord Vinculado</label>
+              <label className="ml-2 text-sm text-gray-700" htmlFor="admin-user-discordLinked">Discord Vinculado</label>
             </div>
           </div>
 
           <div className="mt-6 flex justify-end space-x-3">
             <button
               onClick={closeUserDetails}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="lumina-button-secondary"
             >
               Cancelar
             </button>
             <button
               onClick={saveUserChanges}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
+              className="lumina-button"
             >
               Salvar Alterações
             </button>
           </div>
-        </div>
-      </div>
+        </DialogPanel>
+        </div></div>
+      </Dialog>
     );
   };
 
   if (loading && users.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="bg-white shadow rounded-lg">
+        <div className="lumina-card">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -384,7 +400,7 @@ export default function UserManagementTab() {
             </div>
           </div>
         </div>
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="lumina-card overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -435,9 +451,9 @@ export default function UserManagementTab() {
       )}
 
       {/* Cabeçalho e Busca */}
-      <div className="bg-white shadow rounded-lg">
+      <div className="lumina-card">
         <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center">
               <UsersIcon className="h-5 w-5 text-gray-400 mr-2" />
               <h3 className="text-lg font-medium text-gray-900">Gerenciamento de Usuários</h3>
@@ -452,6 +468,7 @@ export default function UserManagementTab() {
                 </div>
                 <input
                   type="text"
+                  aria-label="Buscar usuários"
                   placeholder="Buscar usuários..."
                   value={searchTerm}
                   onChange={(e) => {
@@ -467,7 +484,7 @@ export default function UserManagementTab() {
       </div>
 
       {/* Tabela de Usuários */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="lumina-card overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -489,6 +506,7 @@ export default function UserManagementTab() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
+            {!paginatedUsers.length && <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-gray-500">Nenhum usuário encontrado.</td></tr>}
             {paginatedUsers.map((user) => (
               <tr key={user.accountId} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -496,7 +514,7 @@ export default function UserManagementTab() {
                     <div className="flex-shrink-0 h-10 w-10">
                       <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
                         <span className="text-sm font-medium text-purple-600">
-                          {user.firstName[0]}{user.lastName[0]}
+                          {user.firstName[0] || '?'}{user.lastName[0] || ''}
                         </span>
                       </div>
                     </div>
@@ -531,14 +549,14 @@ export default function UserManagementTab() {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(user.lastLogin).toLocaleDateString('pt-BR')}
+                  {user.lastLogin && Number.isFinite(new Date(user.lastLogin).getTime()) ? new Date(user.lastLogin).toLocaleDateString('pt-BR') : '—'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center space-x-2">
                     {/* Botão de detalhes */}
                     <button
                       onClick={() => openUserDetails(user)}
-                      className="text-purple-600 hover:text-purple-900"
+                      className="lumina-icon-button text-purple-600 hover:text-purple-900"
                       title="Ver detalhes"
                     >
                       <EyeIcon className="h-4 w-4" />
@@ -553,6 +571,7 @@ export default function UserManagementTab() {
                               handlePromoteUser(user.accountId, e.target.value);
                             }
                           }}
+                          aria-label={`Nível de acesso de ${user.email}`}
                           value={user.accessType}
                           className="text-xs border border-gray-300 rounded px-2 py-1 focus:ring-purple-500 focus:border-purple-500"
                         >
@@ -571,7 +590,7 @@ export default function UserManagementTab() {
                     {canEditField('blocked', user) && !user.blocked && !user.banned && (
                       <button
                         onClick={() => handleBlockUser(user.accountId, true)}
-                        className="text-yellow-600 hover:text-yellow-900"
+                        className="lumina-icon-button text-yellow-600 hover:text-yellow-900"
                         title="Bloquear usuário"
                       >
                         <ShieldExclamationIcon className="h-4 w-4" />
@@ -581,7 +600,7 @@ export default function UserManagementTab() {
                     {canEditField('blocked', user) && user.blocked && !user.banned && (
                       <button
                         onClick={() => handleBlockUser(user.accountId, false)}
-                        className="text-green-600 hover:text-green-900"
+                        className="lumina-icon-button text-green-600 hover:text-green-900"
                         title="Desbloquear usuário"
                       >
                         <ShieldCheckIcon className="h-4 w-4" />
@@ -591,7 +610,7 @@ export default function UserManagementTab() {
                     {canEditField('banned', user) && !user.banned && (
                       <button
                         onClick={() => handleBanUser(user.accountId, true)}
-                        className="text-red-600 hover:text-red-900"
+                        className="lumina-icon-button text-red-600 hover:text-red-900"
                         title="Banir usuário"
                       >
                         <NoSymbolIcon className="h-4 w-4" />
@@ -601,7 +620,7 @@ export default function UserManagementTab() {
                     {canEditField('banned', user) && user.banned && (
                       <button
                         onClick={() => handleBanUser(user.accountId, false)}
-                        className="text-blue-600 hover:text-blue-900"
+                        className="lumina-icon-button text-blue-600 hover:text-blue-900"
                         title="Desbanir usuário"
                       >
                         <ShieldCheckIcon className="h-4 w-4" />
@@ -615,58 +634,10 @@ export default function UserManagementTab() {
         </table>
       </div>
 
-      {/* Paginação */}
-      {totalPages > 1 && (
-        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-lg shadow">
-          <div className="flex-1 flex justify-between sm:hidden">
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-            >
-              Próximo
-            </button>
-          </div>
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Mostrando <span className="font-medium">{startIndex + 1}</span> a{' '}
-                <span className="font-medium">
-                  {Math.min(startIndex + usersPerPage, filteredUsers.length)}
-                </span>{' '}
-                de <span className="font-medium">{filteredUsers.length}</span> usuários
-              </p>
-            </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                      page === currentPage
-                        ? 'z-10 bg-purple-50 border-purple-500 text-purple-600'
-                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-              </nav>
-            </div>
-          </div>
-        </div>
-      )}
+      <ServerPagination page={currentPage} hasMore={hasMore} loading={loading} onChange={setCurrentPage} />
 
       {/* Modal de detalhes do usuário */}
-      {isDetailModalOpen && <UserDetailModal />}
+      {isDetailModalOpen && renderUserDetailModal()}
     </div>
   );
 }

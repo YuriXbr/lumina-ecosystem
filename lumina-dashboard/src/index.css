@@ -19,6 +19,7 @@
   .lumina-button:hover { background:#6b21a8; }
   .lumina-button-secondary { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; min-height:2.75rem; padding:.625rem 1rem; background:var(--lumina-surface); border:1px solid var(--lumina-border); color:#374151; font-size:.875rem; font-weight:500; border-radius:.5rem; }
   .lumina-button-secondary:hover { background:#faf5ff; border-color:#d8b4fe; color:#7e22ce; }
+  .lumina-icon-button { display:inline-flex; align-items:center; justify-content:center; min-height:2.75rem; min-width:2.75rem; padding:.5rem; border-radius:.5rem; }
   .lumina-state { min-height:55vh; padding:3rem 1.5rem; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:1rem; }
   .lumina-spinner { width:2rem; height:2rem; border:3px solid #e9d5ff; border-top-color:var(--lumina-brand); border-radius:50%; animation:spin 1s linear infinite; }
   .lumina-auth { display:flex; justify-content:center; align-items:center; padding:3rem 1rem; min-height:calc(100dvh - 10rem); background:linear-gradient(160deg,#faf5ff,#f8fafc 65%); }

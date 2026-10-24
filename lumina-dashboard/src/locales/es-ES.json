@@ -725,7 +725,8 @@
       "guildId": "ID del Servidor",
       "guildHeader": "Servidor",
       "notLabel": "no",
-      "refreshError": "Error al actualizar: {error}"
+      "refreshError": "Error al actualizar: {error}",
+      "readOnlyStatus": "Los indicadores Bot Activo y Moderación son de solo lectura en este panel."
     },
     "users": {
       "title": "Gestión de Usuarios",

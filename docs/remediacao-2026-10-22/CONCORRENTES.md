@@ -1,6 +1,6 @@
 # Ferramentas para a evolução do Lumina
 
-Pesquisa de fontes oficiais consultadas em 22–23/10/2026. As sugestões são propostas de produto; não representam funcionalidades já implementadas no Lumina. Não foram contratados planos, comprados serviços ou assumidos preços de concorrentes.
+Pesquisa de fontes oficiais consultadas em 22–24/10/2026. As sugestões são propostas de produto; não representam funcionalidades já implementadas no Lumina. Não foram contratados planos, comprados serviços ou assumidos preços de concorrentes.
 
 ## Referências e oportunidades
 
@@ -9,6 +9,7 @@ Pesquisa de fontes oficiais consultadas em 22–23/10/2026. As sugestões são p
 | [Dyno AutoMod](https://docs.dyno.gg/modules/automod) e [moderação](https://docs.dyno.gg/modules/moderation) | Filtros de spam/palavras e configuração de punições, canais de registro e papéis de moderação. | Regras com prévia, exceções por canal/cargo e um histórico de casos acessível no dashboard. |
 | [Carl-bot](https://carl.gg/onboarding/1) e [documentação](https://docs.carl.gg/) | Reaction roles, automod, registros, sugestões, mensagens recorrentes e comandos personalizados. | Menus de cargos, painel de sugestões e editor de mensagens com prévia. A execução deve compartilhar o contrato usado no dashboard. |
 | [Tatsu](https://tatsu.gg/economy) | Economia global e pontos por servidor, recompensas, itens cosméticos e personalização. | Progressão da coleção, conquistas e recompensas por objetivos, com limites contra exploração e spam. |
+| [Karuta](https://karuta.com/) | Coleção, trocas e melhorias de cartas em uma economia compartilhada. | Álbuns por campeão/tema, vitrine da coleção e evolução cosmética; trocas apenas após reserva e histórico transacional. |
 | [Statbot](https://docs.statbot.net/docs/guide/dashboard/) e [visão geral](https://docs.statbot.net/) | Estatísticas de atividade e dashboard, incluindo mensagens, voz e jogos; análises avançadas dependem do produto/plano. | Estatísticas simples de comunidade, período selecionável, explicação das métricas e controle da coleta pelo servidor. |
 | [OP.GG Bot](https://bot.op.gg/discord) | Histórico e estatísticas de LoL, rankings, tiers/builds de campeões e preferências de região/tier. | Riot ID e região salvos, comparação de partidas e ranking entre participantes do servidor. |
 
@@ -43,3 +44,9 @@ O melhor espaço para o Lumina é combinar comunidade de LoL, coleção e modera
 ## O que validar com usuários
 
 Começar por diagnóstico, histórico de casos, coleção com desejos e perfil de jogo. Observar conclusão das tarefas, falhas, retorno em 7 dias e uso de cada módulo. Reduzir a prioridade de recursos que aumentam complexidade sem melhorar esses fluxos. Música, mercado com dinheiro e integrações pagas não são pré-requisitos desse plano.
+
+## Síntese de produto — 24/10
+
+Minha recomendação é priorizar três entregas: histórico de casos de moderação, desejos/conquistas da coleção e perfil Riot com ranking voluntário. Na sequência, missões semanais e quiz de LoL ligam entretenimento à coleção, com recompensas por objetivo em vez de volume de mensagens. AutoMod com simulação e diagnóstico de permissões reduzem erros de operação. Estatísticas agregadas de comunidade e menus de cargos/sugestões completam o dashboard.
+
+Desejos, simulação, missões e a combinação entre esses módulos são propostas para o Lumina; não são apresentados como recursos confirmados de cada concorrente. As referências acima são exemplos de produto, sem afirmar participação de mercado ou que todos os recursos dos concorrentes sejam gratuitos.

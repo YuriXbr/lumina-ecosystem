@@ -725,7 +725,8 @@
       "guildId": "ID da Guilda",
       "guildHeader": "Guilda",
       "notLabel": "não",
-      "refreshError": "Falha ao atualizar: {error}"
+      "refreshError": "Falha ao atualizar: {error}",
+      "readOnlyStatus": "Os indicadores Bot Ativo e Moderação são somente leitura neste painel."
     },
     "users": {
       "title": "Gerenciamento de Usuários",

@@ -59,4 +59,4 @@ Rotas:
 - Build do dashboard passou. Console preenchido e pausado inspecionado no desktop com **dados simulados**: [captura](evidencias/console-desktop.jpg). Após reconexão do Chrome, a versão mobile 390×844 foi inspecionada com eventos, pausa e diagnósticos simulados: [captura](evidencias/console-mobile.png).
 - Nenhuma instalação real do bot, modificação de cargos ou punição de membros foi feita para validar estes fluxos.
 
-A rodada final completa da API passou em 70 suítes e 1.001 testes. O frontend passou em 517 testes; as evidências e os limites atualizados estão em [RELATORIO.md](RELATORIO.md).
+A rodada final completa da API passou em 70 suítes e 1.002 testes. O frontend passou em 518 testes; as evidências e os limites atualizados estão em [RELATORIO.md](RELATORIO.md).

@@ -10,43 +10,54 @@
     "RiotGames"
   ],
   "scripts": {
-    "start": "node index.js NODE_ENV=production",
-    "dev": "nodemon index.js --watch . --ext js NODE_ENV=development",
+    "start": "cross-env NODE_ENV=production node index.js",
+    "dev": "cross-env NODE_ENV=development node --watch index.js",
     "deploy": "vercel . --prod",
     "update-skins": "node ./scripts/update-skins-list.js",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "test:watch": "cross-env NODE_ENV=test jest --watch --runInBand",
-    "test:coverage": "cross-env NODE_ENV=test jest --coverage --runInBand"
+    "test:coverage": "cross-env NODE_ENV=test jest --coverage --runInBand",
+    "migrate:security": "node scripts/migrate-security.js",
+    "test:integration": "cross-env NODE_ENV=test jest --runInBand __tests__/integration"
   },
   "author": "Yuri Andrade dos Anjos",
   "license": "ISC",
   "description": "",
   "dependencies": {
     "@dotenvx/dotenvx": "^1.24.4",
-    "axios": "^1.7.7",
+    "@opentelemetry/api": "^1.10.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.300.0",
+    "@opentelemetry/sdk-trace": "^3.0.0",
+    "@vercel/functions": "^3.10.3",
+    "axios": "^1.20.0",
     "bcryptjs": "^2.4.3",
     "chalk": "^4.1.2",
     "cli-progress": "^3.12.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
-    "express": "^4.22.2",
+    "express": "^4.22.3",
     "express-rate-limit": "^7.4.1",
-    "helmet": "^8.0.0",
-    "js-yaml": "^5.0.0",
+    "google-auth-library": "^11.3.1",
+    "helmet": "^8.3.0",
+    "js-yaml": "^5.5.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.10.0",
-    "mongoose": "^8.7.3",
+    "mongoose": "^8.24.6",
     "node-fetch": "^3.3.2",
+    "nodemailer": "^10.2.1",
     "swagger-ui-dist": "^5.32.7"
   },
   "devDependencies": {
     "@types/node": "^22.9.1",
     "cross-env": "^7.0.3",
-    "jest": "^29.7.0",
-    "nodemon": "^2.0.22",
-    "supertest": "^7.0.0"
+    "jest": "^30.5.2",
+    "mongodb-memory-server": "^11.3.0",
+    "supertest": "^7.3.1"
   },
   "overrides": {
     "semver": "^7.5.4"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }

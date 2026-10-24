@@ -160,7 +160,7 @@ describe('GET /expapi/v1/discordinfo', () => {
         expect(res.body.code).toBe('DISCORD_RATE_LIMITED');
     });
 
-    it('500 quando refresh falha (sem ser 429)', async () => {
+    it('503 quando refresh falha temporariamente (sem ser 429)', async () => {
         const account = makeAccount({
             discordOauth2Token: 'expired',
             discordOauth2TokenExpiresAt: new Date(Date.now() - 1000),
@@ -171,7 +171,7 @@ describe('GET /expapi/v1/discordinfo', () => {
         axios.post.mockRejectedValueOnce(new Error('invalid_grant'));
 
         const res = await request(app).get(URL).set(authHeader());
-        expect(res.status).toBe(500);
+        expect(res.status).toBe(503);
     });
 });
 

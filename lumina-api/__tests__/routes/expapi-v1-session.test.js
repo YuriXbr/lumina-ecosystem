@@ -128,14 +128,10 @@ describe('GET /expapi/v1/session', () => {
     });
 
     // ─── Erro de DB ───────────────────────────────────────────────────────
-    it('200 { authenticated: false } quando DB está indisponível (session não falha)', async () => {
-        // verifyRequestAuthWithAccountCheck retorna error 503 DB_UNAVAILABLE,
-        // mas session.js trata isso como "não autenticado" (200) em vez de 500.
-        DashboardAccountService.getDashboardAccountByEmail.mockRejectedValueOnce(new Error('Connection lost'));
-
-        const res = await request(app).get(URL).set(bearerAuth(makeJwt()));
-        expect(res.status).toBe(200);
-        expect(res.body.authenticated).toBe(false);
+    it('503 quando DB está indisponível, sem fingir que a conta está deslogada',async()=>{
+        DashboardAccountService.getDashboardAccountByEmail.mockRejectedValueOnce(new Error('isolated outage'));
+        const res=await request(app).get('/expapi/v1/session').set(bearerAuth(makeJwt()));
+        expect(res.status).toBe(503);expect(res.body.code).toBe('DB_UNAVAILABLE');
     });
 
     // ─── Não exige auth ───────────────────────────────────────────────────

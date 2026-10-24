@@ -15,6 +15,8 @@ module.exports = class LuminaApiService {
 
         this.luminaApiKey = process.env.LUMINA_API_KEY;
         this.api = axios.create({
+            timeout: 12000,
+            maxContentLength: 4 * 1024 * 1024,
             baseURL: process.env.API_BASE_URL || 'http://localhost:3000',
             headers: {
                 'Content-Type': 'application/json',
@@ -47,7 +49,7 @@ module.exports = class LuminaApiService {
                 method: method.toUpperCase(),
                 status: error.response?.status ?? null,
                 calledAt,
-                params: data ?? params ?? {},
+                requestId: error.response?.headers?.['x-request-id'] ?? null,
                 apiError: error.response?.data?.error ?? (typeof error.response?.data === 'string' ? error.response.data : null),
                 apiCode:  error.response?.data?.code  ?? null,
             };
@@ -57,8 +59,8 @@ module.exports = class LuminaApiService {
             if (!isFetchGuild404) {
                 const ts = new Date().toLocaleString('pt-BR').replace(',', '');
                 console.error(`[LuminaApiService] ${ts} | ${method.toUpperCase()} ${endpoint} → HTTP ${apiError.status ?? 'ERR'}`);
-                console.error(`  Params: ${JSON.stringify(apiError.params)}`); // Keys are now in headers, not URL
-                console.error(`  API Error: ${apiError.apiError} [${apiError.apiCode ?? 'N/A'}]`);
+                // Request payloads can contain moderation/identity data; never log them.
+                console.error(`  API Code: ${apiError.apiCode ?? 'N/A'} | Request: ${apiError.requestId ?? 'N/A'}`);
                 if (error.stack) console.error(`  Stack: ${error.stack.split('\n').slice(0,4).join('\n')}`);
             }
 

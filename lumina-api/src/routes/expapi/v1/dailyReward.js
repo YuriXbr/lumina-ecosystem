@@ -7,13 +7,13 @@ const ROUTE = 'POST /expapi/v1/dailyreward';
 module.exports = {
     route: '/expapi/v1/dailyreward',
     description: "Resgata a recompensa diária do usuário logado via dashboard",
-    apiKeyNeeded: false, 
-    internalKeyNeeded: false, 
+    apiKeyNeeded: false,
+    internalKeyNeeded: false,
     jwtNeeded: true,
-    enabled: true, 
-    loginLimiterNeeded: false, 
+    enabled: true,
+    loginLimiterNeeded: false,
     csrfProtectionNeeded: true,
-    checkAuthNeeded: false, 
+    checkAuthNeeded: false,
     method: 'post',
 
     async execute(req, res) {
@@ -24,17 +24,17 @@ module.exports = {
 
         let discordId;
         try {
-            const resolved = await resolveDiscordAccount(email);
+            const resolved = await resolveDiscordAccount(req.account || email);
             discordId = resolved.discordId;
         } catch (err) {
-            return routeError({ 
-                res, 
+            return routeError({
+                res,
                 error: err,
                 route: ROUTE,
                 errorCode: err.code || 'RESOLVE_DISCORD_ERROR',
                 userMsg: err.message || 'Erro ao resolver conta Discord.',
-                status: err.status || 400, 
-                extra: { email } 
+                status: err.status || 400,
+                extra: { email }
             });
         }
 

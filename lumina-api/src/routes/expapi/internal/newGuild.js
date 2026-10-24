@@ -22,27 +22,10 @@ module.exports = {
 
         }
         try {
-            // Upsert: se a guilda já existe (bot re-adicionado a um servidor onde
-            // já esteve), atualiza os dados ao invés de retornar 409. Retorna 200
-            // em ambos os casos (criação nova OU re-adição).
-            const existing = await GuildService.getGuildData(guildId);
-            if (existing) {
-                await GuildService.updateGuildData(guildId, {
-                    guildOwnerId: ownerId,
-                    guildReferenceName: guildName,
-                });
-                addLog('API', 'guild.upsert.readded', `Bot re-adicionado à guilda existente ${guildId} (${guildName})`);
-                return res.status(200).json({
-                    ...existing,
-                    guildOwnerId: ownerId,
-                    guildReferenceName: guildName,
-                    _upserted: true,
-                });
-            }
-            const result = await GuildService.createGuildData({ guildId, guildOwnerId: ownerId, guildReferenceName: guildName });
-            addLog('API', 'guild.create', `Nova guilda registrada ${guildId} (${guildName})`);
+            const result=await GuildService.upsertMetadata({guildId,ownerId,guildName,memberCount:req.body.memberCount});
             return res.status(200).json(result);
         } catch (error) {
+            if(error.status===400)return res.status(400).json({code:error.code,error:error.message});
             return routeError({
                 res, error,
                 route: ROUTE,

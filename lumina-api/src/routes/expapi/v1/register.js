@@ -32,9 +32,16 @@ module.exports = {
             });
         }
 
+        if (typeof email !== 'string' || email.length > 254 || !/^[\w.+-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(email.trim())) {
+            return res.status(400).json({error:'Email inválido.',code:'INVALID_EMAIL'});
+        }
+        if (typeof firstName !== 'string' || typeof lastName !== 'string') {
+            return res.status(400).json({error:'Nome e sobrenome inválidos.',code:'INVALID_NAME'});
+        }
+
         // ─── Validação de senha ─────────────────────────────────────────────
-        if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
-            return res.status(400).json({ error: 'A senha deve ter entre 8 e 128 caracteres.', code: 'WEAK_PASSWORD' });
+        if (typeof password !== 'string' || password.length < 8 || Buffer.byteLength(password, 'utf8') > 72) {
+            return res.status(400).json({ error: 'Use pelo menos 8 caracteres. Evite senhas muito longas.', code: 'WEAK_PASSWORD' });
         }
         if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
             return res.status(400).json({ error: 'A senha deve conter maiúscula, minúscula e número.', code: 'WEAK_PASSWORD' });
@@ -132,8 +139,15 @@ module.exports = {
                 extra: { username },
             });
 
+            let emailVerificationQueued = false;
+            try {
+                require('../../../email/mailer').assertConfigured();
+                require('../../../utils/telemetry').background(require('../../../utils/emailCodes').requestCode(sanitizedEmail,'verify'));
+                emailVerificationQueued = true;
+            } catch { /* Account remains accessible so verification can be retried after SMTP setup. */ }
             return res.status(200).json({
-                message: 'Conta criada com sucesso.',
+                message: 'Conta criada com sucesso. Confirme seu email para concluir.',
+                emailVerificationQueued,
                 username,
                 displayName: sanitizedDisplayName,
             });

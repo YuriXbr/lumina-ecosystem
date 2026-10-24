@@ -4,7 +4,7 @@ const { isAllowedOrigin, verifyState } = require('../../../oauthProviders/state'
 const DashboardAccountService = require('../../../database/services/DashboardAccountService');
 const { addLog, routeError } = require('../../../logger/logger');
 const { validateUsername, validateDisplayName, normalizeUsername } = require('../../../utils/identityValidation');
-const { setAuthCookie } = require('../../../utils/authHelpers');
+const { setAuthCookie, issueSessionToken } = require('../../../utils/authHelpers');
 
 const ROUTE = 'GET /expapi/oauth2/:provider/auth/callback';
 const STATE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutos
@@ -50,7 +50,7 @@ module.exports = {
             return res.status(400).send('Estado inválido. Tente novamente.');
         }
 
-        if (!state || Date.now() - state.issuedAt > STATE_MAX_AGE_MS) {
+        if (!state || !Number.isFinite(state.issuedAt) || state.issuedAt > Date.now() + 30000 || Date.now() - state.issuedAt > STATE_MAX_AGE_MS || state.provider !== provider.name || typeof state.nonce !== 'string' || state.nonce !== req.cookies?.lumina_oauth) {
             return res.status(400).send('Estado inválido ou expirado. Tente novamente.');
         }
         if (!isAllowedOrigin(state.origin)) {
@@ -64,6 +64,8 @@ module.exports = {
         const intent = state.intent || 'login';
 
         try {
+            if (!await require('../../../utils/sessionStore').consumeTransaction(state.nonce)) return res.status(400).send('Transação OAuth expirada ou já utilizada.');
+            res.clearCookie('lumina_oauth', { path: '/expapi/oauth2/', httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' });
             const tokens = await provider.exchangeCode(code);
             const profile = await provider.getProfile(tokens.accessToken);
 
@@ -76,8 +78,9 @@ module.exports = {
                 if (provider.name !== 'discord') return;
                 const updateSet = {
                     discordOauth2Id: profile.providerId,
-                    discordOauth2Token: tokens.accessToken,
-                    discordOauth2RefreshToken: tokens.refreshToken,
+                    discordAvatar: profile.avatar || '',
+                    discordOauth2Token: require('../../../utils/secretEncryption').encryptSecret(tokens.accessToken),
+                    discordOauth2RefreshToken: require('../../../utils/secretEncryption').encryptSecret(tokens.refreshToken),
                     discordOauth2TokenExpiresAt: new Date(Date.now() + (tokens.expiresIn || 3600) * 1000),
                     discordOauth2TokenScope: tokens.scope || '',
                     discordOauth2TokenType: tokens.tokenType || 'Bearer',
@@ -113,16 +116,22 @@ module.exports = {
                 );
             };
 
-            const issueJwt = (account) => jwt.sign(
-                {
-                    email: account.email,
-                    accountId: account.accountId,
-                    firstName: account.firstName,
-                    lastName: account.lastName
-                },
-                process.env.JWT_SECRET,
-                { expiresIn: '1h' }
-            );
+            const issueJwt = (account) => {
+                if (account.banned || account.blocked) throw Object.assign(new Error('Conta suspensa'), { code: 'ACCOUNT_SUSPENDED' });
+                return issueSessionToken(account);
+            };
+            const redirectSession = async (account, flags) => {
+                const jwtToken = issueJwt(account);
+                setAuthCookie(res, jwtToken);
+                const browserKey = require('crypto').randomBytes(32).toString('base64url');
+                const exchangeCode = await require('../../../utils/sessionStore').createExchange(jwtToken, state.origin, browserKey);
+                res.cookie('lumina_oauth_exchange', browserKey, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60000, path: '/expapi/v1/exchange-token' });
+                const redirectUrl = new URL(`${state.origin}/oauth/complete`);
+                redirectUrl.hash = new URLSearchParams({ code: exchangeCode, ...flags }).toString();
+                res.setHeader('Cache-Control', 'no-store');
+                res.setHeader('Referrer-Policy', 'no-referrer');
+                return res.redirect(redirectUrl.toString());
+            };
 
             // ─── Helper: cancela exclusão agendada + atualiza lastLogin ────────
             const postLoginBookkeeping = async (account) => {
@@ -161,20 +170,14 @@ module.exports = {
                 // lumina_token desta requisição pertença à MESMA conta que o
                 // state diz que está sendo vinculada. Sem cookie válido OU
                 // com cookie de outra conta → rejeita com link_no_account.
-                const { verifyRequestAuth } = require('../../../utils/authHelpers');
-                const { user: cookieUser, error: cookieErr } = verifyRequestAuth(req);
+                const { verifyRequestAuthWithAccountCheck } = require('../../../utils/authHelpers');
+                const { user: cookieUser, account, error: cookieErr } = await verifyRequestAuthWithAccountCheck(req);
                 if (cookieErr || !cookieUser || cookieUser.accountId !== state.linkAccountId) {
                     addLog('API', 'oauth.link.hijack', `Cookie/accountId mismatch no link flow (state=${state.linkAccountId}, cookie=${cookieUser?.accountId || 'none'})`);
                     return res.redirect(`${state.origin}/oauth/complete?oauthError=link_no_account`);
                 }
 
-                const account = await DashboardAccountService.getDashboardAccountByAccountId(state.linkAccountId).catch(e => {
-                    addLog('DB', 'oauth.link.fetchaccount.fail', e.message);
-                    return null;
-                });
-                if (!account) {
-                    return res.redirect(`${state.origin}/oauth/complete?oauthError=link_account_not_found`);
-                }
+                if (!account || account.banned || account.blocked) return res.redirect(`${state.origin}/login?oauthError=account_blocked`);
 
                 const existingByProvider = await DashboardAccountService.getDashboardAccountByProviderId(
                     provider.name, profile.providerId
@@ -193,12 +196,7 @@ module.exports = {
                 await updateDiscordLegacyFields(account.accountId);
 
                 addLog('API', 'oauth.link', `Conta ${account.accountId} vinculou ${provider.name}`);
-
-                const jwtToken = issueJwt(account);
-                setAuthCookie(res, jwtToken);
-                const redirectUrl = new URL(`${state.origin}/oauth/complete`);
-                redirectUrl.hash = `token=${jwtToken}&isNewAccount=false&hasPassword=${!!account.password}&linkedDiscord=true`;
-                return res.redirect(redirectUrl.toString());
+                return await redirectSession(account, { isNewAccount: false, hasPassword: !!account.password, linkedDiscord: true });
             }
 
             // ── REGISTER ────────────────────────────────────────────────────────────────
@@ -242,12 +240,7 @@ module.exports = {
                     await updateDiscordLegacyFields(account.accountId, { isNewAccount: true });
 
                     addLog('API', 'oauth.register', `Nova conta criada via ${provider.name}: ${account.accountId}`);
-
-                    const jwtToken = issueJwt(account);
-                setAuthCookie(res, jwtToken);
-                    const redirectUrl = new URL(`${state.origin}/oauth/complete`);
-                    redirectUrl.hash = `token=${jwtToken}&isNewAccount=true&hasPassword=false`;
-                    return res.redirect(redirectUrl.toString());
+                    return await redirectSession(account, { isNewAccount: true, hasPassword: false });
                 }
 
                 // Conta já existia — login normal (com ban check)
@@ -258,11 +251,7 @@ module.exports = {
                 await updateDiscordLegacyFields(account.accountId);
                 await postLoginBookkeeping(account);
                 addLog('API', 'oauth.register', `Login via ${provider.name} (conta existente): ${account.accountId}`);
-                const jwtToken = issueJwt(account);
-                setAuthCookie(res, jwtToken);
-                const redirectUrl = new URL(`${state.origin}/oauth/complete`);
-                redirectUrl.hash = `token=${jwtToken}&isNewAccount=false&hasPassword=${!!account.password}`;
-                return res.redirect(redirectUrl.toString());
+                return await redirectSession(account, { isNewAccount: false, hasPassword: !!account.password });
             }
 
             // ── LOGIN (padrão) ──────────────────────────────────────────────────────────
@@ -284,6 +273,7 @@ module.exports = {
                     addLog('DB', 'oauth.login.fetchemail.fail', e.message);
                     return null;
                 });
+                if (account && (account.banned || account.blocked)) return res.redirect(`${state.origin}/login?oauthError=account_blocked`);
                 if (account) {
                     await DashboardAccountService.linkOAuthProvider(account.accountId, provider.name, {
                         providerId: profile.providerId,
@@ -320,12 +310,7 @@ module.exports = {
             }
 
             addLog('API', 'oauth.login', `Login via ${provider.name}: ${account.accountId} (nova=${isNewAccount})`);
-
-            const jwtToken = issueJwt(account);
-                setAuthCookie(res, jwtToken);
-            const redirectUrl = new URL(`${state.origin}/oauth/complete`);
-            redirectUrl.hash = `token=${jwtToken}&isNewAccount=${isNewAccount}&hasPassword=${!!account.password}`;
-            return res.redirect(redirectUrl.toString());
+            return await redirectSession(account, { isNewAccount, hasPassword: !!account.password });
 
         } catch (err) {
             addLog('API', 'oauth.callback.error', `${req.params.provider}/${intent} → ${err.message}\n${err.stack || ''}`);

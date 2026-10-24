@@ -35,8 +35,10 @@ module.exports = {
         }
 
         try {
-            await DashboardAccountService.changePassword(accountId, currentPassword || null, newPassword);
-            return res.status(200).json({ message: 'Senha definida com sucesso.' });
+            const account = await DashboardAccountService.changePassword(accountId, currentPassword || null, newPassword);
+            const { setAuthCookie, issueSessionToken } = require('../../../utils/authHelpers');
+            setAuthCookie(res, issueSessionToken(account));
+            return res.status(200).json({ message: 'Senha definida com sucesso. Outras sessões foram encerradas.' });
         } catch (error) {
             switch (error.code) {
                 case 'ACCOUNT_NOT_FOUND':
@@ -57,9 +59,11 @@ module.exports = {
                     });
                 case 'SAME_PASSWORD':
                     return res.status(400).json({ error: 'A nova senha deve ser diferente da atual.', code: error.code });
+                case 'SESSION_CHANGED':
+                    return res.status(409).json({error:error.message,code:error.code});
                 case 'WEAK_PASSWORD':
                     return res.status(400).json({
-                        error: 'A senha deve ter entre 8 e 128 caracteres, com maiúscula, minúscula e número.',
+                        error: 'Use pelo menos 8 caracteres com maiúscula, minúscula e número. Evite senhas muito longas.',
                         code: error.code
                     });
                 default:

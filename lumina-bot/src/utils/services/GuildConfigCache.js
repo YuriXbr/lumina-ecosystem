@@ -11,6 +11,7 @@ class GuildConfigCache {
         this.api = new LuminaApiService();
         // Track guilds that returned 404 to avoid retrying every 60s
         this.knownMissing = new Set();
+        this.pending = new Map();
     }
 
     async getCachedGuildConfig(guildId, isCritical = false) {
@@ -33,26 +34,17 @@ class GuildConfigCache {
             return entry.config;
         }
 
-        let config;
-        try {
-            config = await this._fetchFromApi(guildId);
-            this.knownMissing.delete(guildId);
-        } catch (error) {
-            if (entry) return entry.config;
-            const status = error?.status || error?.response?.status;
-            if (status === 404) {
-                this.knownMissing.add(guildId);
-                return null;
-            }
-            throw error;
+        if (!this.pending.has(guildId)) {
+            const pending = this._fetchFromApi(guildId).then(config => {
+                this.cache.set(guildId, {config, fetchedAt: Date.now()});
+                if (config) this.knownMissing.delete(guildId);
+                else this.knownMissing.add(guildId);
+                return config;
+            }).finally(() => this.pending.delete(guildId));
+            this.pending.set(guildId, pending);
         }
-
-        if (config) {
-            this.cache.set(guildId, { config, fetchedAt: now });
-        } else if (entry) {
-            return entry.config;
-        }
-        return config;
+        // Expired permissions cannot authorize commands during an API outage.
+        return this.pending.get(guildId);
     }
 
     invalidateCache(guildId) {

@@ -18,6 +18,7 @@ const request = require('supertest');
 const { JWT_SECRET, INTERNAL_KEY, makeJwt, makeGarbageJwt, bearerAuth, mockLogger } = require('../helpers/testUtils');
 
 mockLogger();
+const accountService=require('../helpers/testUtils').mockDashboardAccountService();
 
 const { checkAuth, internalKeyCheck, loginLimiter, registerLimiter } = require('../../auth');
 
@@ -40,6 +41,7 @@ describe('checkAuth middleware', () => {
     }
 
     it('popula req.user quando token é válido (Bearer)', async () => {
+        accountService.getDashboardAccountByEmail.mockResolvedValueOnce({accountId:'auth-test',email:'auth@x.com'});
         const token = makeJwt({ email: 'auth@x.com' });
         const res = await request(buildApp()).get('/protected').set(bearerAuth(token));
         expect(res.status).toBe(200);

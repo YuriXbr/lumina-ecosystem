@@ -21,17 +21,13 @@ const axios = require('axios');
 module.exports = {
     name: 'discord',
 
-    getAuthorizationUrl(state) {
+    getAuthorizationUrl(state, {forceConsent=false}={}) {
         const params = new URLSearchParams({
             client_id: process.env.DISCORD_CLIENT_ID,
             redirect_uri: process.env.DISCORD_AUTH_REDIRECT_URI,
             response_type: 'code',
             scope: 'identify email guilds guilds.members.read',
-            // prompt=consent força o Discord a pedir autorização novamente
-            // (necessário para atualizar scopes de contas que autorizaram antes
-            // com scopes menores). Sem isso, o Discord reutiliza a autorização
-            // anterior e retorna o scope antigo.
-            prompt: 'consent',
+            ...(forceConsent?{prompt:'consent'}:{}),
             state
         });
         return `https://discord.com/oauth2/authorize?${params.toString()}`;

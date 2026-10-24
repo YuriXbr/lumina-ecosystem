@@ -1,3 +1,4 @@
+const { decryptSecret, encryptSecret } = require('../../../utils/secretEncryption');
 const axios                     = require('axios');
 const DashboardAccountService   = require('../../../database/services/DashboardAccountService');
 const GuildService              = require('../../../database/services/GuildService');
@@ -47,54 +48,13 @@ module.exports = {
                     code: 'DISCORD_NOT_LINKED'
                 });
 
-            // Refresh token se expirado
-            if (new Date() >= new Date(account.discordOauth2TokenExpiresAt)) {
-                try {
-                    const params = new URLSearchParams({
-                        client_id: process.env.DISCORD_CLIENT_ID,
-                        client_secret: process.env.DISCORD_CLIENT_SECRET,
-                        grant_type: 'refresh_token',
-                        refresh_token: account.discordOauth2RefreshToken,
-                        redirect_uri: process.env.DISCORD_AUTH_REDIRECT_URI,
-                        scope: 'identify email guilds guilds.members.read'
-                    });
-                    const tokenRes = await axios.post('https://discord.com/api/oauth2/token', params.toString(),
-                        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-                    const updated = await DashboardAccountService.update({ email: decoded.email }, {
-                        $set: {
-                            discordOauth2Token: tokenRes.data.access_token,
-                            discordOauth2RefreshToken: tokenRes.data.refresh_token,
-                            discordOauth2TokenExpiresAt: new Date(Date.now() + tokenRes.data.expires_in * 1000),
-                            discordOauth2TokenType: 'Bearer',
-                            discordOauth2TokenScope: 'identify email guilds'
-                        }
-                    });
-                    if (updated) account = updated;
-                } catch (refreshError) {
-                    // Discord pode retornar 429 no refresh também — trata de forma uniforme
-                    if (refreshError.response?.status === 429) {
-                        const retryAfter = parseFloat(refreshError.response?.headers?.['retry-after'] || '2');
-                        res.set('Retry-After', String(Math.ceil(retryAfter) || 2));
-                        return res.status(429).json({
-                            error: 'O Discord está limitando requisições. Tente novamente em alguns segundos.',
-                            code: 'DISCORD_RATE_LIMITED',
-                            retryAfter: Math.ceil(retryAfter) || 2,
-                        });
-                    }
-                    return routeError({
-                        res, error: refreshError, route: ROUTE,
-                        errorCode: 'DISCORD_TOKEN_REFRESH_ERROR',
-                        userMsg: 'Erro ao atualizar token do Discord. Reconecte sua conta.',
-                        extra: { email: decoded.email }
-                    });
-                }
-            }
+            const accessToken = await require('../../../utils/discordAccess').discordToken(account);
 
             // Busca guildas do usuário no Discord
             let userGuildsRes;
             try {
                 userGuildsRes = await axios.get('https://discord.com/api/v10/users/@me/guilds', {
-                    headers: { Authorization: `Bearer ${account.discordOauth2Token}` }
+                    headers: { Authorization: `Bearer ${accessToken}` }, params:{limit:200}
                 });
             } catch (err) {
                 // 429 — Discord rate limit
@@ -118,14 +78,14 @@ module.exports = {
             }
 
             // Busca guildas que o bot gerencia no banco
-            const botGuildsRaw = await GuildService.getAll();
+            const botGuildsRaw = await GuildService.get({guildId:{$in:(userGuildsRes.data||[]).map(g=>g.id)},botPresent:{$ne:false}},{guildId:1,prefix:1,guildLocale:1,memberWelcomeToggle:1,moderationEnabled:1,djEnabled:1,memberCount:1});
             const botGuildIds = new Set(botGuildsRaw.map(g => g.guildId));
             const botGuildsMap = new Map(botGuildsRaw.map(g => [g.guildId, g]));
 
             // Monta resposta
             const guilds = (userGuildsRes.data || []).map(g => {
-                const permissions = parseInt(g.permissions || '0', 10);
-                const canManage = !!g.owner || (permissions & PERM_ADMINISTRATOR) !== 0 || (permissions & PERM_MANAGE_GUILD) !== 0;
+                const permissions = BigInt(g.permissions || '0');
+                const canManage = !!g.owner || (permissions & BigInt(PERM_ADMINISTRATOR)) !== 0n || (permissions & BigInt(PERM_MANAGE_GUILD)) !== 0n;
                 const hasBot = botGuildIds.has(g.id);
                 const botData = hasBot ? botGuildsMap.get(g.id) : null;
 
@@ -141,7 +101,7 @@ module.exports = {
                         prefix: botData.prefix || 'l!',
                         language: botData.guildLocale || 'en-US',
                         welcomeEnabled: !!botData.memberWelcomeToggle,
-                        moderationEnabled: !!botData.moderationChannelId,
+                        moderationEnabled: !!botData.moderationEnabled,
                         musicEnabled: !!botData.djEnabled,
                         memberCount: botData.memberCount || 0,
                     } : null,
@@ -157,6 +117,7 @@ module.exports = {
 
             return res.status(200).json({ guilds });
         } catch (error) {
+            if (error.status) return res.status(error.status).json({error:error.message,code:error.code});
             return routeError({
                 res, error, route: ROUTE,
                 errorCode: 'FETCH_MY_GUILDS_ERROR',

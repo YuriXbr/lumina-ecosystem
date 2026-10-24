@@ -26,7 +26,7 @@ class DashboardAccountService extends DatabaseService {
         if (!/^[\w.+-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(email)) {
             throw new Error('Invalid email syntax');
         }
-        return this.getOne({ email });
+        return this.getOne({ email: String(email).trim().toLowerCase() });
     }
 
     /**
@@ -39,7 +39,7 @@ class DashboardAccountService extends DatabaseService {
             err.code = 'WEAK_PASSWORD';
             throw err;
         }
-        if (password.length < 8 || password.length > 128) {
+        if (password.length < 8 || Buffer.byteLength(password, 'utf8') > 72) {
             const err = new Error('Password must be between 8 and 128 characters');
             err.code = 'WEAK_PASSWORD';
             throw err;
@@ -67,7 +67,7 @@ class DashboardAccountService extends DatabaseService {
         }
         this._validatePasswordStrength(password);
 
-        const hashedPassword = bcrypt.hashSync(password, 12);
+        const hashedPassword = await bcrypt.hash(password, 12);
 
         // Geração segura de ID usando crypto
         let generatedId = '';
@@ -79,7 +79,7 @@ class DashboardAccountService extends DatabaseService {
 
         const doc = {
             accountId: generatedId,
-            email,
+            email: email.trim().toLowerCase(),
             password: hashedPassword,
             firstName,
             lastName,
@@ -128,7 +128,7 @@ class DashboardAccountService extends DatabaseService {
 
         return this.create({
             accountId: generatedId,
-            email,
+            email: email.trim().toLowerCase(),
             password: '', // sem senha até o usuário definir uma
             firstName: firstName || 'Usuário',
             lastName: lastName || provider,
@@ -178,20 +178,20 @@ class DashboardAccountService extends DatabaseService {
 
         if (!account) {
             // Compare "fantasma" só para igualar o tempo de resposta (anti timing-attack)
-            bcrypt.compareSync(password || '', DUMMY_HASH);
+            await bcrypt.compare(password || '', DUMMY_HASH);
             const err = new Error('Account not found');
             err.code = 'INVALID_CREDENTIALS';
             throw err;
         }
 
         if (!account.password) {
-            bcrypt.compareSync(password || '', DUMMY_HASH);
+            await bcrypt.compare(password || '', DUMMY_HASH);
             const err = new Error('Account has no password set (OAuth-only)');
             err.code = 'OAUTH_ONLY';
             throw err;
         }
 
-        const isPasswordValid = bcrypt.compareSync(password || '', account.password);
+        const isPasswordValid = await bcrypt.compare(password || '', account.password);
         if (!isPasswordValid) {
             const err = new Error('Invalid password');
             err.code = 'INVALID_CREDENTIALS';
@@ -242,7 +242,7 @@ class DashboardAccountService extends DatabaseService {
         }
 
         if (account.password) {
-            if (!currentPassword || typeof currentPassword !== 'string' || !bcrypt.compareSync(currentPassword, account.password)) {
+            if (!currentPassword || typeof currentPassword !== 'string' || !await bcrypt.compare(currentPassword, account.password)) {
                 // Incrementa tentativas
                 const attempts = (account.passwordAttempts || 0) + 1;
                 const updateData = { passwordAttempts: attempts };
@@ -256,7 +256,7 @@ class DashboardAccountService extends DatabaseService {
                 err.attemptsRemaining = Math.max(0, MAX_ATTEMPTS - attempts);
                 throw err;
             }
-            if (bcrypt.compareSync(newPassword, account.password)) {
+            if (await bcrypt.compare(newPassword, account.password)) {
                 const err = new Error('New password equals current password');
                 err.code = 'SAME_PASSWORD';
                 throw err;
@@ -265,27 +265,28 @@ class DashboardAccountService extends DatabaseService {
 
         this._validatePasswordStrength(newPassword);
 
-        const hashedPassword = bcrypt.hashSync(newPassword, 12);
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
         // Sucesso — reset contador de tentativas
-        await this.update({ accountId }, { $set: {
+        const changed = await this.update({ accountId, password:account.password || {$in:[null,'']}, banned:{$ne:true}, blocked:{$ne:true} }, { $set: {
             password: hashedPassword,
             lastPasswordChange: new Date(),
             passwordAttempts: 0,
             passwordLockedUntil: null,
-        }});
-        return true;
+        }, $inc: { sessionVersion: 1 } });
+        if (!changed) throw Object.assign(new Error('A conta foi alterada durante a solicitação. Entre novamente.'), {code:'SESSION_CHANGED'});
+        return changed;
     }
 
     async getAllAccounts(options = {}) {
         const { page = 1, limit = 50, search = '', accessType = '' } = options;
-        
+
         let query = {};
-        
+
         // Filtro por tipo de acesso
         if (accessType) {
             query.accessType = accessType;
         }
-        
+
         // Filtro por busca (nome, email, accountId) — regex escapado para evitar
         // ReDoS / injection via caracteres especiais de regex no termo de busca.
         if (search) {
@@ -297,9 +298,9 @@ class DashboardAccountService extends DatabaseService {
                 { accountId: { $regex: safeSearch, $options: 'i' } }
             ];
         }
-        
+
         const skip = (page - 1) * limit;
-        
+
         return this.get(query, {}, { skip, limit, sort: { registrationDate: -1 } });
     }
 
@@ -317,10 +318,10 @@ class DashboardAccountService extends DatabaseService {
         if (typeof updateData !== 'object') {
             throw new Error('Update data must be an object');
         }
-        
+
         // Remove campos sensíveis que não devem ser atualizados diretamente
         const { password, accountId: _, ...safeUpdateData } = updateData;
-        
+
         return this.update({ accountId }, { $set: safeUpdateData });
     }
 

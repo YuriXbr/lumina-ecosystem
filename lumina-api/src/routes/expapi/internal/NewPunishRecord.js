@@ -8,13 +8,13 @@ const ROUTE = 'POST /expapi/internal/newpunishrecord';
 module.exports = {
     route: '/expapi/internal/newpunishrecord',
     description: "Create a new punishment record",
-    apiKeyNeeded: false, 
-    internalKeyNeeded: true, 
+    apiKeyNeeded: false,
+    internalKeyNeeded: true,
     jwtNeeded: false,
-    enabled: true, 
-    loginLimiterNeeded: false, 
+    enabled: true,
+    loginLimiterNeeded: false,
     csrfProtectionNeeded: false,
-    checkAuthNeeded: false, 
+    checkAuthNeeded: false,
     method: 'post',
 
     async execute(req, res) {
@@ -22,6 +22,7 @@ module.exports = {
         if (!type || !guildId || !targetId || !staffId)
             return res.status(400).json({ error: 'Parámetros type, guildId, targetId e staffId são obrigatórios.', code: 'MISSING_PARAMS' });
 
+        if (![guildId,targetId,staffId].every(id => typeof id === 'string' && /^\d{16,20}$/.test(id)) || (endTime && (!Number.isFinite(new Date(endTime).getTime()) || new Date(endTime) <= new Date()))) return res.status(400).json({ code: 'INVALID_PUNISHMENT', error: 'Dados de punição inválidos.' });
         const VALID_TYPES = ['ban','mute','warn'];
         if (!VALID_TYPES.includes(type))
             return res.status(400).json({ error: 'Tipo de punição inválido.', code: 'INVALID_TYPE' });

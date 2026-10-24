@@ -35,7 +35,6 @@ const API_KEY = process.env.LUMINA_API_KEY || 'test-api-key';
 function makeJwt(overrides = {}, options = {}) {
     const payload = {
         email: 'tester@example.com',
-        accountId: 'acc-test-0001',
         firstName: 'Test',
         lastName: 'User',
         ...overrides,
@@ -257,6 +256,7 @@ function mockLogger() {
 }
 
 function mockDashboardAccountService() {
+    jest.mock('../../src/utils/sessionStore',()=>({isRevoked:jest.fn().mockResolvedValue(false),revokeToken:jest.fn().mockResolvedValue(),createTransaction:jest.fn().mockResolvedValue(),consumeTransaction:jest.fn().mockResolvedValue(true),createExchange:jest.fn().mockResolvedValue('test-exchange-code'),consumeExchange:jest.fn()}));
     jest.mock('../../src/database/services/DashboardAccountService', () => ({
         checkCredentials: jest.fn(),
         registerNewDashboardAccount: jest.fn(),
@@ -283,6 +283,8 @@ function mockDashboardAccountService() {
 function mockInventoryService() {
     jest.mock('../../src/database/services/UserInventoryService', () => ({
         getInventory: jest.fn(),
+        ensureInventory: jest.fn(),
+        awardSkinAndSpend: jest.fn(),
         addInventory: jest.fn(),
         removeInventory: jest.fn(),
         claimDaily: jest.fn(),
@@ -321,7 +323,9 @@ function mockUserBadgeService() {
 
 function mockGuildService() {
     jest.mock('../../src/database/services/GuildService', () => ({
+        upsertMetadata: jest.fn(),
         getGuildData: jest.fn(),
+        get: jest.fn(),
         createGuildData: jest.fn(),
         updateGuildData: jest.fn(),
         delete: jest.fn(),

@@ -23,15 +23,8 @@ class CacheService extends DatabaseService {
     }
 
     async _ensureIndex() {
-        if (this._indexEnsured) return;
-        try {
-            await this.connect();
-            await this.model.collection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, background: true });
-            await this.model.collection.createIndex({ key: 1 }, { unique: true, background: true });
-            this._indexEnsured = true;
-        } catch (e) {
-            console.error('[CacheService] Falha ao criar índices:', e.message);
-        }
+        // Indexes are applied explicitly by migrate:security, never on request paths.
+        await this.connect();
     }
 
     /**

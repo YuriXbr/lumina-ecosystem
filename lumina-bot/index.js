@@ -31,12 +31,25 @@ client.commands = new Collection();
 client.events = new Collection();
 client._cooldowns = new Collection();
 
-process.on('unhandledRejection', (reason) => {
-    console.error('[UNHANDLED REJECTION]', reason);
-});
-
-process.on('uncaughtException', (err) => {
-    console.error('[UNCAUGHT EXCEPTION]', err);
+let shuttingDown = false;
+function shutdown(error) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.error('[FATAL]', error?.code || error?.name || 'UNEXPECTED_FAILURE');
+    require('./src/utils/services/PunishmentScheduler').stopPunishmentScheduler();
+    require('./src/utils/services/GuildSyncService').getGuildSync().stop();
+    require('./src/utils/services/BotConsoleService').getBotConsole().stop();
+    const timeout = setTimeout(() => process.exit(1), 10000);
+    timeout.unref();
+    Promise.resolve().then(() => client.destroy()).finally(() => process.exit(1));
+}
+process.on('unhandledRejection', shutdown);
+process.on('uncaughtException', shutdown);
+for (const signal of ['SIGTERM','SIGINT']) process.once(signal, () => {
+    require('./src/utils/services/PunishmentScheduler').stopPunishmentScheduler();
+    require('./src/utils/services/GuildSyncService').getGuildSync().stop();
+    require('./src/utils/services/BotConsoleService').getBotConsole().stop();
+    Promise.resolve().then(() => client.destroy()).finally(() => process.exit(0));
 });
 
 // ==========================
@@ -46,6 +59,7 @@ async function bootstrap() {
     try {
         // 1. CONFIG PRIMEIRO (OBRIGATÓRIO)
         await botConfigService.setupConfig();
+        require('./src/utils/services/BotConsoleService').getBotConsole().start(client);
         console.log(c.arrow + c.verdebold('[SUCCESS] Bot configuration loaded successfully'));
 
         // 2. CARREGA COMANDOS

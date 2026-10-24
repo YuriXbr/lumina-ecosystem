@@ -13,8 +13,7 @@ const { addLog, routeError } = require('../../../logger/logger');
  * constituindo vazamento de credencial. O único caminho de autenticação
  * para o intent=link agora é o cookie httpOnly (lumina_token).
  *
- * Audit #16: o campo `nonce` do state era gerado mas nunca checado em
- * authCallback (dead code que só inflava o JWT do state). Removido.
+ * O nonce é ligado ao cookie do navegador e consumido uma única vez no callback.
  */
 module.exports = {
     route: '/expapi/oauth2/:provider/auth/start',
@@ -49,8 +48,8 @@ module.exports = {
         // removido — o cookie é a única forma de autenticar o link flow.
         let linkAccountId = null;
         if (intent === 'link') {
-            const { verifyRequestAuth } = require('../../../utils/authHelpers');
-            const { user, error } = verifyRequestAuth(req);
+            const { verifyRequestAuthWithAccountCheck } = require('../../../utils/authHelpers');
+            const { user, error } = await verifyRequestAuthWithAccountCheck(req);
             if (error || !user) {
                 addLog('API', 'oauth.start.nolinkcookie', `Intent link sem cookie válido (${req.params.provider})`);
                 return res.redirect(`${origin}/oauth/complete?oauthError=link_no_account`);
@@ -62,19 +61,21 @@ module.exports = {
             }
         }
 
-        // Audit #16: nonce removido do state — era dead code (nunca checado
-        // no callback). State ainda é assinado com HMAC-SHA256, impedindo
-        // que um atacante forje state com linkAccountId arbitrário.
+        // Signed, browser-bound and single-use OAuth transaction.
         const state = signState({
             origin,
             issuedAt: Date.now(),
             intent,
+            nonce: req.oauthNonce = require('crypto').randomBytes(32).toString('base64url'),
+            provider: provider.name,
             ...(linkAccountId ? { linkAccountId } : {})
         });
 
         addLog('API', 'oauth.start', `Iniciando ${intent} via ${req.params.provider}`);
         try {
-            return res.redirect(provider.getAuthorizationUrl(state));
+            await require('../../../utils/sessionStore').createTransaction(req.oauthNonce);
+            res.cookie('lumina_oauth', req.oauthNonce, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 600000, path: '/expapi/oauth2/' });
+            return res.redirect(provider.getAuthorizationUrl(state,{forceConsent:intent==='link'}));
         } catch (redirectErr) {
             addLog('API', 'oauth.start.redirectfail', 'Falha ao redirecionar: ' + redirectErr.message);
             return res.status(500).json({ error: 'Erro ao iniciar autenticação.', code: 'OAUTH_REDIRECT_ERROR' });

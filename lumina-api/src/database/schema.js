@@ -16,8 +16,8 @@ const bot= {
     admins: { type: Array, default: [] },
     moderators: { type: Array, default: [] },
     staffPermissions: { type: Object, default: {
-        owner: ["*"], 
-        admins: ["LUMINA_CHANGECONFIG", "LUMINA_MANAGEUSERS", "LUMINA_MANAGEACCOUNTS", "LUMINA_ADDMODS",], 
+        owner: ["*"],
+        admins: ["LUMINA_CHANGECONFIG", "LUMINA_MANAGEUSERS", "LUMINA_MANAGEACCOUNTS", "LUMINA_ADDMODS",],
         moderators:["LUMINA_VIEWTICKETS", "LUMINA_SPECIALCMDS"]
     }},
     mainGuild: { type: String, required: false, unique: true, default: "" },
@@ -39,23 +39,25 @@ const bot= {
 
 const inventory= {
     userId: { type: String, required: true, unique: true },
-    hextechChests: { type: Number, default: 10 },
-    masterWorkChests: { type: Number, default: 1 },
-    keys: { type: Number, default: 11 },
-    mythicEssece: { type: Number, default: 0 },
-    blueEssence: { type: Number, default: 0 },
-    orangeEssence: { type: Number, default: 0 },
+    hextechChests: { type: Number, default: 10, min: 0, validate: Number.isSafeInteger },
+    masterWorkChests: { type: Number, default: 1, min: 0, validate: Number.isSafeInteger },
+    keys: { type: Number, default: 11, min: 0, validate: Number.isSafeInteger },
+    mythicEssece: { type: Number, default: 0, min: 0, validate: Number.isSafeInteger },
+    blueEssence: { type: Number, default: 0, min: 0, validate: Number.isSafeInteger },
+    orangeEssence: { type: Number, default: 0, min: 0, validate: Number.isSafeInteger },
     championShards: { type: Object, default: {} },
     champions: { type: Object, default: {} },
     skinShards: { type: Object, default: {} },
     dailyRewardClaim: { type: Date, default: null },
     nextDailyReward: { type: Date, default: null },
-    dailyRewardStreak: { type: Number, default: 0 },
+    dailyRewardStreak: { type: Number, default: 0, min: 0, validate: Number.isSafeInteger },
     skins: { type: Array, default: [] },
 }
 
 const guilds= {
     guildId: { type: String, required: true, unique: true },
+    botPresent: { type: Boolean, default: true },
+    lastSyncedAt: { type: Date, default: null },
     guildReferenceName: { type: String, required: true },
     muteRoleId: { type: String, required: false },
     banRoleId: { type: String, required: false },
@@ -64,11 +66,19 @@ const guilds= {
     gachaRollsLastRefresh: { type: Date, default: Date.now },
     gachaRollsRefreshInterval: { type: Number, default: refreshInterval },
     gachaRolls: { type: Object, default: {} },
-    gachaMaxRolls: { type: Number, default: 8 },
+    gachaMaxRolls: { type: Number, default: 8, min: 0, max: 1000 },
+    gachaEnabled: { type: Boolean, default: true },
+    gachaChestsEnabled: { type: Boolean, default: true },
+    moderationEnabled: { type: Boolean, default: false },
+    memberCount: { type: Number, default: 0, min: 0 },
+    commandsEnabled: { type: Object, default: {} },
+    autoMessages: { type: [{ id: String, channelId: String, message: { type: String, maxlength: 2000 }, intervalMinutes: { type: Number, min: 1, max: 43200 }, enabled: Boolean }], default: [] },
+    blockedUsers: { type: [String], default: [] },
+    blockedRoles: { type: [String], default: [] },
     gachaGameMode: { type: String, default: 'personal' },
     guildOwnerId: { type: String, required: true },
     prefix: { type: String, default: 'l!' },
-    blockedChannels: { type: Object, default: [] },
+    blockedChannels: { type: [String], default: [] },
     djEnabled: { type: Boolean, default: false },
     djRoleId: { type: String, default: '' },
     persistentMute: { type: Boolean, default: true },
@@ -92,6 +102,12 @@ const guilds= {
     warnDuration: { type: Number, default: maxDuration }
 }
 const punishList= {
+    processedAt: { type: Date, default: null },
+    leaseUntil: { type: Date, default: null },
+    leaseToken: { type: String, default: null },
+    nextAttemptAt: { type: Date, default: null },
+    attempts: { type: Number, default: 0 },
+    lastErrorCode: { type: String, default: '' },
     guildId: { type: String, required: true },
     targetId: { type: String, required: true },
     staffId: { type: String, required: true },
@@ -214,9 +230,10 @@ const dashboardAccounts= {
     twoFactorAuthBackupCodesGenerated: { type: Date, default: Date.now },
     twoFactorAuthBackupCodesExpires: { type: Date, default: Date.now },
     twoFactorAuthBackupCodesUsedDate: { type: Date, default: Date.now },
-    
+
 
     // User discord oauth2 authentication
+    discordAvatar: { type: String, default: '' },
     discordOauth2Id: { type: String, required: false, default: '' },
     discordOauth2Token: { type: String, required: false, default: '' },
     discordOauth2RefreshToken: { type: String, required: false, default: '' },
@@ -245,7 +262,7 @@ const dashboardAccounts= {
     lastLoginLocation: { type: String, default: '' },
     lastLoginCountry: { type: String, default: '' },
     lastLoginCity: { type: String, default: '' },
-    
+
     // User registration security statistics
     registrationIp: { type: String, default: '' },
     registrationDate: { type: Date, default: Date.now },
@@ -253,7 +270,7 @@ const dashboardAccounts= {
     registrationLocation: { type: String, default: '' },
     registrationCountry: { type: String, default: '' },
     registrationCity: { type: String, default: '' },
-    
+
     // User password reset security statistics
     passwordResetToken: { type: String, default: '' },
     passwordResetTokenExpires: { type: Date, default: Date.now },
@@ -264,12 +281,12 @@ const dashboardAccounts= {
     passwordResetTokenUsedLocation: { type: String, default: '' },
     passwordResetTokenUsedCountry: { type: String, default: '' },
     passwordResetTokenUsedCity: { type: String, default: '' },
-    
+
     // User account security statistics
     browserFingerprint: { type: Object, default: '' },
     browserFingerprintDate: { type: Date, default: Date.now },
     browserAgent: { type: String, default: '' },
-    
+
     // User account status
     blocked: { type: Boolean, default: false },
     blockAuthor: { type: String, default: '' },
@@ -309,15 +326,17 @@ const dashboardAccounts= {
     // username: handle unico case-insensitive (4-16 chars, A-Z 0-9 _).
     // Exibido sempre com a capitalizacao original escolhida pelo usuario.
     // Resolvido em /u/:identifier (identifier = UUID, Discord ID ou username).
-    username: { type: String, required: false, default: '', unique: true, sparse: true },
-    usernameLower: { type: String, required: false, default: '', index: true },
+    username: { type: String, required: false, unique: true, sparse: true },
+    usernameLower: { type: String, required: false },
     usernameChangedAt: { type: Date, default: null },
 
     // displayName: nome de exibicao livre (1-32 chars), nao unico.
     displayName: { type: String, required: false, default: '' },
     displayNameChangedAt: { type: Date, default: null },
 
-    // Account closure (TTL 30 dias). Login cancela a exclusao.
+    emailVerifiedAt: { type: Date, default: null },
+    sessionVersion: { type: Number, default: 0, min: 0 },
+    // Account closure is processed by a cleanup job, never a cascading-blind TTL.
     deletionRequestedAt: { type: Date, default: null },
     deletionScheduledFor: { type: Date, default: null },
 }
@@ -358,11 +377,13 @@ const badges = {
     createdBy:       { type: String, default: '' },                   // email do admin que criou
     createdAt:       { type: Date, default: Date.now },
     updatedAt:       { type: Date, default: Date.now },
-    active:          { type: Boolean, default: true },                // desativar sem deletar
+    active:          { type: Boolean, default: true },
+    redemptionVersion: { type: Number, default: 0 },                // desativar sem deletar
 }
 
 // Registro de quem resgatou qual badge (N:N)
 const userBadges = {
+    accountId: { type: String },
     userEmail:    { type: String, required: true },   // quem resgatou
     badgeCode:    { type: String, required: true },   // qual badge
     redeemedAt:   { type: Date, default: Date.now },

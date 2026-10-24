@@ -62,7 +62,7 @@ describe('DashboardAccountService', () => {
     beforeEach(() => {
         jest.resetModules();
         jest.mock('mongoose', () => {
-            const mModel = {
+            const mockLocalModel = {
                 findOne: jest.fn(),
                 find: jest.fn(),
                 findOneAndUpdate: jest.fn(),
@@ -75,9 +75,9 @@ describe('DashboardAccountService', () => {
             return {
                 connect: jest.fn().mockResolvedValue(true),
                 connection: { readyState: 1 },
-                model: jest.fn(() => mModel),
+                model: jest.fn(() => mockLocalModel),
                 models: {},
-                Schema: class Schema { constructor() {} },
+                Schema: class Schema { constructor() {} index() {} },
             };
         });
 
@@ -176,7 +176,7 @@ describe('UserInventoryService', () => {
             connection: { readyState: 1 },
             model: jest.fn(() => mockInventoryModel),
             models: {},
-            Schema: class Schema { constructor() {} },
+            Schema: class Schema { constructor() {} index() {} },
         }));
 
         jest.mock('../src/logger/logger', () => ({
@@ -190,70 +190,20 @@ describe('UserInventoryService', () => {
         service.model = mockInventoryModel;
     });
 
-    describe('claimDaily', () => {
-        it('retorna claimed=false dentro do cooldown de 24h', async () => {
-            const future = new Date(Date.now() + 23 * 60 * 60 * 1000);
-            mockInventoryModel.findOne.mockResolvedValueOnce({
-                nextDailyReward: future,
-                dailyRewardStreak: 3,
-            });
-
-            const result = await service.claimDaily('user-001');
-            expect(result.claimed).toBe(false);
-            expect(result.nextDailyReward).toEqual(future);
+    describe('claimDaily',()=>{
+        beforeEach(()=>{jest.spyOn(service,'ensureInventory').mockResolvedValue({userId:'123456789012345678'});});
+        afterEach(()=>jest.restoreAllMocks());
+        it('retorna cooldown quando a gravação condicional não encontra elegibilidade',async()=>{
+            const next=new Date(Date.now()+3600000);mockInventoryModel.findOneAndUpdate.mockResolvedValueOnce(null);mockInventoryModel.findOne.mockResolvedValueOnce({nextDailyReward:next,dailyRewardStreak:3});
+            const result=await service.claimDaily('123456789012345678');expect(result.claimed).toBe(false);expect(result.nextDailyReward).toEqual(next);
         });
-
-        it('retorna claimed=true e incrementa streak quando disponível', async () => {
-            const past = new Date(Date.now() - 25 * 60 * 60 * 1000); // 25h atrás (dentro da janela de streak)
-            mockInventoryModel.findOne.mockResolvedValueOnce({
-                nextDailyReward: past,
-                dailyRewardClaim: past,
-                dailyRewardStreak: 2,
-            });
-            mockInventoryModel.findOneAndUpdate.mockResolvedValueOnce({
-                hextechChests: 13,
-                keys: 3,
-                dailyRewardStreak: 3,
-            });
-
-            const result = await service.claimDaily('user-001');
-            expect(result.claimed).toBe(true);
-            expect(result.streak).toBe(3);
-            expect(result.reward.hextechChests).toBe(3);
-            expect(result.reward.keys).toBe(1);
+        it('retorna o prêmio e a sequência da gravação atômica',async()=>{
+            mockInventoryModel.findOneAndUpdate.mockResolvedValueOnce({dailyRewardStreak:3});const result=await service.claimDaily('123456789012345678');
+            expect(result).toMatchObject({claimed:true,streak:3,reward:{hextechChests:3,keys:1}});
         });
-
-        it('reseta streak para 1 quando fora da janela de 48h', async () => {
-            const longAgo = new Date(Date.now() - 49 * 60 * 60 * 1000); // 49h atrás
-            mockInventoryModel.findOne.mockResolvedValueOnce({
-                nextDailyReward: new Date(Date.now() - 1000), // já venceu
-                dailyRewardClaim: longAgo,
-                dailyRewardStreak: 5,
-            });
-            mockInventoryModel.findOneAndUpdate.mockResolvedValueOnce({ dailyRewardStreak: 1 });
-
-            const result = await service.claimDaily('user-002');
-            expect(result.streak).toBe(1);
-        });
-
-        it('cria inventário novo quando não existe', async () => {
-            mModel.findOne.mockResolvedValueOnce(null); // sem inventário
-            mModel.create.mockResolvedValueOnce({ userId: 'new-user', nextDailyReward: null });
-            mockInventoryModel.findOneAndUpdate.mockResolvedValueOnce({ dailyRewardStreak: 1 });
-
-            const result = await service.claimDaily('new-user');
-            expect(mModel.create).toHaveBeenCalledWith({ userId: 'new-user' });
-            expect(result.claimed).toBe(true);
-        });
-
-        it('chama addLog ao resgatar com sucesso', async () => {
-            const { addLog: mockAddLog } = require('../src/logger/logger');
-            mModel.findOne.mockResolvedValueOnce(null);
-            mModel.create.mockResolvedValueOnce({ userId: 'u1', nextDailyReward: null });
-            mockInventoryModel.findOneAndUpdate.mockResolvedValueOnce({ dailyRewardStreak: 1 });
-
-            await service.claimDaily('u1');
-            expect(mockAddLog).toHaveBeenCalledWith('DB', 'inventory.daily', expect.stringContaining('u1'));
+        it('propaga falha de persistência em vez de anunciar sucesso',async()=>{
+            mockInventoryModel.findOneAndUpdate.mockRejectedValueOnce(new Error('isolated write failure'));
+            await expect(service.claimDaily('123456789012345678')).rejects.toThrow('isolated write failure');
         });
     });
 
@@ -280,7 +230,7 @@ describe('UserInventoryService', () => {
         });
 
         it('retorna available=true quando inventário não existe', async () => {
-            mModel.findOne.mockResolvedValueOnce(null);
+            mockInventoryModel.findOne.mockResolvedValueOnce(null);
 
             const status = await service.getDailyStatus('user-005');
             expect(status.available).toBe(true);
@@ -293,12 +243,12 @@ describe('UserInventoryService', () => {
 
 describe('SkinService.getSkinsId', () => {
     let service;
-    let mModel;
+    let mockLocalModel;
 
     beforeEach(() => {
         jest.resetModules();
 
-        mModel = {
+        mockLocalModel = {
             findOne: jest.fn(),
             find: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }),
             findOneAndUpdate: jest.fn(),
@@ -309,9 +259,9 @@ describe('SkinService.getSkinsId', () => {
         jest.mock('mongoose', () => ({
             connect: jest.fn().mockResolvedValue(true),
             connection: { readyState: 1 },
-            model: jest.fn(() => mModel),
+            model: jest.fn(() => mockLocalModel),
             models: {},
-            Schema: class Schema { constructor() {} },
+            Schema: class Schema { constructor() {} index() {} },
         }));
 
         jest.mock('../src/logger/logger', () => ({
@@ -329,17 +279,17 @@ describe('SkinService.getSkinsId', () => {
         }));
 
         service = require('../src/database/services/SkinService');
-        service.model = mModel;
+        service.model = mockLocalModel;
     });
 
     it('retorna array vazio quando não há skins', async () => {
-        mModel.find.mockReturnValueOnce({ lean: jest.fn().mockResolvedValue([]) });
+        mockLocalModel.find.mockReturnValueOnce({ lean: jest.fn().mockResolvedValue([]) });
         const result = await service.getSkinsId('epic');
         expect(result).toEqual([]);
     });
 
     it('retorna todos os grupos quando rarity não é passado', async () => {
-        mModel.find.mockReturnValueOnce({ lean: jest.fn().mockResolvedValue([
+        mockLocalModel.find.mockReturnValueOnce({ lean: jest.fn().mockResolvedValue([
             { epicQuantity: 2, epic: [{ id: 1 }, { id: 2 }], legacyQuantity: 0, legendaryQuantity: 0, ultimateQuantity: 0, transcendentQuantity: 0, mythicQuantity: 0 }
         ]) });
         const result = await service.getSkinsId();
@@ -350,7 +300,7 @@ describe('SkinService.getSkinsId', () => {
 
     it('normaliza campos de raridade que são objeto ({}) para array vazio', async () => {
         // Documentos legados com {} em vez de []
-        mModel.find.mockReturnValueOnce({ lean: jest.fn().mockResolvedValue([
+        mockLocalModel.find.mockReturnValueOnce({ lean: jest.fn().mockResolvedValue([
             { epicQuantity: 1, epic: {}, legacyQuantity: 0, legendaryQuantity: 0, ultimateQuantity: 0, transcendentQuantity: 0, mythicQuantity: 0 }
         ]) });
         const result = await service.getSkinsId('epic');
@@ -367,12 +317,12 @@ describe.each([
     ['SkinsIdListService', '../src/database/services/SkinsIdListService', 'updateSkinIdList', [{ id: 1001, name: 'Default Aatrox', championId: 'Aatrox', championName: 'Aatrox', updatePatch: '14.1' }]],
 ])('%s.%s', (serviceName, path, method, sampleData) => {
     let service;
-    let mModel;
+    let mockLocalModel;
 
     beforeEach(() => {
         jest.resetModules();
 
-        mModel = {
+        mockLocalModel = {
             findOne: jest.fn(),
             find: jest.fn(),
             findOneAndUpdate: jest.fn(),
@@ -383,9 +333,9 @@ describe.each([
         jest.mock('mongoose', () => ({
             connect: jest.fn().mockResolvedValue(true),
             connection: { readyState: 1 },
-            model: jest.fn(() => mModel),
+            model: jest.fn(() => mockLocalModel),
             models: {},
-            Schema: class Schema { constructor() {} },
+            Schema: class Schema { constructor() {} index() {} },
         }));
 
         jest.mock('../src/logger/logger', () => ({
@@ -395,14 +345,14 @@ describe.each([
             forceSendLogs: jest.fn(),
         }));
 
-        service = require(path);
-        service.model = mModel;
+        service = jest.requireActual(path);
+        service.model = mockLocalModel;
     });
 
     it('chama bulkWrite com upsert correto', async () => {
         await service[method](sampleData);
-        expect(mModel.bulkWrite).toHaveBeenCalledTimes(1);
-        const ops = mModel.bulkWrite.mock.calls[0][0];
+        expect(mockLocalModel.bulkWrite).toHaveBeenCalledTimes(1);
+        const ops = mockLocalModel.bulkWrite.mock.calls[0][0];
         expect(ops[0]).toHaveProperty('updateOne');
         expect(ops[0].updateOne.update).toHaveProperty('$set');
         expect(ops[0].updateOne.upsert).toBe(true);
@@ -415,7 +365,7 @@ describe.each([
     });
 
     it('repropaga erro em caso de falha no bulkWrite', async () => {
-        mModel.bulkWrite.mockRejectedValueOnce(new Error('DB write failed'));
+        mockLocalModel.bulkWrite.mockRejectedValueOnce(new Error('DB write failed'));
         await expect(service[method](sampleData)).rejects.toThrow('DB write failed');
     });
 });

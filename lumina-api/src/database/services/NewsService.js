@@ -27,6 +27,7 @@ class NewsService extends DatabaseService {
      * Lista posts publicados, ordenados por pinned desc + publishedAt desc.
      */
     async listPublished({ limit = 20, offset = 0 } = {}) {
+        await this.connect();
         const safeLimit  = Math.min(Math.max(Number(limit) || 20, 1), 100);
         const safeOffset = Math.max(Number(offset) || 0, 0);
         return this.model
@@ -38,6 +39,7 @@ class NewsService extends DatabaseService {
     }
 
     async getById(id) {
+        await this.connect();
         if (!id) return null;
         return this.model.findById(id).lean();
     }

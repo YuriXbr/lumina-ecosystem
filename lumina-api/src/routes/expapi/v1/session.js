@@ -54,45 +54,12 @@ module.exports = {
                 });
             }
             if (authError || !account) {
-                return res.status(200).json({ authenticated: false });
+                return res.status(authError?.status || 503).json({ error: 'Não foi possível verificar a sessão.', code: authError?.code || 'SESSION_UNAVAILABLE' });
             }
 
             return res.status(200).json({
                 authenticated: true,
-                user: {
-                    accountId: account.accountId,
-                    firstName: account.firstName,
-                    lastName: account.lastName,
-                    email: account.email,
-                    accessType: account.accessType || 'user',
-                    emailVerified: account.emailVerified || false,
-                    discordOauth2Id: account.discordOauth2Id || '',
-                    hasPassword: !!account.password,
-                    authProviders: Object.keys(account.authProviders || {}),
-                    id: account.discordOauth2Id || '',
-                    avatar: account.discordAvatar || '',
-                    registrationDate: account.registrationDate,
-                    lastLogin: account.lastLogin,
-                    blocked: account.blocked || false,
-                    banned: account.banned || false,
-                    emailNotifications: account.emailNotifications ?? true,
-                    discordNotifications: account.discordNotifications ?? true,
-                    botActivityAlerts: account.botActivityAlerts || false,
-                    publicProfile: account.publicProfile || false,
-                    showOnlineStatus: account.showOnlineStatus ?? true,
-                    language: account.language || 'pt-BR',
-                    timezone: account.timezone || 'America/Sao_Paulo',
-                    // Identidade pública
-                    username: account.username || '',
-                    displayName: account.displayName || '',
-                    usernameChangedAt: account.usernameChangedAt || null,
-                    displayNameChangedAt: account.displayNameChangedAt || null,
-                    // Account closure
-                    deletionRequestedAt: account.deletionRequestedAt || null,
-                    deletionScheduledFor: account.deletionScheduledFor || null,
-                    // Discord OAuth scope (para detectar escopo antigo no frontend)
-                    discordOauth2TokenScope: account.discordOauth2TokenScope || '',
-                },
+                user: require('../../../utils/accountDto').accountDto(account),
             });
         } catch (error) {
             return routeError({

@@ -63,70 +63,26 @@ function pickRarity(probabilities, randomValue = Math.random()) {
     return null;
 }
 
-/**
- * Sorteia uma skin de um baú para o usuário.
- *
- * CORREÇÃO DE SEGURANÇA (race condition / double-spend): o débito de
- * chave+baú agora é feito via UserInventoryService.spendKeyAndChest, uma
- * operação atômica condicional no MongoDB. Duas chamadas concorrentes para
- * o mesmo usuário NUNCA conseguem debitar o mesmo recurso duas vezes —
- * a segunda chamada recebe `null` e a rota responde 400 (sem recurso),
- * em vez de conceder uma skin "de graça".
- *
- * @returns {Promise<object|null>} dados da skin sorteada, ou null se o
- *          usuário não possuía chave/baú suficiente.
+/** Select first, then debit and award together in one conditional write.
+ * A catalog failure changes no balance; an insufficient balance awards nothing.
  */
 async function rollSkin(userId, chest) {
-    const debited = await InventoryService.spendKeyAndChest(userId, chest);
-    if (!debited) {
-        return null; // sem chave ou baú suficiente — nada foi debitado
-    }
-
-    try {
-        const skinsQuantity = await SkinService.getSkinsQuantity();
-        const probabilities = computeProbabilities(chest, skinsQuantity);
-        const chosenRarity = pickRarity(probabilities);
-
-        if (!chosenRarity) {
-            throw new Error('Não foi possível determinar a raridade da skin sorteada.');
-        }
-
-        const skinsId = await SkinService.getSkinsId(chosenRarity);
-        if (!skinsId?.length) {
-            throw new Error(`Nenhuma skin disponível na raridade: ${chosenRarity}`);
-        }
-
-        const selectedSkinId = skinsId[Math.floor(Math.random() * skinsId.length)];
-        const selectedSkin = await SkinService.getSkinInfo(selectedSkinId);
-        if (!selectedSkin) {
-            throw new Error('Erro ao buscar informações da skin sorteada.');
-        }
-
-        await SkinService.addSkinToInventory(userId, selectedSkin.id, selectedSkin.rarity);
-
-        return {
-            skinId: selectedSkin.id,
-            skinName: selectedSkin.name,
-            rarity: chosenRarity,
-            championId: selectedSkin.championId,
-            championName: selectedSkin.championName,
-            isBase: selectedSkin.isBase,
-            isLegacy: selectedSkin.isLegacy,
-            skinLines: selectedSkin.skinLines,
-            splashPath: selectedSkin.splashPath,
-            loadScreenPath: selectedSkin.loadScreenPath,
-            tilePath: selectedSkin.tilePath,
-            uncenteredSplashPath: selectedSkin.uncenteredSplashPath,
-        };
-    } catch (error) {
-        // O débito já ocorreu e não pode ser silenciosamente perdido: devolve
-        // a chave e o baú ao usuário antes de propagar o erro, para não gerar
-        // um débito "fantasma" caso o sorteio falhe depois do pagamento.
-        await InventoryService.addInventory(userId, 'keys', 1).catch(() => {});
-        await InventoryService.addInventory(userId, chest, 1).catch(() => {});
-        addLog('API', 'gacha.rollback', `Reembolso de baú/chave para ${userId} após falha: ${error.message}`);
-        throw error;
-    }
+    if (!['hextechChests', 'masterWorkChests'].includes(chest)) throw new Error('Invalid chest type');
+    const skinsQuantity = await SkinService.getSkinsQuantity();
+    const probabilities = computeProbabilities(chest, skinsQuantity);
+    const chosenRarity = pickRarity(probabilities);
+    const skinsId = await SkinService.getSkinsId(chosenRarity);
+    if (!chosenRarity || !skinsId?.length) throw new Error('Nenhuma skin disponível para este sorteio.');
+    const selectedSkin = await SkinService.getSkinInfo(skinsId[Math.floor(Math.random() * skinsId.length)]);
+    if (!selectedSkin) throw new Error('Skin indisponível. Nenhum recurso foi consumido.');
+    const awarded = await InventoryService.awardSkinAndSpend(userId, chest, selectedSkin.id);
+    if (!awarded) return null;
+    return {
+        skinId: selectedSkin.id, skinName: selectedSkin.name, rarity: chosenRarity,
+        championId: selectedSkin.championId, championName: selectedSkin.championName,
+        isBase: selectedSkin.isBase, isLegacy: selectedSkin.isLegacy, skinLines: selectedSkin.skinLines,
+        splashPath: selectedSkin.splashPath, loadScreenPath: selectedSkin.loadScreenPath,
+        tilePath: selectedSkin.tilePath, uncenteredSplashPath: selectedSkin.uncenteredSplashPath,
+    };
 }
-
 module.exports = { rollSkin, computeProbabilities, pickRarity, RARITY_ORDER };

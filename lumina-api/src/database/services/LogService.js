@@ -68,17 +68,8 @@ class LogService extends DatabaseService {
      * Chamado uma vez por cold-start (idempotente no MongoDB).
      */
     async _ensureIndexes() {
-        if (this._indexesEnsured) return;
-        try {
-            await this.connect();
-            await this.model.collection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-            await this.model.collection.createIndex({ requestId: 1 });
-            await this.model.collection.createIndex({ level: 1, createdAt: -1 });
-            await this.model.collection.createIndex({ route: 1, createdAt: -1 });
-            this._indexesEnsured = true;
-        } catch (e) {
-            console.error('[LogService] Falha ao criar índices:', e.message);
-        }
+        // Indexes are applied explicitly by migrate:security, never on request paths.
+        await this.connect();
     }
 
     /**
@@ -118,12 +109,12 @@ class LogService extends DatabaseService {
         };
 
         // Escrita no DB de forma não-bloqueante — não propaga exceção para a rota
-        this._writeToDb(entry);
+        await this._writeToDb(entry);
 
         // Discord webhook para níveis relevantes, com rate limiting interno
         const meta = LEVEL_META[level] || LEVEL_META.info;
         if (meta.minDiscord && this._webhookUrl && _canSendDiscord()) {
-            this._sendDiscordEmbed(entry, meta);
+            await this._sendDiscordEmbed(entry, meta);
         } else if (meta.minDiscord && this._webhookUrl) {
             // Rate limit atingido — apenas loga no console, não perde o evento
             console.warn(`[LogService] Discord rate limit atingido, embed suprimido: ${level} ${action}`);

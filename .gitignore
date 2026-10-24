@@ -1,4 +1,7 @@
 # Environment variables
+.env*
+!.env.example
+!.env.*.example
 .env
 .env.dev
 .env.local
@@ -49,6 +52,8 @@ Thumbs.db
 .coverage/
 .cache/
 .parcel-cache/
+
+.private/
 
 # Temporary files
 *.tmp

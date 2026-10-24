@@ -1,7 +1,6 @@
-const jwt = require('jsonwebtoken');
 const DashboardAccountService = require('../../../database/services/DashboardAccountService.js');
 const { routeError, addLog } = require('../../../logger/logger');
-const { setAuthCookie } = require('../../../utils/authHelpers');
+const { setAuthCookie, issueSessionToken } = require('../../../utils/authHelpers');
 
 const ROUTE = 'POST /expapi/v1/login';
 // Endpointed Checked on V1.2.0
@@ -30,6 +29,9 @@ module.exports = {
         const { email, password } = req.body;
         if (!email || !password) {
             return res.status(400).json({ error: 'Email e senha são obrigatórios.', code: 'MISSING_FIELDS' });
+        }
+        if (typeof email !== 'string' || typeof password !== 'string' || email.length > 254 || !/^[\w.+-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(email.trim())) {
+            return res.status(401).json({error:'Email ou senha incorretos.',code:'INVALID_CREDENTIALS'});
         }
 
         try {
@@ -61,51 +63,17 @@ module.exports = {
                 addLog('DB', 'login.update.fail', 'Falha ao atualizar lastLogin: ' + updateErr.message);
             }
 
-            const token = jwt.sign(
-                {
-                    email: account.email,
-                    accountId: account.accountId,
-                    firstName: account.firstName,
-                    lastName: account.lastName,
-                    discordId: account.discordId || null,
-                },
-                process.env.JWT_SECRET,
-                { expiresIn: '1h' }
-            );
+            const token = issueSessionToken(account);
 
             // Seta cookie httpOnly (imune a XSS) para o dashboard SPA.
-            // O token tambem e retornado no JSON para clients nao-browser (CLI, scripts).
+            // A resposta JSON não expõe a credencial de sessão.
             setAuthCookie(res, token);
 
             // Audit #6: inclui o objeto `user` na resposta para o frontend não
             // precisar chamar /session separadamente (evita race do cookie).
             return res.status(200).json({
-                token,
                 hasPassword: !!account.password,
-                user: {
-                    accountId: account.accountId,
-                    email: account.email,
-                    firstName: account.firstName,
-                    lastName: account.lastName,
-                    accessType: account.accessType || 'user',
-                    emailVerified: account.emailVerified || false,
-                    discordOauth2Id: account.discordOauth2Id || '',
-                    authProviders: Object.keys(account.authProviders || {}),
-                    hasPassword: !!account.password,
-                    language: account.language || 'pt-BR',
-                    timezone: account.timezone || 'America/Sao_Paulo',
-                    username: account.username || '',
-                    displayName: account.displayName || '',
-                    emailNotifications: account.emailNotifications ?? true,
-                    discordNotifications: account.discordNotifications ?? true,
-                    botActivityAlerts: account.botActivityAlerts || false,
-                    publicProfile: account.publicProfile || false,
-                    showOnlineStatus: account.showOnlineStatus ?? true,
-                    blocked: account.blocked || false,
-                    banned: account.banned || false,
-                    registrationDate: account.registrationDate,
-                    lastLogin: account.lastLogin,
-                },
+                user: require('../../../utils/accountDto').accountDto(account),
             });
         } catch (error) {
             switch (error.code) {

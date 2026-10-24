@@ -49,6 +49,7 @@ describe('GET /expapi/v1/myinventory', () => {
 
     it('200 retorna inventário existente', async () => {
         const account = makeAccount({
+            discordOauth2Id: '123456789012345678',
             discordOauth2Token: 'valid',
             discordOauth2TokenExpiresAt: new Date(Date.now() + 3600 * 1000),
         });
@@ -76,6 +77,7 @@ describe('GET /expapi/v1/myinventory', () => {
 
     it('200 cria inventário se não existir', async () => {
         const account = makeAccount({
+            discordOauth2Id: '123456789012345678',
             discordOauth2Token: 'valid',
             discordOauth2TokenExpiresAt: new Date(Date.now() + 3600 * 1000),
         });
@@ -84,16 +86,17 @@ describe('GET /expapi/v1/myinventory', () => {
         axios.get.mockResolvedValueOnce({ data: { id: '123456789012345678' } });
 
         InventoryService.getInventory.mockResolvedValueOnce(null);
-        InventoryService.create.mockResolvedValueOnce(makeInventory({ userId: '123456789012345678' }));
+        InventoryService.ensureInventory.mockResolvedValueOnce(makeInventory({ userId: '123456789012345678' }));
 
         const res = await request(app).get(URL).set(authHeader());
 
         expect(res.status).toBe(200);
-        expect(InventoryService.create).toHaveBeenCalledWith({ userId: '123456789012345678' });
+        expect(InventoryService.ensureInventory).toHaveBeenCalledWith('123456789012345678');
     });
 
     it('200 dailyRewardAvailable=false quando nextDailyReward é futuro', async () => {
         const account = makeAccount({
+            discordOauth2Id: '123456789012345678',
             discordOauth2Token: 'valid',
             discordOauth2TokenExpiresAt: new Date(Date.now() + 3600 * 1000),
         });
@@ -118,18 +121,19 @@ describe('GET /expapi/v1/myinventory', () => {
     });
 
     // ─── Erros do resolveDiscordAccount ───────────────────────────────────
-    it('400 DISCORD_NOT_LINKED quando conta não tem Discord', async () => {
+    it('403 DISCORD_NOT_LINKED quando conta não tem Discord', async () => {
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(
             makeAccount({ discordOauth2Token: '' })
         );
 
         const res = await request(app).get(URL).set(authHeader());
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(403);
         expect(res.body.code).toBe('DISCORD_NOT_LINKED');
     });
 
-    it('502 DISCORD_API_ERROR quando Discord falha (não 401)', async () => {
+    it('200 funciona com Discord indisponível, sem consulta externa', async () => {
         const account = makeAccount({
+            discordOauth2Id: '123456789012345678',
             discordOauth2Token: 'valid',
             discordOauth2TokenExpiresAt: new Date(Date.now() + 3600 * 1000),
         });
@@ -138,14 +142,16 @@ describe('GET /expapi/v1/myinventory', () => {
         const err = new Error('Discord failed');
         err.response = { status: 500 };
         axios.get.mockRejectedValueOnce(err);
+        InventoryService.getInventory.mockResolvedValueOnce(makeInventory());
 
         const res = await request(app).get(URL).set(authHeader());
-        expect(res.status).toBe(502);
-        expect(res.body.code).toBe('DISCORD_API_ERROR');
+        expect(res.status).toBe(200);
+        expect(axios.get).not.toHaveBeenCalled();
     });
 
-    it('403 DISCORD_TOKEN_EXPIRED quando Discord retorna 401', async () => {
+    it('200 usa o vínculo persistido mesmo com token OAuth expirado', async () => {
         const account = makeAccount({
+            discordOauth2Id: '123456789012345678',
             discordOauth2Token: 'expired-on-discord-side',
             discordOauth2TokenExpiresAt: new Date(Date.now() + 3600 * 1000),
         });
@@ -154,15 +160,17 @@ describe('GET /expapi/v1/myinventory', () => {
         const err = new Error('unauthorized');
         err.response = { status: 401 };
         axios.get.mockRejectedValueOnce(err);
+        InventoryService.getInventory.mockResolvedValueOnce(makeInventory());
 
         const res = await request(app).get(URL).set(authHeader());
-        expect(res.status).toBe(403);
-        expect(res.body.code).toBe('DISCORD_TOKEN_EXPIRED');
+        expect(res.status).toBe(200);
+        expect(axios.get).not.toHaveBeenCalled();
     });
 
     // ─── 500 Erro interno ─────────────────────────────────────────────────
     it('500 erro no InventoryService', async () => {
         const account = makeAccount({
+            discordOauth2Id: '123456789012345678',
             discordOauth2Token: 'valid',
             discordOauth2TokenExpiresAt: new Date(Date.now() + 3600 * 1000),
         });

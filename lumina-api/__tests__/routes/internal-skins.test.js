@@ -12,10 +12,12 @@
 const request = require('supertest');
 const {
     JWT_SECRET, INTERNAL_KEY, internalKey,
-    mockLogger, mockSkinService, mockInventoryService,
+    mockLogger, mockSkinService, mockInventoryService, mockDashboardAccountService,
 } = require('../helpers/testUtils');
 
 mockLogger();
+const accounts = mockDashboardAccountService();
+beforeEach(() => accounts.getOne.mockResolvedValue({ publicProfile: true }));
 mockSkinService();
 mockInventoryService();
 
@@ -178,13 +180,10 @@ describe('GET|POST /expapi/internal/fetchuserskins (PÚBLICA)', () => {
         expect(res.body.code).toBe('INVALID_USER_ID');
     });
 
-    it('200 sanitiza userId removendo não-dígitos', async () => {
-        SkinService.fetchUserSkins.mockResolvedValueOnce([]);
-
-        await request(app).get(`${URL}?userId=abc123def456`);
-
-        // O route substitui tudo que não é dígito por ''
-        expect(SkinService.fetchUserSkins).toHaveBeenCalledWith('123456');
+    it('400 rejeita IDs misturados com letras sem consultar a coleção', async () => {
+        const res = await request(app).get(`${URL}?userId=abc123def456`);
+        expect(res.status).toBe(400);
+        expect(SkinService.fetchUserSkins).not.toHaveBeenCalled();
     });
 
     it('200 retorna array vazio quando service retorna null', async () => {

@@ -26,42 +26,42 @@ jest.mock('mongoose', () => {
 
 describe('InventoryService', () => {
   it('should add inventory', async () => {
-    const mockResult = { userId: '123', item: 'testItem', amount: 10 };
+    const mockResult = { userId: '123456789012345678', item: 'keys', amount: 10 };
     mongoose.model().findOneAndUpdate.mockResolvedValue(mockResult);
 
-    const result = await InventoryService.addInventory('123', 'testItem', 10);
+    const result = await InventoryService.addInventory('123456789012345678', 'keys', 10);
     expect(result).toEqual(mockResult);
     expect(mongoose.model().findOneAndUpdate).toHaveBeenCalledWith(
-      { userId: '123' },
-      { $inc: { testItem: 10 } },
-      { upsert: true, new: true }
+      { userId: '123456789012345678', keys: { $lte: Number.MAX_SAFE_INTEGER - 10 } },
+      { $inc: { keys: 10 } },
+      { new: true }
     );
   });
 
   it('should remove inventory', async () => {
-    const mockResult = { userId: '123', item: 'testItem', amount: 5 };
+    const mockResult = { userId: '123456789012345678', item: 'keys', amount: 5 };
     mongoose.model().findOneAndUpdate.mockResolvedValue(mockResult);
 
-    const result = await InventoryService.removeInventory('123', 'testItem', 5);
+    const result = await InventoryService.removeInventory('123456789012345678', 'keys', 5);
     expect(result).toEqual(mockResult);
     expect(mongoose.model().findOneAndUpdate).toHaveBeenCalledWith(
-      { userId: '123' },
-      { $inc: { testItem: -5 } },
-      { upsert: true, new: true }
+      { userId: '123456789012345678', keys: { $gte: 5 } },
+      { $inc: { keys: -5 } },
+      { new: true }
     );
   });
 
   it('should fetch inventory for a user', async () => {
-    const mockResult = { userId: '123', items: [] };
+    const mockResult = { userId: '123456789012345678', items: [] };
     mongoose.model().findOne.mockResolvedValue(mockResult);
 
-    const result = await InventoryService.getInventory('123');
+    const result = await InventoryService.getInventory('123456789012345678');
     expect(result).toEqual(mockResult);
-    expect(mongoose.model().findOne).toHaveBeenCalledWith({userId: '123' });
+    expect(mongoose.model().findOne).toHaveBeenCalledWith({userId: '123456789012345678' });
   });
 
   it('should fetch all inventories for a guild', async () => {
-    const mockResult = [{ userId: '123', items: [] }, { userId: '456', items: [] }];
+    const mockResult = [{ userId: '123456789012345678', items: [] }, { userId: '456', items: [] }];
     mongoose.model().find.mockResolvedValue(mockResult);
 
     const result = await InventoryService.getAllInventories();
@@ -73,9 +73,9 @@ describe('InventoryService', () => {
     const mockResult = { deletedCount: 1 };
     mongoose.model().findOneAndDelete.mockResolvedValue(mockResult);
 
-    const result = await InventoryService.resetInventory('123');
+    const result = await InventoryService.resetInventory('123456789012345678');
     expect(result).toEqual(mockResult);
-    expect(mongoose.model().findOneAndDelete).toHaveBeenCalledWith({userId: '123' });
+    expect(mongoose.model().findOneAndDelete).toHaveBeenCalledWith({userId: '123456789012345678' });
   });
 });
 

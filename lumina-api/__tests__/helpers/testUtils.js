@@ -256,7 +256,7 @@ function mockLogger() {
 }
 
 function mockDashboardAccountService() {
-    jest.mock('../../src/utils/sessionStore',()=>({isRevoked:jest.fn().mockResolvedValue(false),revokeToken:jest.fn().mockResolvedValue(),createTransaction:jest.fn().mockResolvedValue(),consumeTransaction:jest.fn().mockResolvedValue(true),createExchange:jest.fn().mockResolvedValue('test-exchange-code'),consumeExchange:jest.fn()}));
+    jest.mock('../../src/utils/sessionStore',()=>({isRevoked:jest.fn().mockResolvedValue(false),revokeToken:jest.fn().mockResolvedValue(),createTransaction:jest.fn().mockResolvedValue(),consumeTransaction:jest.fn().mockResolvedValue(true),createExchange:jest.fn().mockResolvedValue('A'.repeat(43)),consumeExchange:jest.fn()}));
     jest.mock('../../src/database/services/DashboardAccountService', () => ({
         checkCredentials: jest.fn(),
         registerNewDashboardAccount: jest.fn(),

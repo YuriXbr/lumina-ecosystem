@@ -12,10 +12,12 @@
 const request = require('supertest');
 const {
     JWT_SECRET, makeJwt, cookieAuth,
-    mockLogger,
+    mockLogger, mockDashboardAccountService,
 } = require('../helpers/testUtils');
 
 mockLogger();
+mockDashboardAccountService();
+jest.mock('../../src/utils/sessionStore',()=>({createTransaction:jest.fn().mockResolvedValue(),isRevoked:jest.fn().mockResolvedValue(false)}));
 
 const app = require('../../index');
 
@@ -99,6 +101,7 @@ describe('GET /expapi/oauth2/:provider/auth/start', () => {
     });
 
     it('302 aceita intent=link quando cookie JWT válido', async () => {
+        require('../../src/database/services/DashboardAccountService').getDashboardAccountByEmail.mockResolvedValueOnce({accountId:'acc-mine-1',email:'tester@example.com'});
         const token = makeJwt({ accountId: 'acc-mine-1' });
         const res = await request(app)
             .get('/expapi/oauth2/discord/auth/start?origin=https://luminasink.me&intent=link')

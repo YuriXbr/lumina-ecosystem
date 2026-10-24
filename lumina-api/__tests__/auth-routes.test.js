@@ -20,6 +20,7 @@ jest.mock('../src/database/services/DashboardAccountService', () => ({
     getDashboardAccountByEmail: jest.fn(),
     getDashboardAccountByAccountId: jest.fn(),
     changePassword: jest.fn(),
+    isUsernameAvailable: jest.fn(),
     update: jest.fn(),
 }));
 
@@ -35,11 +36,16 @@ jest.mock('../src/logger/logger', () => ({
     requestLogger: jest.fn(() => (req, res, next) => next()),
 }));
 
+jest.mock('../src/utils/sessionStore',()=>({isRevoked:jest.fn().mockResolvedValue(false),revokeToken:jest.fn().mockResolvedValue()}));
+
 // Desabilita o setInterval do logger para evitar open handle
 jest.useFakeTimers();
 
 const DashboardAccountService = require('../src/database/services/DashboardAccountService');
 const app = require('../index');
+const {getCsrfTokens}=require('./helpers/testUtils');
+let csrf;
+const sessionToken=res=>decodeURIComponent(/lumina_token=([^;]+)/.exec(res.headers['set-cookie'].find(c=>c.startsWith('lumina_token=')))[1]);
 
 const JWT_SECRET = 'test-secret';
 const VALID_ACCOUNT = {
@@ -55,6 +61,13 @@ beforeAll(() => {
     process.env.NODE_ENV = 'test';
 });
 
+beforeEach(async()=>{
+ Object.values(DashboardAccountService).forEach(fn=>fn.mockReset?.());
+ DashboardAccountService.getDashboardAccountByEmail.mockResolvedValue(VALID_ACCOUNT);
+ DashboardAccountService.isUsernameAvailable.mockResolvedValue(true);
+ csrf=await getCsrfTokens(app);
+});
+
 afterEach(() => {
     jest.clearAllMocks();
 });
@@ -65,13 +78,13 @@ describe('POST /expapi/v1/login', () => {
     const URL = '/expapi/v1/login';
 
     it('400 se email ou senha estiverem ausentes', async () => {
-        const res = await request(app).post(URL).send({ email: 'user@example.com' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ email: 'user@example.com' });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('MISSING_FIELDS');
     });
 
     it('400 se apenas a senha estiver ausente', async () => {
-        const res = await request(app).post(URL).send({ password: 'Senha123' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ password: 'Senha123' });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('MISSING_FIELDS');
     });
@@ -80,7 +93,7 @@ describe('POST /expapi/v1/login', () => {
         const err = new Error('bad creds'); err.code = 'INVALID_CREDENTIALS';
         DashboardAccountService.checkCredentials.mockRejectedValueOnce(err);
 
-        const res = await request(app).post(URL).send({ email: 'x@x.com', password: 'wrongPass1' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ email: 'x@x.com', password: 'wrongPass1' });
         expect(res.status).toBe(401);
         expect(res.body.code).toBe('INVALID_CREDENTIALS');
     });
@@ -89,7 +102,7 @@ describe('POST /expapi/v1/login', () => {
         const err = new Error('oauth only'); err.code = 'OAUTH_ONLY';
         DashboardAccountService.checkCredentials.mockRejectedValueOnce(err);
 
-        const res = await request(app).post(URL).send({ email: 'x@x.com', password: 'Abc123456' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ email: 'x@x.com', password: 'Abc123456' });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('OAUTH_ONLY');
     });
@@ -98,7 +111,7 @@ describe('POST /expapi/v1/login', () => {
         const err = new Error('banned'); err.code = 'ACCOUNT_BANNED';
         DashboardAccountService.checkCredentials.mockRejectedValueOnce(err);
 
-        const res = await request(app).post(URL).send({ email: 'x@x.com', password: 'Abc123456' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ email: 'x@x.com', password: 'Abc123456' });
         expect(res.status).toBe(403);
         expect(res.body.code).toBe('ACCOUNT_BANNED');
     });
@@ -107,7 +120,7 @@ describe('POST /expapi/v1/login', () => {
         const err = new Error('blocked'); err.code = 'ACCOUNT_BLOCKED';
         DashboardAccountService.checkCredentials.mockRejectedValueOnce(err);
 
-        const res = await request(app).post(URL).send({ email: 'x@x.com', password: 'Abc123456' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ email: 'x@x.com', password: 'Abc123456' });
         expect(res.status).toBe(403);
         expect(res.body.code).toBe('ACCOUNT_BLOCKED');
     });
@@ -116,14 +129,14 @@ describe('POST /expapi/v1/login', () => {
         DashboardAccountService.checkCredentials.mockResolvedValueOnce(VALID_ACCOUNT);
 
         const res = await request(app)
-            .post(URL)
+            .post(URL).set(csrf.headers)
             .send({ email: VALID_ACCOUNT.email, password: 'Correta123' });
 
         expect(res.status).toBe(200);
-        expect(res.body).toHaveProperty('token');
+        expect(res.body).not.toHaveProperty('token');
         expect(res.body).toHaveProperty('hasPassword');
 
-        const decoded = jwt.verify(res.body.token, JWT_SECRET);
+        const decoded = jwt.verify(sessionToken(res), JWT_SECRET);
         expect(decoded.email).toBe(VALID_ACCOUNT.email);
         expect(decoded.accountId).toBe(VALID_ACCOUNT.accountId);
     });
@@ -132,10 +145,10 @@ describe('POST /expapi/v1/login', () => {
         DashboardAccountService.checkCredentials.mockResolvedValueOnce(VALID_ACCOUNT);
 
         const res = await request(app)
-            .post(URL)
+            .post(URL).set(csrf.headers)
             .send({ email: VALID_ACCOUNT.email, password: 'Correta123' });
 
-        const decoded = jwt.decode(res.body.token);
+        const decoded = jwt.decode(sessionToken(res));
         expect(decoded.exp - decoded.iat).toBe(3600);
     });
 });
@@ -150,28 +163,29 @@ describe('POST /expapi/v1/register', () => {
         password: 'Senha123',
         firstName: 'Maria',
         lastName: 'Souza',
+        username: 'testuser',
     };
 
     it('400 se campos obrigatórios estiverem faltando', async () => {
-        const res = await request(app).post(URL).send({ email: 'x@x.com' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ email: 'x@x.com' });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('MISSING_FIELDS');
     });
 
     it('400 para senha muito curta', async () => {
-        const res = await request(app).post(URL).send({ ...validBody, password: 'Ab1' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ ...validBody, password: 'Ab1' });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('WEAK_PASSWORD');
     });
 
     it('400 para senha sem letras maiúsculas', async () => {
-        const res = await request(app).post(URL).send({ ...validBody, password: 'apenas123' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ ...validBody, password: 'apenas123' });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('WEAK_PASSWORD');
     });
 
     it('400 para senha sem números', async () => {
-        const res = await request(app).post(URL).send({ ...validBody, password: 'SenhaForte' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ ...validBody, password: 'SenhaForte' });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('WEAK_PASSWORD');
     });
@@ -179,7 +193,7 @@ describe('POST /expapi/v1/register', () => {
     it('400 se email já estiver cadastrado', async () => {
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(VALID_ACCOUNT);
 
-        const res = await request(app).post(URL).send(validBody);
+        const res = await request(app).post(URL).set(csrf.headers).send(validBody);
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('REGISTRATION_FAILED');
     });
@@ -187,7 +201,7 @@ describe('POST /expapi/v1/register', () => {
     it('400 para email inválido (getDashboardAccountByEmail lança)', async () => {
         DashboardAccountService.getDashboardAccountByEmail.mockRejectedValueOnce(new Error('invalid email'));
 
-        const res = await request(app).post(URL).send({ ...validBody, email: 'nao-e-email' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ ...validBody, email: 'nao-e-email' });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('INVALID_EMAIL');
     });
@@ -196,23 +210,23 @@ describe('POST /expapi/v1/register', () => {
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(null);
         DashboardAccountService.registerNewDashboardAccount.mockResolvedValueOnce({ accountId: 'new-acc-456' });
 
-        const res = await request(app).post(URL).send(validBody);
+        const res = await request(app).post(URL).set(csrf.headers).send(validBody);
         expect(res.status).toBe(200);
         expect(res.body).toHaveProperty('message');
     });
 
-    it('senha com 128 caracteres (limite máximo) deve ser aceita', async () => {
+    it('senha com 72 caracteres (limite máximo) deve ser aceita', async () => {
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(null);
         DashboardAccountService.registerNewDashboardAccount.mockResolvedValueOnce({ accountId: 'acc' });
 
-        const longPass = 'Aa1' + 'x'.repeat(125); // 128 chars
-        const res = await request(app).post(URL).send({ ...validBody, password: longPass });
+        const longPass = 'Aa1' + 'x'.repeat(69); // 72 ASCII bytes
+        const res = await request(app).post(URL).set(csrf.headers).send({ ...validBody, password: longPass });
         expect(res.status).toBe(200);
     });
 
-    it('senha com 129 caracteres (acima do limite) deve ser rejeitada', async () => {
-        const tooLong = 'Aa1' + 'x'.repeat(126); // 129 chars
-        const res = await request(app).post(URL).send({ ...validBody, password: tooLong });
+    it('senha com 73 caracteres (acima do limite) deve ser rejeitada', async () => {
+        const tooLong = 'Aa1' + 'x'.repeat(70); // 73 ASCII bytes
+        const res = await request(app).post(URL).set(csrf.headers).send({ ...validBody, password: tooLong });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('WEAK_PASSWORD');
     });
@@ -222,9 +236,9 @@ describe('POST /expapi/v1/register', () => {
 
 describe('GET /expapi/v1/logout', () => {
     it('redireciona para / e limpa o cookie jwt', async () => {
-        const res = await request(app).get('/expapi/v1/logout');
-        expect(res.status).toBe(302);
-        expect(res.headers.location).toBe('/');
+        const res = await request(app).post('/expapi/v1/logout').set(csrf.headers);
+        expect(res.status).toBe(200);
+        expect(res.headers['set-cookie'].some(c=>c.startsWith('lumina_token=;'))).toBe(true);
     });
 });
 
@@ -242,10 +256,11 @@ describe('GET /expapi/v1/', () => {
 
 describe('GET /expapi/v1/getconfig', () => {
     it('410 Gone (rota desativada)', async () => {
-        const res = await request(app).get('/expapi/v1/getconfig');
+        const res = await request(app).get('/expapi/v1/getconfig').set('Authorization','Bearer '+jwt.sign({email:VALID_ACCOUNT.email,accountId:VALID_ACCOUNT.accountId},JWT_SECRET,{expiresIn:'1h'}));
         // Rota enabled: false — comportamento depende do loader do index.js
         // (pode ser 404 ou 410 dependendo se o loader pula rotas disabled)
-        expect([404, 410]).toContain(res.status);
+        expect(res.status).toBe(501);
+        expect(res.body.code).toBe('ROUTE_DISABLED');
     });
 });
 
@@ -258,13 +273,13 @@ describe('POST /expapi/v1/user/set-password', () => {
         `Bearer ${jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' })}`;
 
     it('401 sem token de autenticação', async () => {
-        const res = await request(app).post(URL).send({ newPassword: 'Nova123' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ newPassword: 'Nova123' });
         expect(res.status).toBe(401);
     });
 
     it('400 se newPassword estiver ausente', async () => {
         const res = await request(app)
-            .post(URL)
+            .post(URL).set(csrf.headers)
             .set('Authorization', makeAuthHeader())
             .send({});
         expect(res.status).toBe(400);
@@ -276,7 +291,7 @@ describe('POST /expapi/v1/user/set-password', () => {
         DashboardAccountService.changePassword.mockRejectedValueOnce(err);
 
         const res = await request(app)
-            .post(URL)
+            .post(URL).set(csrf.headers)
             .set('Authorization', makeAuthHeader())
             .send({ currentPassword: 'errada', newPassword: 'Nova123' });
 
@@ -289,7 +304,7 @@ describe('POST /expapi/v1/user/set-password', () => {
         DashboardAccountService.changePassword.mockRejectedValueOnce(err);
 
         const res = await request(app)
-            .post(URL)
+            .post(URL).set(csrf.headers)
             .set('Authorization', makeAuthHeader())
             .send({ currentPassword: 'Igual123', newPassword: 'Igual123' });
 
@@ -302,7 +317,7 @@ describe('POST /expapi/v1/user/set-password', () => {
         DashboardAccountService.changePassword.mockRejectedValueOnce(err);
 
         const res = await request(app)
-            .post(URL)
+            .post(URL).set(csrf.headers)
             .set('Authorization', makeAuthHeader())
             .send({ newPassword: 'fraca' });
 
@@ -315,7 +330,7 @@ describe('POST /expapi/v1/user/set-password', () => {
         DashboardAccountService.changePassword.mockRejectedValueOnce(err);
 
         const res = await request(app)
-            .post(URL)
+            .post(URL).set(csrf.headers)
             .set('Authorization', makeAuthHeader())
             .send({ newPassword: 'Nova123' });
 
@@ -324,10 +339,10 @@ describe('POST /expapi/v1/user/set-password', () => {
     });
 
     it('200 em troca de senha bem-sucedida', async () => {
-        DashboardAccountService.changePassword.mockResolvedValueOnce(true);
+        DashboardAccountService.changePassword.mockResolvedValueOnce({...VALID_ACCOUNT,sessionVersion:1});
 
         const res = await request(app)
-            .post(URL)
+            .post(URL).set(csrf.headers)
             .set('Authorization', makeAuthHeader())
             .send({ newPassword: 'Nova123' });
 

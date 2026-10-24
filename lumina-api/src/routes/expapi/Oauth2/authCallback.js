@@ -65,6 +65,7 @@ module.exports = {
 
         try {
             if (!await require('../../../utils/sessionStore').consumeTransaction(state.nonce)) return res.status(400).send('Transação OAuth expirada ou já utilizada.');
+            if(intent==='link'&&!state.linkAccountId)return res.redirect(`${state.origin}/oauth/complete?oauthError=link_no_account`);
             res.clearCookie('lumina_oauth', { path: '/expapi/oauth2/', httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' });
             const tokens = await provider.exchangeCode(code);
             const profile = await provider.getProfile(tokens.accessToken);

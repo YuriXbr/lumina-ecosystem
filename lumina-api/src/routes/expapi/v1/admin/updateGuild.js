@@ -157,6 +157,7 @@ module.exports = {
             }
 
             const permitted = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowedFields[k]));
+            if (!Object.keys(permitted).length) return res.status(403).json({ error: 'Nenhum campo permitido para alteração.', code: 'NO_ALLOWED_FIELDS' });
             const filteredData = require('../../../../utils/guildConfig').validateGuildConfig(permitted);
             if (!Object.keys(filteredData).length)
                 return res.status(403).json({ error: 'Nenhum campo permitido para alteração.', code: 'NO_ALLOWED_FIELDS' });

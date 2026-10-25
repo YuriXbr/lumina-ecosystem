@@ -57,14 +57,14 @@ Também foi corrigido o uso de ID ausente em sessões legadas na desvinculação
 
 Não é correto afirmar que todas as páginas e todos os estados já foram revisados visualmente. Faltam concluir a matriz completa de visitante/membro/admin, desktop/mobile, vazio/erro/carregando e integrações autenticadas publicadas. [Capturas](evidencias/) distinguem dados simulados da mensagem real de demonstração.
 
-## Implantação ainda necessária
+## Publicação e verificações pendentes
 
-1. Concluir a matriz visual pendente e testar em staging com integrações reais. A suíte completa da API já passou; manter a branch em revisão até validar a implantação coordenada de API, bot e dashboard.
-2. Preparar ambiente isolado com replica set, credenciais próprias e variáveis de email/segurança conforme [EMAIL.md](EMAIL.md). As credenciais locais não são automaticamente disponibilizadas à Vercel.
-3. Fazer backup e revisar o dry-run dos índices. A migração pode remover o TTL antigo de exclusão direta de contas, criar índices únicos e criptografar tokens antigos; não é uma operação neutra de observação.
-4. Disponibilizar a API que lê o formato legado e o novo formato criptografado **antes** de criptografar tokens existentes. Depois executar a migração controlada de índices/dados, validar a nova API e atualizar bot/dashboard. Evitar rollback para uma versão que não saiba ler tokens criptografados.
-5. Conferir cookie entre os domínios publicados, OAuth de instalação/login/vínculo, recuperação com uma conta controlada, reabertura do console e recuperação de servidores após restart.
-6. Validar Web Analytics e correlação dos cabeçalhos no destino publicado; medir os tempos reais. Não configurar um endpoint OTLP sem um coletor compatível aprovado.
+1. A [publicação corretiva da API e do dashboard](PUBLICACAO.md) foi concluída, com preparação protegida, smoke tests e promoção dos builds testados. As verificações públicas não substituem a matriz visual completa e os fluxos autenticados reais ainda pendentes.
+2. O banco `lumina_development` foi criado separado no Atlas. Os segredos são compartilhados temporariamente por instrução expressa do proprietário; a exceção está documentada em [AMBIENTES.md](AMBIENTES.md).
+3. Backup criptografado conferido e migração de índices/backfill aplicada antes da troca de leitor; tokens legados criptografados somente após a nova API estar disponível. Nenhum token legado em texto simples restou na conferência. Evitar rollback para uma API que não leia `v1`.
+4. O bot Docker atual foi apenas inspecionado e continua fora desta validação de produção, conforme prioridade posterior do proprietário. A correção desse processo foi adiada para focar API/dashboard e a Zenith.
+5. Conferir cookies, OAuth de instalação/login/vínculo, recuperação com conta controlada e geolocalização real em novo acesso. A revisão do console e da reconciliação com bot atualizado precisa ocorrer na validação conjunta da Zenith.
+6. Validar Web Analytics e correlação no destino publicado e medir p95/p99 reais. Não configurar OTLP sem um coletor aprovado. Não publicar Zenith antes de bot, API e dashboard completos.
 
 ## Modelos e evolução de produto
 
@@ -76,6 +76,6 @@ O [estudo de concorrentes](CONCORRENTES.md) compara referências oficiais de Dyn
 
 A revisão de configuração e seus achados adicionais estão em [AMBIENTES.md](AMBIENTES.md). API e bot passaram novamente com 1.023 e 18 testes respectivamente, além de 4 testes do auditor de ambientes. Os 518 testes do dashboard e seu build passaram. A conferência do bundle não encontrou os segredos locais conhecidos. O plano de evolução estrutural e da economia está em [ARQUITETURA-E-EVOLUCAO.md](ARQUITETURA-E-EVOLUCAO.md).
 
-As variáveis de Gmail/recuperação foram configuradas na API da Vercel e foram removidas 41 entradas do dashboard e 27 da API. Ainda não existe nova publicação em produção. Permanecem a preparação de deployment sem domínios, migração controlada e revisão autenticada. O banco `lumina_development` foi criado no Atlas sem cópia de dados pessoais; por instrução explícita posterior, os segredos de produção são reutilizados temporariamente, com a exceção registrada no auditor. A [localização aproximada](LOCALIZACAO.md) usa apenas cabeçalhos Cloudflare com origem verificada.
+As variáveis de Gmail/recuperação foram configuradas na API da Vercel e foram removidas 41 entradas do dashboard e 27 da API. A [publicação e migração controlada](PUBLICACAO.md) foram concluídas; permanecem a revisão autenticada e os demais limites descritos nas evidências. A [localização aproximada](LOCALIZACAO.md) usa apenas cabeçalhos Cloudflare com origem verificada.
 
 Branch enviada e [PR #9 em rascunho](https://github.com/YuriXbr/lumina-ecosystem/pull/9). O envio acionou previews automáticos da Vercel; isso não equivale a merge/publicação em produção nem à validação das integrações em staging. Segredos e arquivos de `.private` continuam fora do Git.

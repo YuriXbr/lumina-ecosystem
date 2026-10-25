@@ -68,4 +68,4 @@ O proprietário autenticou a CLI Vercel e a limpeza remota foi concluída: remov
 - Auditor de configuração: 4 testes aprovados; sem entradas desconhecidas. `--check --allow-shared-secrets` passou com a exceção temporária solicitada pelo proprietário; o banco permanece separado.
 - Dashboard: 518 testes aprovados e novo build aprovado; lint com 0 erros e 133 avisos legados. A política de privacidade passou a descrever o registro aproximado de cadastro e último login.
 - Busca das credenciais locais da API/bot no bundle gerado: zero correspondências. Isso não é garantia geral de inexistência de segredos; cobre os valores conhecidos nessa conferência.
-- Vercel: dez entradas de email relidas no projeto correto, somente em produção; cinco privadas com tipo sensível. Nenhuma promoção de deployment ou migração de dados foi executada nesta etapa.
+- Vercel: dez entradas de email relidas no projeto correto, somente em produção; cinco privadas com tipo sensível. API/dashboard foram posteriormente promovidos e a migração controlada foi aplicada; evidências e limites em [PUBLICACAO.md](PUBLICACAO.md).

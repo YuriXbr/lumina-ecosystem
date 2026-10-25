@@ -43,13 +43,7 @@
 // ============================
 // 0. ENV (mesmo padrão do index.js)
 // ============================
-if (process.env.NODE_ENV !== 'production') {
-    require('@dotenvx/dotenvx').config({ path: '.env.dev' });
-    console.log('[sync-guilds] Running in development mode (.env.dev)');
-} else {
-    require('@dotenvx/dotenvx').config({ path: '.env' });
-    console.log('[sync-guilds] Running in production mode (.env)');
-}
+require('./src/utils/loadEnvironment')();
 
 const { Client, GatewayIntentBits } = require('discord.js');
 

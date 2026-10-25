@@ -8,9 +8,9 @@
     "database": "temporary isolated MongoDB replica set for integration tests"
   },
   "api": {
-    "command": "npm test -- --runInBand --silent --json",
-    "suites": 70,
-    "passed": 1002,
+    "command": "npm test -- --json",
+    "suites": 74,
+    "passed": 1023,
     "failed": 0,
     "after_full_run": "47 tests from gacha and internal routes passed in randomized order, seed 24, after removing mock state dependencies"
   },
@@ -21,8 +21,8 @@
     "failed": 0
   },
   "bot": {
-    "command": "node --test test/discord-console.test.js test/security.test.js",
-    "passed": 13,
+    "command": "node --test test/*.test.js",
+    "passed": 18,
     "failed": 0
   },
   "build": {
@@ -39,9 +39,9 @@
   "sql": {
     "parser": "pglast 8.7",
     "syntax": "passed",
-    "addendum_statements": 19,
-    "combined_tables": 57,
-    "foreign_key_targets_found": 75,
+    "addendum_statements": 20,
+    "combined_tables": 58,
+    "foreign_key_targets_found": 76,
     "executed": false
   },
   "visual": {

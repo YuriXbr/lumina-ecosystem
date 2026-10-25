@@ -16,7 +16,7 @@ module.exports = {
 
     execute(interaction, t) {
         const translator = t || i18n.getTranslator(i18n.resolveFromInteraction(interaction));
-        const url = `${process.env.DASHBOARD_PROTOCOL || 'https'}://${process.env.DASHBOARD_HOST || 'luminasink.com'}`;
+        const url = `${process.env.DASHBOARD_PROTOCOL || 'https'}://${process.env.DASHBOARD_HOST || 'bot.luminasink.com'}`;
 
         const embed = new EmbedBuilder()
             .setTitle(translator('cmd.dashboard.title'))

@@ -6,6 +6,9 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const { encryptSecret } = require('../src/utils/secretEncryption');
 const apply = process.argv.includes('--apply');
+// Safe pre-release phase: indexes/backfill remain readable by the old API.
+// Token encryption must run only after the new reader is serving production.
+const indexesOnly = process.argv.includes('--indexes-only');
 async function main() {
   await mongoose.connect(process.env.MONGODB_URI,{autoIndex:false,autoCreate:false,serverSelectionTimeoutMS:5000});
   const directory = path.resolve(__dirname,'../src/database/services');
@@ -28,12 +31,12 @@ async function main() {
   if (conflicts) throw new Error('Duplicate groups require manual reconciliation; no changes applied.');
   const current = await accounts.indexes();
   const obsolete = current.filter(index => (index.key.deletionScheduledFor && index.expireAfterSeconds!==undefined) || (index.key.usernameLower && index.name!=='username_normalized_unique' && !index.unique));
-  console.log(JSON.stringify({mode:apply?'apply':'dry-run',obsoleteIndexes:obsolete.map(i=>i.name),models:mongoose.modelNames()}));
+  console.log(JSON.stringify({mode:apply?'apply':'dry-run',phase:indexesOnly?'indexes':'indexes-and-secrets',obsoleteIndexes:obsolete.map(i=>i.name),models:mongoose.modelNames()}));
   if (!apply) return;
   for (const index of obsolete) await accounts.dropIndex(index.name);
   await accounts.updateMany({username:''},{$unset:{username:'',usernameLower:''}});
   await accounts.updateMany({username:{$type:'string',$gt:''}},[{$set:{usernameLower:{$toLower:'$username'}}}]);
-  for await (const account of accounts.find({},{projection:{discordOauth2Token:1,discordOauth2RefreshToken:1}})) {
+  if (!indexesOnly) for await (const account of accounts.find({},{projection:{discordOauth2Token:1,discordOauth2RefreshToken:1}})) {
     for (const field of ['discordOauth2Token','discordOauth2RefreshToken']) {
       const value = account[field];
       if (value && !value.startsWith('v1.')) await accounts.updateOne({_id:account._id,[field]:value},{$set:{[field]:encryptSecret(value)}});

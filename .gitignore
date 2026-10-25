@@ -54,6 +54,7 @@ Thumbs.db
 .parcel-cache/
 
 .private/
+.vercel/
 
 # Temporary files
 *.tmp

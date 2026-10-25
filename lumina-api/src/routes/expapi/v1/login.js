@@ -55,8 +55,7 @@ module.exports = {
                 await DashboardAccountService.update({ accountId: account.accountId }, {
                     $set: {
                         lastLogin: new Date(),
-                        lastLoginIp: req.ip || '',
-                        lastLoginUserAgent: req.headers['user-agent'] || '',
+                        ...require('../../../utils/accountRequestMetadata').accountRequestMetadata(req, 'lastLogin'),
                     }
                 });
             } catch (updateErr) {

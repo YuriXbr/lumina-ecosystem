@@ -21,6 +21,10 @@ const axios = require('axios');
 module.exports = {
     name: 'discord',
 
+    isConfigured() {
+        return !!(process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET && process.env.DISCORD_AUTH_REDIRECT_URI);
+    },
+
     getAuthorizationUrl(state, {forceConsent=false}={}) {
         const params = new URLSearchParams({
             client_id: process.env.DISCORD_CLIENT_ID,

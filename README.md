@@ -19,6 +19,8 @@ Built for **communities that love League of Legends, automation, and clean syste
 
 ## 🧠 System Overview
 
+Configuração atual por componente, limpeza das variáveis e limites conhecidos: [guia de ambientes](docs/remediacao-2026-10-22/AMBIENTES.md). Os arquivos privados `.env*` e `.private/` nunca devem entrar em commits ou uploads de deploy. O [plano de arquitetura e evolução](docs/remediacao-2026-10-22/ARQUITETURA-E-EVOLUCAO.md) registra as próximas etapas.
+
 ```
 👾 Discord User
      │

@@ -56,3 +56,9 @@ Base: main sincronizada (cbfa458). Branch: codex/security-design-observability.
 - Pendentes: matriz visual completa, confirmação comercial dos planos, staging e publicação coordenada. Nenhuma contratação ou compra.
 
 A revisão posterior incluiu paginação administrativa pela API, preservação de foco dos modais, campos canônicos de guilda, registros legados e presença do bot. As regressões foram cobertas por testes e os modais mobile foram capturados.
+
+## Evolução estrutural e configuração
+
+O plano complementar em [ARQUITETURA-E-EVOLUCAO.md](ARQUITETURA-E-EVOLUCAO.md) registra a autorização para refazer módulos/fluxos, os critérios de escala e segurança e as decisões da nova economia. A etapa corrente separa as variáveis por componente, remove configuração sem consumidor e prepara a publicação coordenada da API/dashboard.
+
+Etapa adicional: metadados privados de cadastro/último login com localização aproximada da Cloudflare; origem de rede verificada, sem GPS e sem backfill fictício. Plano de publicação: preparar ambos os builds de produção sem domínios, validar API, fazer backup, aplicar `migrate-security.js --apply --indexes-only`, promover API/dashboard e só então criptografar tokens legados com a nova leitora disponível. A API não cria coleções/índices automaticamente em produção.

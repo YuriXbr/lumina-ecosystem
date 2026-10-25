@@ -1,6 +1,7 @@
 'use strict';
 if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
-  require('@dotenvx/dotenvx').config({ path: process.env.NODE_ENV === 'production' ? '.env' : '.env.dev', quiet: true });
+  const path = require('node:path');
+  require('@dotenvx/dotenvx').config({ path: path.resolve(__dirname, '../..', process.env.NODE_ENV === 'production' ? '.env' : '.env.dev'), quiet: true });
 }
 if (process.env.NODE_ENV !== 'test') {
   for (const name of ['JWT_SECRET','OAUTH_STATE_SECRET','MONGODB_URI','INTERNAL_API_KEY','LUMINA_API_KEY','ENCRYPTION_KEY']) {

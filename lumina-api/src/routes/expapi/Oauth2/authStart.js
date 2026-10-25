@@ -43,6 +43,10 @@ module.exports = {
             return res.status(404).json({ error: 'Provedor OAuth2 não suportado.', code: 'UNKNOWN_PROVIDER' });
         }
 
+        if (typeof provider.isConfigured === 'function' && !provider.isConfigured()) {
+            return res.status(503).json({ error: 'O login Discord não está configurado neste ambiente.', code: 'AUTH_PROVIDER_UNAVAILABLE' });
+        }
+
         // Fluxo de vinculação: precisa de um JWT válido (no cookie httpOnly)
         // para saber a qual conta vincular. Audit #7: linkToken via query foi
         // removido — o cookie é a única forma de autenticar o link flow.

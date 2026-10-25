@@ -9,7 +9,7 @@ const bot= {
     activityStatus: { type: String, default: 'online' },
     activityType: { type: String, default: 'PLAYING' },
     activityName: { type: String, default: "" },
-    activityUrl: { type: String, default: `${process.env.DASHBOARD_PROTOCOL}://${process.env.DASHBOARD_DOMAIN}` },
+    activityUrl: { type: String, default: `${process.env.DASHBOARD_PROTOCOL || 'https'}://${process.env.DASHBOARD_DOMAIN || 'bot.luminasink.com'}` },
     clientSecret: { type: String, required: false, unique: true },
     redirectUri: { type: String, required: false, unique: true },
     owners: { type: Array, default: [] },
@@ -256,12 +256,14 @@ const dashboardAccounts= {
     zipCode: { type: String, required: false, default: '' },
 
     // User login security statistics
-    lastLogin: { type: Date, default: Date.now },
+    lastLogin: { type: Date, default: null },
     lastLoginIp: { type: String, default: '' },
     lastLoginUserAgent: { type: String, default: '' },
     lastLoginLocation: { type: String, default: '' },
     lastLoginCountry: { type: String, default: '' },
     lastLoginCity: { type: String, default: '' },
+    lastLoginRegion: { type: String, default: '', maxlength: 100 },
+    lastLoginLocationSource: { type: String, enum: ['cloudflare', 'unavailable'], default: 'unavailable' },
 
     // User registration security statistics
     registrationIp: { type: String, default: '' },
@@ -270,6 +272,8 @@ const dashboardAccounts= {
     registrationLocation: { type: String, default: '' },
     registrationCountry: { type: String, default: '' },
     registrationCity: { type: String, default: '' },
+    registrationRegion: { type: String, default: '', maxlength: 100 },
+    registrationLocationSource: { type: String, enum: ['cloudflare', 'unavailable'], default: 'unavailable' },
 
     // User password reset security statistics
     passwordResetToken: { type: String, default: '' },

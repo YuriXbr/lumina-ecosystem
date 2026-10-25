@@ -74,4 +74,8 @@ O [estudo de concorrentes](CONCORRENTES.md) compara referências oficiais de Dyn
 
 ## Revisão no repositório
 
+A revisão de configuração e seus achados adicionais estão em [AMBIENTES.md](AMBIENTES.md). API e bot passaram novamente com 1.023 e 18 testes respectivamente, além de 4 testes do auditor de ambientes. Os 518 testes do dashboard e seu build passaram. A conferência do bundle não encontrou os segredos locais conhecidos. O plano de evolução estrutural e da economia está em [ARQUITETURA-E-EVOLUCAO.md](ARQUITETURA-E-EVOLUCAO.md).
+
+As variáveis de Gmail/recuperação foram configuradas na API da Vercel e foram removidas 41 entradas do dashboard e 27 da API. Ainda não existe nova publicação em produção. Permanecem a preparação de deployment sem domínios, migração controlada e revisão autenticada. O banco `lumina_development` foi criado no Atlas sem cópia de dados pessoais; por instrução explícita posterior, os segredos de produção são reutilizados temporariamente, com a exceção registrada no auditor. A [localização aproximada](LOCALIZACAO.md) usa apenas cabeçalhos Cloudflare com origem verificada.
+
 Branch enviada e [PR #9 em rascunho](https://github.com/YuriXbr/lumina-ecosystem/pull/9). O envio acionou previews automáticos da Vercel; isso não equivale a merge/publicação em produção nem à validação das integrações em staging. Segredos e arquivos de `.private` continuam fora do Git.

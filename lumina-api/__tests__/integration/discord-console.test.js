@@ -12,6 +12,9 @@ const botId='771421826974089236',workerId=crypto.randomUUID();
 const status={botId,ready:true,guildCount:2,pingMs:42,uptimeSeconds:120,memoryMb:60};
 const ingest=(extra={})=>consoleService.ingest({workerId,status,events:[],...extra});
 beforeAll(async()=>{
+ process.env.DISCORD_CLIENT_ID='771421826974089236';
+ process.env.DISCORD_CLIENT_SECRET='isolated-discord-provider-secret';
+ process.env.DISCORD_AUTH_REDIRECT_URI='https://api-bot.luminasink.com/expapi/oauth2/discord/auth/callback';
  replica=await MongoMemoryReplSet.create({instanceOpts:[{launchTimeout:60000}],replSet:{count:1},binary:{version:'8.0.17'}});
  process.env.MONGODB_URI=replica.getUri('lumina_discord_console_test');
  await guilds.connect();await Promise.all([guilds.model.init(),consoleService.events.model.init(),consoleService.runtime.model.init(),consoleService.jobs.model.init()]);

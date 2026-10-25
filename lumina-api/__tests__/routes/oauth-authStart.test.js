@@ -28,12 +28,25 @@ beforeAll(() => {
     process.env.NODE_ENV = 'test';
     process.env.OAUTH_STATE_SECRET = 'test-oauth-state-secret';
     process.env.DISCORD_CLIENT_ID = 'test-client-id';
+    process.env.DISCORD_CLIENT_SECRET = 'isolated-test-client-secret';
     process.env.DISCORD_AUTH_REDIRECT_URI = 'https://example.com/callback';
 });
 
 afterEach(() => jest.clearAllMocks());
 
 describe('GET /expapi/oauth2/:provider/auth/start', () => {
+    it('503 when the provider is disabled, without creating a transaction or OAuth cookie', async () => {
+        const secret = process.env.DISCORD_CLIENT_SECRET;
+        delete process.env.DISCORD_CLIENT_SECRET;
+        try {
+            const res = await request(app).get('/expapi/oauth2/discord/auth/start?origin=http://localhost:5173');
+            expect(res.status).toBe(503);
+            expect(res.body.code).toBe('AUTH_PROVIDER_UNAVAILABLE');
+            expect(res.headers['set-cookie']).toBeUndefined();
+            expect(require('../../src/utils/sessionStore').createTransaction).not.toHaveBeenCalled();
+        } finally { process.env.DISCORD_CLIENT_SECRET = secret; }
+    });
+
     it('302 redirect para Discord OAuth com intent=login (default)', async () => {
         const res = await request(app).get('/expapi/oauth2/discord/auth/start?origin=https://luminasink.me');
 

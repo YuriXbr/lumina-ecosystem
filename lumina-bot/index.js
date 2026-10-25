@@ -1,12 +1,6 @@
 console.clear();
 
-if (process.env.NODE_ENV !== 'production') {
-    console.log('Running in development mode');
-    require('@dotenvx/dotenvx').config({ path: '.env.dev' });
-} else {
-    console.log('Running in production mode');
-    require('@dotenvx/dotenvx').config({ path: '.env' });
-}
+require('./src/utils/loadEnvironment')();
 
 const fs = require('node:fs');
 const path = require('node:path');

@@ -18,11 +18,7 @@ module.exports = {
 
     async execute(req, res) {
         const { email, password, firstName, lastName, username, displayName } = req.body || {};
-        const registrationIp = req.ip;
-        const registrationUserAgent = req.headers['user-agent'];
-        const registrationLocation = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        const registrationCountry = req.headers['cf-ipcountry'] || '';
-        const registrationCity = '';
+        const metadata = require('../../../utils/accountRequestMetadata').accountRequestMetadata(req, 'registration');
 
         // ─── Campos obrigatórios básicos ────────────────────────────────────
         if (!email || !password || !firstName || !lastName) {
@@ -122,12 +118,14 @@ module.exports = {
         try {
             const newAccount = await DashboardAccountService.registerNewDashboardAccount(
                 sanitizedEmail, password, sanitizedFirstName, sanitizedLastName,
-                registrationIp, registrationUserAgent, registrationLocation,
-                registrationCountry, registrationCity,
+                metadata.registrationIp, metadata.registrationUserAgent, metadata.registrationLocation,
+                metadata.registrationCountry, metadata.registrationCity,
                 {
                     username,
                     usernameLower: normalizeUsername(username),
                     displayName: sanitizedDisplayName,
+                    registrationRegion: metadata.registrationRegion,
+                    registrationLocationSource: metadata.registrationLocationSource,
                 }
             );
             if (!newAccount) {

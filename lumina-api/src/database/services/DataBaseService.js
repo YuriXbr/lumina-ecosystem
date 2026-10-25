@@ -10,6 +10,7 @@ async function connectDatabase() {
     connectionPromise = mongoose.connect(process.env.MONGODB_URI, {
       maxPoolSize: 10, minPoolSize: 0, serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 15000, autoIndex: process.env.NODE_ENV !== 'production',
+      autoCreate: process.env.NODE_ENV !== 'production',
     }).finally(() => { connectionPromise = undefined; });
   }
   await connectionPromise;

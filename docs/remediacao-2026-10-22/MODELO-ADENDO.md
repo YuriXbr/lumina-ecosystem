@@ -28,6 +28,14 @@ erDiagram
 
 No MongoDB, as referências acima são campos e regras da aplicação; não são chaves estrangeiras executadas pelo banco. Índices únicos/TTL estão em `lumina-api/src/database/indexes.js`; a migração é explícita em produção.
 
+## Localização aproximada de conta
+
+O documento `dashboardaccounts` preserva o conjunto `registrationIp/UserAgent/Location/Country/City/Region/LocationSource` no cadastro e substitui apenas `lastLogin` e o conjunto equivalente `lastLogin*` em cada autenticação bem-sucedida. `Location` é a apresentação derivada de cidade, região e país, não uma cadeia de IPs. `LocationSource` é `cloudflare` ou `unavailable`. Cadastro com senha não cria um falso último login; o campo fica nulo até a primeira autenticação. Cadastro OAuth já estabelece sessão e grava ambos os conjuntos.
+
+São dados privados de segurança, excluídos do DTO comum de conta e de perfis públicos. Não armazenamos coordenadas, CEP ou um histórico de deslocamentos. Contas históricas sem localização não recebem dados inferidos a partir de acessos posteriores. A proposta SQL adiciona `account_access_snapshot`, com até duas linhas por conta e FK com exclusão em cascata; a imutabilidade do registro inicial e a substituição da linha de último login devem ser garantidas pela aplicação.
+
+A implementação confere o IP do proxy na lista oficial de redes Cloudflare. Na Vercel, usa o cabeçalho de peer sobrescrito pela plataforma; fora dela, verifica o peer TCP. Cabeçalhos `cf-*` de uma conexão direta não estabelecem confiança. As faixas públicas estão versionadas em `src/config/cloudflareNetworks.json` e precisam de revisão quando a Cloudflare alterar a lista.
+
 ## Proposta relacional complementar
 
 [adendo-relacional.sql](adendo-relacional.sql) usa a tabela `account` e a tabela `guild` da proposta original. Inclui PK, FK, UNIQUE, CHECK e índices de consulta; não depende de inferir IDs de conta como UUID, pois os IDs atuais são texto.

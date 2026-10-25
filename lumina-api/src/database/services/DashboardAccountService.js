@@ -88,6 +88,8 @@ class DashboardAccountService extends DatabaseService {
             registrationLocation,
             registrationCountry,
             registrationCity,
+            registrationRegion: opts.registrationRegion || '',
+            registrationLocationSource: opts.registrationLocationSource || 'unavailable',
             registrationDate: new Date()
         };
 
@@ -111,7 +113,7 @@ class DashboardAccountService extends DatabaseService {
      * A conta nasce SEM senha — o usuário pode definir uma depois via
      * changePassword(accountId, null, novaSenha).
      */
-    async createOAuthAccount({ email, firstName, lastName, emailVerified, provider, providerId, registrationIp, registrationUserAgent, registrationCountry }) {
+    async createOAuthAccount({ email, firstName, lastName, emailVerified, provider, providerId, registrationIp, registrationUserAgent, registrationLocation = '', registrationCountry = '', registrationCity = '', registrationRegion = '', registrationLocationSource = 'unavailable' }) {
         if (!provider || !providerId) {
             throw new Error('provider e providerId são obrigatórios');
         }
@@ -136,7 +138,19 @@ class DashboardAccountService extends DatabaseService {
             registrationIp,
             registrationUserAgent,
             registrationCountry,
+            registrationLocation,
+            registrationCity,
+            registrationRegion,
+            registrationLocationSource,
             registrationDate: new Date(),
+            lastLogin: new Date(),
+            lastLoginIp: registrationIp,
+            lastLoginUserAgent: registrationUserAgent,
+            lastLoginLocation: registrationLocation,
+            lastLoginCountry: registrationCountry,
+            lastLoginCity: registrationCity,
+            lastLoginRegion: registrationRegion,
+            lastLoginLocationSource: registrationLocationSource,
             authProviders: {
                 [provider]: { providerId: String(providerId), linkedAt: new Date() }
             }

@@ -83,4 +83,19 @@ CREATE TABLE bot_diagnostic (
 CREATE INDEX bot_diagnostic_claim_idx ON bot_diagnostic(state,deadline,lease_until,created_at);
 CREATE INDEX bot_diagnostic_actor_idx ON bot_diagnostic(requested_by,created_at DESC);
 
+-- Two private snapshots per account, not a movement history. No coordinates.
+CREATE TABLE account_access_snapshot (
+ account_id text NOT NULL REFERENCES account(account_id) ON DELETE CASCADE,
+ kind text NOT NULL CHECK (kind IN ('registration','last_login')),
+ occurred_at timestamptz NOT NULL,
+ ip_address inet,
+ user_agent varchar(512),
+ country char(2),
+ region varchar(100),
+ city varchar(100),
+ location_source text NOT NULL CHECK (location_source IN ('cloudflare','unavailable')),
+ PRIMARY KEY (account_id,kind),
+ CHECK (country IS NULL OR country ~ '^[A-Z]{2}$')
+);
+
 COMMIT;

@@ -148,8 +148,7 @@ module.exports = {
                     await DashboardAccountService.update({ accountId: account.accountId }, {
                         $set: {
                             lastLogin: new Date(),
-                            lastLoginIp: req.ip || '',
-                            lastLoginUserAgent: req.headers['user-agent'] || '',
+                            ...require('../../../utils/accountRequestMetadata').accountRequestMetadata(req, 'lastLogin'),
                         }
                     });
                 } catch (updateErr) {
@@ -228,9 +227,7 @@ module.exports = {
                         emailVerified: !!profile.emailVerified,
                         provider: provider.name,
                         providerId: profile.providerId,
-                        registrationIp: req.ip,
-                        registrationUserAgent: req.headers['user-agent'],
-                        registrationCountry: req.headers['cf-ipcountry'] || ''
+                        ...require('../../../utils/accountRequestMetadata').accountRequestMetadata(req, 'registration')
                     });
 
                     if (!account) {
@@ -293,9 +290,7 @@ module.exports = {
                     emailVerified: !!profile.emailVerified,
                     provider: provider.name,
                     providerId: profile.providerId,
-                    registrationIp: req.ip,
-                    registrationUserAgent: req.headers['user-agent'],
-                    registrationCountry: req.headers['cf-ipcountry'] || ''
+                    ...require('../../../utils/accountRequestMetadata').accountRequestMetadata(req, 'registration')
                 });
 
                 if (!account) {

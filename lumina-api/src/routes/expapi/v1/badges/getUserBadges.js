@@ -47,8 +47,8 @@ module.exports = {
                 return res.status(404).json({ error: 'Usuário não encontrado.', code: 'USER_NOT_FOUND' });
 
             // Só mostra badges se o perfil for público
-            if (account.publicProfile === false)
-                return res.status(403).json({ error: 'Perfil privado.', code: 'PROFILE_PRIVATE' });
+            if (!account.publicProfile || account.banned || account.blocked)
+                return res.status(404).json({ error: 'Usuário não encontrado.', code: 'USER_NOT_FOUND' });
 
             // Busca as badges do usuário
             const userBadgeRecords = await UserBadgeService.getByUser(account.email);

@@ -135,6 +135,8 @@ describe('Em NODE_ENV=production', () => {
 
     it('origens oficiais continuam aceitas em produção', () => {
         const { isAllowedOrigin: prodIsAllowed } = require('../../src/config/allowedOrigins');
-        expect(prodIsAllowed('https://luminasink.me')).toBe(true);
+        expect(prodIsAllowed('https://bot.luminasink.com')).toBe(true);
+        expect(prodIsAllowed('https://api-bot.luminasink.com')).toBe(true);
+        expect(prodIsAllowed('https://luminasink.me')).toBe(false);
     });
 });

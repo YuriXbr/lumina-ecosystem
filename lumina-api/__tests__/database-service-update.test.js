@@ -37,47 +37,47 @@ describe('DataBaseService.update — proteção contra substituição de documen
     });
 
     it('envolve automaticamente em $set quando o chamador passa um objeto "cru" (sem operadores)', async () => {
-        mockModel.findOneAndUpdate.mockResolvedValue({ ok: true });
+        mockDbModelInstance.findOneAndUpdate.mockResolvedValue({ ok: true });
 
         await service.update({ guildId: 'g1' }, { djEnabled: true, prefix: '!' });
 
         expect(mockDbModelInstance.findOneAndUpdate).toHaveBeenCalledWith(
             { guildId: 'g1' },
             { $set: { djEnabled: true, prefix: '!' } },
-            { new: true }
+            { new: true, runValidators: true }
         );
     });
 
     it('respeita operadores explícitos já enviados pelo chamador ($set)', async () => {
-        mockModel.findOneAndUpdate.mockResolvedValue({ ok: true });
+        mockDbModelInstance.findOneAndUpdate.mockResolvedValue({ ok: true });
 
         await service.update({ guildId: 'g1' }, { $set: { prefix: '?' } });
 
         expect(mockDbModelInstance.findOneAndUpdate).toHaveBeenCalledWith(
             { guildId: 'g1' },
             { $set: { prefix: '?' } },
-            { new: true }
+            { new: true, runValidators: true }
         );
     });
 
     it('respeita operadores explícitos já enviados pelo chamador ($inc, $unset combinados)', async () => {
-        mockModel.findOneAndUpdate.mockResolvedValue({ ok: true });
+        mockDbModelInstance.findOneAndUpdate.mockResolvedValue({ ok: true });
 
         await service.update({ userId: 'u1' }, { $inc: { keys: 1 }, $unset: { flag: '' } });
 
         expect(mockDbModelInstance.findOneAndUpdate).toHaveBeenCalledWith(
             { userId: 'u1' },
             { $inc: { keys: 1 }, $unset: { flag: '' } },
-            { new: true }
+            { new: true, runValidators: true }
         );
     });
 
     it('nunca chama findOneAndUpdate com um objeto sem operadores no nível superior', async () => {
-        mockModel.findOneAndUpdate.mockResolvedValue({ ok: true });
+        mockDbModelInstance.findOneAndUpdate.mockResolvedValue({ ok: true });
 
         await service.update({ guildId: 'g1' }, { moderationChannelId: '123' });
 
-        const [, updateArg] = mockModel.findOneAndUpdate.mock.calls[0];
+        const [, updateArg] = mockDbModelInstance.findOneAndUpdate.mock.calls[0];
         const hasBareTopLevelField = Object.keys(updateArg).some(k => !k.startsWith('$'));
         expect(hasBareTopLevelField).toBe(false);
     });

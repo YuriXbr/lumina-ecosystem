@@ -12,7 +12,7 @@
 # ──────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Build do React ──────────────────────────────────────────────────
-FROM node:20-slim AS builder
+FROM node:24-slim AS builder
 
 WORKDIR /app
 
@@ -21,7 +21,7 @@ COPY package.json package-lock.json* ./
 
 # Instala TODAS as dependências (incluindo devDependencies — Vite, Tailwind, etc.)
 # Usa `npm install` (não `npm ci`) para tolerar dessincronização do lock file.
-RUN npm install
+RUN npm ci
 
 # Copia o código fonte
 COPY . .
@@ -42,9 +42,6 @@ ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 # Argumentos opcionais para o Discord OAuth (usados no frontend)
 ARG VITE_DISCORD_CLIENT_ID=""
 ENV VITE_DISCORD_CLIENT_ID=${VITE_DISCORD_CLIENT_ID}
-
-ARG VITE_DISCORD_REDIRECT_URI=""
-ENV VITE_DISCORD_REDIRECT_URI=${VITE_DISCORD_REDIRECT_URI}
 
 RUN npm run build
 

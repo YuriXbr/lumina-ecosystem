@@ -56,11 +56,12 @@ beforeAll(() => {
     process.env.DISCORD_AUTH_REDIRECT_URI = 'https://example.com/callback';
 });
 
+beforeEach(()=>{Object.values(DashboardAccountService).forEach(fn=>fn.mockReset?.());mockDiscordProvider.exchangeCode.mockReset();mockDiscordProvider.getProfile.mockReset();});
 afterEach(() => jest.clearAllMocks());
 
 // Helper para assinar state como o authStart faz
 function signState(payload) {
-    const base = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const base = Buffer.from(JSON.stringify({provider:'discord',nonce:'unit-oauth-nonce',...payload})).toString('base64url');
     const hmac = crypto.createHmac('sha256', process.env.OAUTH_STATE_SECRET).update(base).digest('base64url');
     return `${base}.${hmac}`;
 }
@@ -82,7 +83,7 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
             intent: 'login',
         });
 
-        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=abc&state=${state}`);
+        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=abc&state=${state}`).set('Cookie','lumina_oauth=unit-oauth-nonce');
 
         expect(res.status).toBe(400);
     });
@@ -94,7 +95,7 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
             intent: 'login',
         });
 
-        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=abc&state=${state}`);
+        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=abc&state=${state}`).set('Cookie','lumina_oauth=unit-oauth-nonce');
 
         expect(res.status).toBe(400);
     });
@@ -111,7 +112,7 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
             intent: 'login',
         });
 
-        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?state=${state}`);
+        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?state=${state}`).set('Cookie','lumina_oauth=unit-oauth-nonce');
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toMatch(/\/login\?oauthError=/);
@@ -124,14 +125,14 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
             intent: 'login',
         });
 
-        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?error=access_denied&state=${state}`);
+        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?error=access_denied&state=${state}`).set('Cookie','lumina_oauth=unit-oauth-nonce');
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toMatch(/oauthError=access_denied/);
     });
 
     // ─── LOGIN flow ───────────────────────────────────────────────────────
-    it('302 redirect com token JWT em hash quando login é bem-sucedido', async () => {
+    it('302 redirect com código de troca de uso único no fragmento quando login é bem-sucedido', async () => {
         const state = signState({
             origin: VALID_ORIGIN,
             issuedAt: Date.now(),
@@ -158,11 +159,12 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
         }));
         DashboardAccountService.update.mockResolvedValueOnce(makeAccount());
 
-        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=${VALID_CODE}&state=${state}`);
+        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=${VALID_CODE}&state=${state}`).set('Cookie','lumina_oauth=unit-oauth-nonce');
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toMatch(/\/oauth\/complete#/);
-        expect(res.headers.location).toMatch(/token=/);
+        expect(res.headers.location).toMatch(/code=/);
+        expect(res.headers.location).not.toMatch(/token=/);
         expect(res.headers.location).toMatch(/isNewAccount=false/);
     });
 
@@ -185,7 +187,7 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
             makeAccount({ banned: true })
         );
 
-        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=${VALID_CODE}&state=${state}`);
+        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=${VALID_CODE}&state=${state}`).set('Cookie','lumina_oauth=unit-oauth-nonce');
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toMatch(/oauthError=account_banned/);
@@ -219,7 +221,7 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
         DashboardAccountService.isUsernameAvailable.mockResolvedValue(true);
         DashboardAccountService.update.mockResolvedValue(makeAccount());
 
-        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=${VALID_CODE}&state=${state}`);
+        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=${VALID_CODE}&state=${state}`).set('Cookie','lumina_oauth=unit-oauth-nonce');
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toMatch(/isNewAccount=true/);
@@ -243,7 +245,7 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
         DashboardAccountService.getDashboardAccountByProviderId.mockResolvedValueOnce(null);
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(makeAccount());
 
-        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=${VALID_CODE}&state=${state}`);
+        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=${VALID_CODE}&state=${state}`).set('Cookie','lumina_oauth=unit-oauth-nonce');
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toMatch(/oauthError=email_exists/);
@@ -266,7 +268,7 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
             providerId: '123', email: 'x@x.com', emailVerified: true, username: 'x',
         });
 
-        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=${VALID_CODE}&state=${state}`);
+        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=${VALID_CODE}&state=${state}`).set('Cookie','lumina_oauth=unit-oauth-nonce');
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toMatch(/oauthError=link_no_account/);
@@ -292,8 +294,8 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
         });
 
         const res = await request(app)
-            .get(`/expapi/oauth2/discord/auth/callback?code=${VALID_CODE}&state=${state}`)
-            .set('Cookie', `lumina_token=${token}`);
+            .get(`/expapi/oauth2/discord/auth/callback?code=${VALID_CODE}&state=${state}`).set('Cookie','lumina_oauth=unit-oauth-nonce')
+            .set('Cookie', `lumina_oauth=unit-oauth-nonce; lumina_token=${token}`);
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toMatch(/oauthError=link_no_account/);
@@ -309,7 +311,7 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
         const provider = mockDiscordProvider;
         provider.exchangeCode.mockRejectedValueOnce(new Error('Discord API down'));
 
-        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=bad&state=${state}`);
+        const res = await request(app).get(`/expapi/oauth2/discord/auth/callback?code=bad&state=${state}`).set('Cookie','lumina_oauth=unit-oauth-nonce');
 
         // Erro no callback redireciona para /login?oauthError=server_error
         expect(res.status).toBe(302);

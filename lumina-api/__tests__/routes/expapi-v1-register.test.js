@@ -55,7 +55,7 @@ describe('POST /expapi/v1/register', () => {
     const URL = '/expapi/v1/register';
     let csrf;
 
-    beforeEach(async () => { csrf = await getCsrfTokens(app); });
+    beforeEach(async () => { Object.values(DashboardAccountService).forEach(fn=>fn.mockReset?.()); csrf = await getCsrfTokens(app); });
 
     // ─── 200 Sucesso ──────────────────────────────────────────────────────
     it('200 em registro bem-sucedido', async () => {
@@ -69,7 +69,7 @@ describe('POST /expapi/v1/register', () => {
             .send(VALID_BODY);
 
         expect(res.status).toBe(200);
-        expect(res.body).toHaveProperty('message', 'Conta criada com sucesso.');
+        expect(res.body).toHaveProperty('message', 'Conta criada com sucesso. Confirme seu email para concluir.');
         expect(res.body).toHaveProperty('username', 'mariasz');
     });
 
@@ -152,12 +152,12 @@ describe('POST /expapi/v1/register', () => {
         expect(res.body.code).toBe('WEAK_PASSWORD');
     });
 
-    it('200 para senha com exatamente 128 caracteres (limite)', async () => {
+    it('200 para senha com exatamente 72 caracteres ASCII (limite bcrypt)', async () => {
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(null);
         DashboardAccountService.isUsernameAvailable.mockResolvedValueOnce(true);
         DashboardAccountService.registerNewDashboardAccount.mockResolvedValueOnce({ accountId: 'acc' });
 
-        const maxPass = 'Aa1' + 'x'.repeat(125);
+        const maxPass = 'Aa1' + 'x'.repeat(69);
         const res = await request(app).post(URL).set(combineAuthAndCsrf({}, csrf.headers))
             .send({ ...VALID_BODY, password: maxPass });
         expect(res.status).toBe(200);

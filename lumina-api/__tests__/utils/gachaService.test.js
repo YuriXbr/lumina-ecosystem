@@ -7,7 +7,7 @@
  *   - computeProbabilities: distribuição normalizada (soma=1)
  *   - pickRarity: seleciona raridade baseada em probabilidades
  *   - RARITY_ORDER: ordem das raridades
- *   - rollSkin: débito atômico, reembolso em falha
+ *   - rollSkin: débito e recompensa na mesma gravação
  *
  * NÃO testa: chamadas ao MongoDB (services são mockados)
  */
@@ -25,7 +25,7 @@ jest.mock('../../src/database/services/SkinService', () => ({
 }));
 
 jest.mock('../../src/database/services/UserInventoryService', () => ({
-    spendKeyAndChest: jest.fn(),
+    awardSkinAndSpend: jest.fn(),
     addInventory: jest.fn(),
 }));
 
@@ -40,7 +40,7 @@ beforeAll(() => {
     process.env.NODE_ENV = 'test';
 });
 
-afterEach(() => jest.clearAllMocks());
+beforeEach(() => jest.resetAllMocks());
 
 // ─── RARITY_ORDER ──────────────────────────────────────────────────────────
 describe('RARITY_ORDER', () => {
@@ -169,8 +169,11 @@ describe('rollSkin', () => {
         mythicSkins: 20,
     };
 
-    it('retorna null quando spendKeyAndChest retorna null (sem recursos)', async () => {
-        InventoryService.spendKeyAndChest.mockResolvedValueOnce(null);
+    it('retorna null quando a gravação condicional não encontra saldo', async () => {
+        InventoryService.awardSkinAndSpend.mockResolvedValueOnce(null);
+        SkinService.getSkinsQuantity.mockResolvedValueOnce(sampleQuantities);
+        SkinService.getSkinsId.mockResolvedValueOnce([1001]);
+        SkinService.getSkinInfo.mockResolvedValueOnce({id:1001,name:'Skin'});
 
         const result = await rollSkin('user-1', 'hextechChests');
 
@@ -180,7 +183,7 @@ describe('rollSkin', () => {
     });
 
     it('retorna skin quando débito e sorteio são bem-sucedidos', async () => {
-        InventoryService.spendKeyAndChest.mockResolvedValueOnce({ keys: 4, hextechChests: 9 });
+        InventoryService.awardSkinAndSpend.mockResolvedValueOnce({ keys: 4, hextechChests: 9 });
         SkinService.getSkinsQuantity.mockResolvedValueOnce(sampleQuantities);
         SkinService.getSkinsId.mockResolvedValueOnce([1001, 1002, 1003]);
         SkinService.getSkinInfo.mockResolvedValueOnce({
@@ -197,24 +200,25 @@ describe('rollSkin', () => {
         expect(result.skinId).toBe(1001);
         expect(result.skinName).toBe('Cool Skin');
         expect(result.rarity).toBeDefined();
-        expect(SkinService.addSkinToInventory).toHaveBeenCalledWith('user-1', 1001, expect.any(String));
+        expect(InventoryService.awardSkinAndSpend).toHaveBeenCalledWith('user-1', 'hextechChests', 1001);
+        expect(SkinService.addSkinToInventory).not.toHaveBeenCalled();
     });
 
-    it('reembolsa chave+baú quando sorteio falha após débito', async () => {
-        InventoryService.spendKeyAndChest.mockResolvedValueOnce({ keys: 4 }); // débito OK
+    it('não altera saldo quando a seleção falha', async () => {
+        InventoryService.awardSkinAndSpend.mockResolvedValueOnce({ keys: 4 });
         // addInventory DEVE retornar uma Promise (o código faz .catch())
         InventoryService.addInventory.mockResolvedValue({});
         SkinService.getSkinsQuantity.mockRejectedValueOnce(new Error('DB down'));
 
         await expect(rollSkin('user-1', 'hextechChests')).rejects.toThrow('DB down');
 
-        // Reembolso: addInventory chamado 2x (1 key + 1 chest)
-        expect(InventoryService.addInventory).toHaveBeenCalledWith('user-1', 'keys', 1);
-        expect(InventoryService.addInventory).toHaveBeenCalledWith('user-1', 'hextechChests', 1);
+        // A falha da seleção não exige compensação de saldo.
+        expect(InventoryService.addInventory).not.toHaveBeenCalled();
+        expect(InventoryService.awardSkinAndSpend).not.toHaveBeenCalled();
     });
 
     it('aceita masterWorkChests', async () => {
-        InventoryService.spendKeyAndChest.mockResolvedValueOnce({ keys: 4 });
+        InventoryService.awardSkinAndSpend.mockResolvedValueOnce({ keys: 4 });
         SkinService.getSkinsQuantity.mockResolvedValueOnce(sampleQuantities);
         SkinService.getSkinsId.mockResolvedValueOnce([2002]);
         SkinService.getSkinInfo.mockResolvedValueOnce({
@@ -227,12 +231,11 @@ describe('rollSkin', () => {
         const result = await rollSkin('user-2', 'masterWorkChests');
 
         expect(result).not.toBeNull();
-        expect(InventoryService.spendKeyAndChest).toHaveBeenCalledWith('user-2', 'masterWorkChests');
+        expect(InventoryService.awardSkinAndSpend).toHaveBeenCalledWith('user-2', 'masterWorkChests', 2002);
     });
 
-    it('propaga erro quando addSkinToInventory falha (com reembolso)', async () => {
-        InventoryService.spendKeyAndChest.mockResolvedValueOnce({ keys: 4 });
-        InventoryService.addInventory.mockResolvedValue({}); // para o reembolso
+    it('propaga falha na gravação atômica sem tentar reembolso separado', async () => {
+        InventoryService.awardSkinAndSpend.mockRejectedValueOnce(new Error('inventory failed'));
         SkinService.getSkinsQuantity.mockResolvedValueOnce(sampleQuantities);
         SkinService.getSkinsId.mockResolvedValueOnce([1001]);
         SkinService.getSkinInfo.mockResolvedValueOnce({
@@ -240,11 +243,11 @@ describe('rollSkin', () => {
             championId: 1, championName: 'A', isBase: false, isLegacy: false,
             skinLines: [], splashPath: '', loadScreenPath: '', tilePath: '', uncenteredSplashPath: '',
         });
-        SkinService.addSkinToInventory.mockRejectedValueOnce(new Error('inventory failed'));
+
 
         await expect(rollSkin('user-1', 'hextechChests')).rejects.toThrow();
-        // Reembolso
-        expect(InventoryService.addInventory).toHaveBeenCalledWith('user-1', 'keys', 1);
-        expect(InventoryService.addInventory).toHaveBeenCalledWith('user-1', 'hextechChests', 1);
+        // A gravação e a concessão são indivisíveis.
+        expect(InventoryService.addInventory).not.toHaveBeenCalled();
+        expect(InventoryService.awardSkinAndSpend).toHaveBeenCalledTimes(1);
     });
 });

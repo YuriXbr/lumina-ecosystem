@@ -22,6 +22,14 @@ mockUserBadgeService();
 const DashboardAccountService = require('../../src/database/services/DashboardAccountService');
 const BadgeService = require('../../src/database/services/BadgeService');
 const UserBadgeService = require('../../src/database/services/UserBadgeService');
+
+// Exercise the real redemption rules with a transaction adapter; concurrency is
+// covered separately by the isolated replica-set integration suite.
+require('../../src/database/services/DataBaseService').connectDatabase=jest.fn().mockResolvedValue();
+require('mongoose').connection.transaction=jest.fn(work=>work({}));
+BadgeService.model={findOne:({code})=>({session:()=>({lean:()=>BadgeService.getByCode(code)})}),updateOne:jest.fn().mockResolvedValue()};
+UserBadgeService.model={exists:({userEmail,badgeCode})=>({session:()=>UserBadgeService.hasRedeemed(userEmail,badgeCode)}),countDocuments:({badgeCode})=>({session:()=>UserBadgeService.countByBadge(badgeCode)}),create:([data])=>UserBadgeService.redeem(data.userEmail,data.badgeCode,data.redeemedVia)};
+
 const app = require('../../index');
 
 jest.useFakeTimers();
@@ -31,6 +39,7 @@ beforeAll(() => {
     process.env.NODE_ENV = 'test';
 });
 
+beforeEach(()=>{for(const service of [DashboardAccountService,BadgeService,UserBadgeService])Object.values(service).forEach(fn=>fn.mockReset?.());});
 afterEach(() => jest.clearAllMocks());
 
 describe('POST /expapi/v1/badges/redeem', () => {
@@ -58,14 +67,14 @@ describe('POST /expapi/v1/badges/redeem', () => {
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(makeAccount());
         const res = await request(app).post(URL).set(headers()).send({});
         expect(res.status).toBe(400);
-        expect(res.body.code).toBe('MISSING_CODE');
+        expect(res.body.code).toBe('INVALID_CODE');
     });
 
     it('400 MISSING_CODE quando code não é string', async () => {
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(makeAccount());
         const res = await request(app).post(URL).set(headers()).send({ code: 123 });
         expect(res.status).toBe(400);
-        expect(res.body.code).toBe('MISSING_CODE');
+        expect(res.body.code).toBe('INVALID_CODE');
     });
 
     it('404 BADGE_NOT_FOUND quando código não existe', async () => {

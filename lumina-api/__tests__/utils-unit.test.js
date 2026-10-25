@@ -99,102 +99,13 @@ describe('oauthProviders/state', () => {
 
 // ─── utils/resolveDiscordAccount ─────────────────────────────────────────────
 
-describe('resolveDiscordAccount', () => {
-    const { resolveDiscordAccount } = require('../src/utils/resolveDiscordAccount');
-
-    it('lança 404 se conta não existir', async () => {
-        DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(null);
-
-        await expect(resolveDiscordAccount('ghost@example.com')).rejects.toMatchObject({
-            status: 404,
-            message: 'Conta não encontrada',
-        });
-    });
-
-    it('lança 400 se token Discord não estiver vinculado', async () => {
-        DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce({
-            email: 'user@example.com',
-            discordOauth2Token: '',
-        });
-
-        await expect(resolveDiscordAccount('user@example.com')).rejects.toMatchObject({
-            status: 400,
-            message: 'Conta Discord não vinculada',
-        });
-    });
-
-    it('retorna account e discordId com token válido (sem refresh necessário)', async () => {
-        const future = new Date(Date.now() + 60 * 60 * 1000);
-        DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce({
-            email: 'user@example.com',
-            discordOauth2Token: 'valid-token',
-            discordOauth2TokenExpiresAt: future,
-        });
-
-        axios.get.mockResolvedValueOnce({ data: { id: 'discord-uid-42' } });
-
-        const { account, discordId } = await resolveDiscordAccount('user@example.com');
-        expect(discordId).toBe('discord-uid-42');
-        expect(account).toBeDefined();
-    });
-
-    it('faz refresh do token quando expirado', async () => {
-        const past = new Date(Date.now() - 1000);
-        const accountData = {
-            email: 'user@example.com',
-            discordOauth2Token: 'expired-token',
-            discordOauth2RefreshToken: 'refresh-tok',
-            discordOauth2TokenExpiresAt: past,
-        };
-        DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(accountData);
-
-        // Mock do endpoint de refresh (POST)
-        axios.post.mockResolvedValueOnce({
-            data: { access_token: 'new-tok', refresh_token: 'new-ref', expires_in: 3600 },
-        });
-
-        // Mock de update e da chamada Discord com novo token
-        DashboardAccountService.update.mockResolvedValueOnce({ ...accountData, discordOauth2Token: 'new-tok' });
-        axios.get.mockResolvedValueOnce({ data: { id: 'discord-uid-42' } });
-
-        const { discordId } = await resolveDiscordAccount('user@example.com');
-        expect(discordId).toBe('discord-uid-42');
-        expect(DashboardAccountService.update).toHaveBeenCalled();
-        expect(addLog).toHaveBeenCalledWith('API', 'discord.tokenRefresh', expect.any(String));
-    });
-
-    it('lança 500 se refresh falhar', async () => {
-        const past = new Date(Date.now() - 1000);
-        DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce({
-            email: 'user@example.com',
-            discordOauth2Token: 'expired-token',
-            discordOauth2RefreshToken: 'bad-refresh',
-            discordOauth2TokenExpiresAt: past,
-        });
-        axios.post.mockRejectedValueOnce(new Error('Discord server error'));
-
-        await expect(resolveDiscordAccount('user@example.com')).rejects.toMatchObject({
-            status: 500,
-            message: 'Erro durante refresh do token',
-        });
-        expect(addLog).toHaveBeenCalledWith('API', 'discord.tokenRefresh.error', expect.any(String));
-    });
-
-    it('lança 500 se chamada à API Discord falhar (após token válido)', async () => {
-        const future = new Date(Date.now() + 3600 * 1000);
-        DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce({
-            email: 'user@example.com',
-            discordOauth2Token: 'valid-token',
-            discordOauth2TokenExpiresAt: future,
-        });
-        axios.get.mockRejectedValueOnce(new Error('Discord API offline'));
-
-        await expect(resolveDiscordAccount('user@example.com')).rejects.toMatchObject({
-            status: 500,
-            message: 'Erro interno ao obter informações do Discord',
-        });
-        expect(addLog).toHaveBeenCalledWith('API', 'discord.resolve.error', expect.any(String));
-    });
+describe('resolveDiscordAccount',()=>{
+ const {resolveDiscordAccount}=require('../src/utils/resolveDiscordAccount');
+ it('recusa conta inexistente',async()=>{DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(null);await expect(resolveDiscordAccount('missing@example.test')).rejects.toMatchObject({status:404,code:'ACCOUNT_NOT_FOUND'});});
+ it('recusa conta sem vínculo persistido, mesmo com token OAuth',async()=>{await expect(resolveDiscordAccount({discordOauth2Token:'untrusted'})).rejects.toMatchObject({status:403,code:'DISCORD_NOT_LINKED'});});
+ it('usa o ID vinculado sem depender de uma chamada ao Discord',async()=>{axios.get.mockClear();const account={discordOauth2Id:'123456789012345678'};expect(await resolveDiscordAccount(account)).toEqual({account,discordId:account.discordOauth2Id});expect(axios.get).not.toHaveBeenCalled();});
+ it('prefere o vínculo do provider ao campo legado',async()=>{const account={discordOauth2Id:'123456789012345678',authProviders:{discord:{providerId:'223456789012345678'}}};expect((await resolveDiscordAccount(account)).discordId).toBe('223456789012345678');});
+ it.each([{banned:true},{blocked:true}])('recusa suspensão: %j',async flag=>{await expect(resolveDiscordAccount({...flag,discordOauth2Id:'123456789012345678'})).rejects.toMatchObject({status:403,code:'ACCOUNT_SUSPENDED'});});
 });
 
 // ─── ThirdParty/riotApi ───────────────────────────────────────────────────────

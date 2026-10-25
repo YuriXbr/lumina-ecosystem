@@ -32,7 +32,7 @@ module.exports = {
             if (!account.password)
                 return res.status(400).json({ error: 'Defina uma senha antes de desvincular o Discord, ou você perderá acesso à conta.', code: 'SET_PASSWORD_FIRST' });
 
-            await DashboardAccountService.update({ accountId: decoded.accountId }, {
+            await DashboardAccountService.update({ accountId: account.accountId }, {
                 $set: {
                     discordOauth2Id: '', discordOauth2Token: '', discordOauth2RefreshToken: '',
                     discordOauth2TokenExpiresAt: null, discordOauth2TokenScope: '',

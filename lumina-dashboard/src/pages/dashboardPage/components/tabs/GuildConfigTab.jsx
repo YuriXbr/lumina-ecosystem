@@ -1,3 +1,5 @@
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
+import ServerPagination from '../../../../components/ui/ServerPagination';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser } from '../../../../contexts/UserContext';
 import {
@@ -15,7 +17,7 @@ import ErrorState from '../../../../components/ui/ErrorState';
 import { SkeletonRow } from '../../../../components/ui/Skeleton';
 import { useT } from '../../../../i18n/LanguageContext.jsx';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+import { API_BASE } from '../../../../utils/apiBase';
 const GUILDS_PER_PAGE = 10;
 
 export default function GuildConfigTab() {
@@ -29,6 +31,7 @@ export default function GuildConfigTab() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingGuild, setEditingGuild] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [updatingMembers, setUpdatingMembers] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [discordUpdateError, setDiscordUpdateError] = useState(null);
@@ -72,6 +75,7 @@ export default function GuildConfigTab() {
         discordIcon: g.discordIcon || g.icon || null,
       }));
       setGuilds(normalized);
+      setHasMore(!!data.pagination?.hasMore);
     } catch (err) {
       if (myRequestId !== requestIdRef.current) return;
       console.error('Erro ao carregar guildas:', err);
@@ -234,10 +238,11 @@ export default function GuildConfigTab() {
   const saveGuildChanges = async () => {
     if (!editingGuild || !selectedGuild) return;
 
+    const fields = {welcomeEnabled:'memberWelcomeToggle',musicEnabled:'djEnabled',prefix:'prefix',language:'guildLocale'};
     const changes = {};
-    Object.keys(editingGuild).forEach(key => {
+    Object.keys(fields).forEach(key => {
       if (editingGuild[key] !== selectedGuild[key]) {
-        changes[key] = editingGuild[key];
+        changes[fields[key]] = editingGuild[key];
       }
     });
 
@@ -254,9 +259,7 @@ export default function GuildConfigTab() {
     if (!currentUser) return false;
     const currentLevel = getUserLevel()?.level || 0;
     switch (field) {
-      case 'botEnabled':
       case 'welcomeEnabled':
-      case 'moderationEnabled':
       case 'musicEnabled':
       case 'levelSystemEnabled':
         return currentLevel >= 7;
@@ -282,30 +285,33 @@ export default function GuildConfigTab() {
   );
 
   // ─── Modal de detalhes da guilda ────────────────────────────────────────────
-  const GuildDetailModal = () => {
+  const renderGuildDetailModal = () => {
     if (!selectedGuild || !editingGuild) return null;
     // `t` is inherited from the parent GuildConfigTab component scope
     // (GuildDetailModal is defined inside GuildConfigTab, which has const t = useT())
     return (
-      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div className="relative top-10 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 shadow-lg rounded-md bg-white max-h-screen overflow-y-auto">
+      <Dialog open={isDetailModalOpen} onClose={closeGuildDetails} className="relative z-50">
+        <div className="fixed inset-0 bg-gray-900/50" aria-hidden="true" />
+        <div className="fixed inset-0 overflow-y-auto p-4 sm:p-6"><div className="min-h-full flex items-center justify-center">
+        <DialogPanel className="lumina-card w-full max-w-3xl p-5 sm:p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">
+            <DialogTitle className="text-lg font-semibold text-gray-900">
               {t('admin.guilds.settingsTitle', { name: selectedGuild.guildName })}
-            </h3>
-            <button onClick={closeGuildDetails} className="text-gray-400 hover:text-gray-600">
+            </DialogTitle>
+            <button aria-label="Fechar detalhes da guilda" onClick={closeGuildDetails} className="lumina-icon-button text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="col-span-full">
-              <h4 className="text-md font-medium text-gray-900 mb-3">{t("guild.basicInfo")}</h4>
+              <h3 className="text-base font-semibold text-gray-900 mb-3">{t("guild.basicInfo")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">{t('admin.guilds.guildId')}</label>
                   <input
                     type="text"
+                    aria-label={t('admin.guilds.guildId')}
                     value={selectedGuild.guildId}
                     disabled
                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 font-mono text-sm"
@@ -315,6 +321,7 @@ export default function GuildConfigTab() {
                   <label className="block text-sm font-medium text-gray-700">{t('common.members')}</label>
                   <input
                     type="number"
+                    aria-label={t('common.members')}
                     value={selectedGuild.memberCount}
                     disabled
                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100"
@@ -324,67 +331,74 @@ export default function GuildConfigTab() {
             </div>
 
             <div className="col-span-full">
-              <h4 className="text-md font-medium text-gray-900 mb-3">{t("guild.botSettings")}</h4>
+              <h3 className="text-base font-semibold text-gray-900 mb-3">{t("guild.botSettings")}</h3>
+              <p className="text-xs text-gray-500 mb-3">{t('admin.guilds.readOnlyStatus')}</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={editingGuild.botEnabled}
+                    id="admin-guild-botEnabled"
+                    checked={!!editingGuild.botEnabled}
                     onChange={(e) => setEditingGuild({...editingGuild, botEnabled: e.target.checked})}
                     disabled={!canEditField('botEnabled')}
                     className="h-4 w-4 text-purple-600 disabled:opacity-50"
                   />
-                  <label className="ml-2 text-sm text-gray-700">{t("guild.botActive")}</label>
+                  <label className="ml-2 text-sm text-gray-700" htmlFor="admin-guild-botEnabled">{t("guild.botActive")}</label>
                 </div>
                 <div className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={editingGuild.welcomeEnabled}
+                    id="admin-guild-welcomeEnabled"
+                    checked={!!editingGuild.welcomeEnabled}
                     onChange={(e) => setEditingGuild({...editingGuild, welcomeEnabled: e.target.checked})}
                     disabled={!canEditField('welcomeEnabled')}
                     className="h-4 w-4 text-purple-600 disabled:opacity-50"
                   />
-                  <label className="ml-2 text-sm text-gray-700">{t("guild.welcome")}</label>
+                  <label className="ml-2 text-sm text-gray-700" htmlFor="admin-guild-welcomeEnabled">{t("guild.welcome")}</label>
                 </div>
                 <div className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={editingGuild.moderationEnabled}
+                    id="admin-guild-moderationEnabled"
+                    checked={!!editingGuild.moderationEnabled}
                     onChange={(e) => setEditingGuild({...editingGuild, moderationEnabled: e.target.checked})}
                     disabled={!canEditField('moderationEnabled')}
                     className="h-4 w-4 text-purple-600 disabled:opacity-50"
                   />
-                  <label className="ml-2 text-sm text-gray-700">{t("guild.moderation")}</label>
+                  <label className="ml-2 text-sm text-gray-700" htmlFor="admin-guild-moderationEnabled">{t("guild.moderation")}</label>
                 </div>
                 <div className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={editingGuild.musicEnabled}
+                    id="admin-guild-musicEnabled"
+                    checked={!!editingGuild.musicEnabled}
                     onChange={(e) => setEditingGuild({...editingGuild, musicEnabled: e.target.checked})}
                     disabled={!canEditField('musicEnabled')}
                     className="h-4 w-4 text-purple-600 disabled:opacity-50"
                   />
-                  <label className="ml-2 text-sm text-gray-700">{t("guild.music")}</label>
+                  <label className="ml-2 text-sm text-gray-700" htmlFor="admin-guild-musicEnabled">{t("guild.music")}</label>
                 </div>
               </div>
             </div>
 
             {canEditField('prefix') && (
               <div className="col-span-full">
-                <h4 className="text-md font-medium text-gray-900 mb-3">{t("guild.advanced")}</h4>
+                <h3 className="text-base font-semibold text-gray-900 mb-3">{t("guild.advanced")}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">{t("guild.prefix")}</label>
+                    <label className="block text-sm font-medium text-gray-700" htmlFor="admin-guild-prefix">{t("guild.prefix")}</label>
                     <input
                       type="text"
-                      value={editingGuild.prefix || '!'}
+                      id="admin-guild-prefix"
+                      value={editingGuild.prefix ?? 'l!'}
                       onChange={(e) => setEditingGuild({...editingGuild, prefix: e.target.value})}
                       className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">{t("guild.language")}</label>
+                    <label className="block text-sm font-medium text-gray-700" htmlFor="admin-guild-language">{t("guild.language")}</label>
                     <select
+                      id="admin-guild-language"
                       value={editingGuild.language || 'pt-BR'}
                       onChange={(e) => setEditingGuild({...editingGuild, language: e.target.value})}
                       className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
@@ -402,19 +416,20 @@ export default function GuildConfigTab() {
           <div className="mt-6 flex justify-end space-x-3">
             <button
               onClick={closeGuildDetails}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="lumina-button-secondary"
             >
               {t('common.cancel')}
             </button>
             <button
               onClick={saveGuildChanges}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
+              className="lumina-button"
             >
               {t('admin.guilds.saveChanges')}
             </button>
           </div>
-        </div>
-      </div>
+        </DialogPanel>
+        </div></div>
+      </Dialog>
     );
   };
 
@@ -424,7 +439,7 @@ export default function GuildConfigTab() {
   if (loading && guilds.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="bg-white shadow rounded-lg">
+        <div className="lumina-card">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -435,7 +450,7 @@ export default function GuildConfigTab() {
             </div>
           </div>
         </div>
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="lumina-card overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -469,7 +484,7 @@ export default function GuildConfigTab() {
   return (
     <div className="space-y-6">
       {/* Cabeçalho e Busca */}
-      <div className="bg-white shadow rounded-lg">
+      <div className="lumina-card">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center">
@@ -518,6 +533,7 @@ export default function GuildConfigTab() {
                 </div>
                 <input
                   type="text"
+                  aria-label={t("admin.guilds.searchPlaceholder")}
                   placeholder={t("admin.guilds.searchPlaceholder")}
                   value={searchTerm}
                   onChange={(e) => {
@@ -565,7 +581,7 @@ export default function GuildConfigTab() {
       )}
 
       {/* Lista de Guildas */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="lumina-card overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -658,7 +674,7 @@ export default function GuildConfigTab() {
                   ) : (
                     <button
                       onClick={() => openGuildDetails(guild)}
-                      className="text-purple-600 hover:text-purple-900"
+                      className="lumina-icon-button text-purple-600 hover:text-purple-900"
                       title={t("guild.configure")}
                     >
                       <EyeIcon className="h-4 w-4" />
@@ -671,36 +687,10 @@ export default function GuildConfigTab() {
         </table>
       </div>
 
-      {/* Paginação local */}
-      {filteredGuilds.length > GUILDS_PER_PAGE && (
-        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-lg shadow">
-          <div>
-            <p className="text-sm text-gray-700">
-              {t('admin.guilds.showing', { start: Math.min((currentPage - 1) * GUILDS_PER_PAGE + 1, filteredGuilds.length), end: Math.min(currentPage * GUILDS_PER_PAGE, filteredGuilds.length), total: filteredGuilds.length })}
-            </p>
-          </div>
-          <div>
-            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-              {Array.from({ length: Math.ceil(filteredGuilds.length / GUILDS_PER_PAGE) }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                    page === currentPage
-                      ? 'z-10 bg-purple-50 border-purple-500 text-purple-600'
-                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </div>
-      )}
+      <ServerPagination page={currentPage} hasMore={hasMore} loading={loading} onChange={setCurrentPage} />
 
       {/* Modal de detalhes da guilda */}
-      {isDetailModalOpen && <GuildDetailModal />}
+      {isDetailModalOpen && renderGuildDetailModal()}
     </div>
   );
 }

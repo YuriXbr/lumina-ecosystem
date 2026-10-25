@@ -97,22 +97,24 @@ describe('CORS', () => {
 
 describe('Validação de senha (POST /expapi/v1/register)', () => {
     const URL = '/expapi/v1/register';
+    let csrf;
+    beforeEach(async () => { csrf = await require('./helpers/testUtils').getCsrfTokens(app); });
 
     it('rejeita senha curta (< 8 chars)', async () => {
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValue(null);
-        const res = await request(app).post(URL).send({ email: 't@t.com', password: 'Ab1', firstName: 'T', lastName: 'U' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ email: 't@t.com', password: 'Ab1', firstName: 'Test', lastName: 'User', username: 'tester' });
         expect(res.status).toBe(400);
     });
 
     it('rejeita senha sem número', async () => {
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValue(null);
-        const res = await request(app).post(URL).send({ email: 't@t.com', password: 'SemNumero', firstName: 'T', lastName: 'U' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ email: 't@t.com', password: 'SemNumero', firstName: 'Test', lastName: 'User', username: 'tester' });
         expect(res.status).toBe(400);
     });
 
     it('rejeita senha sem maiúscula', async () => {
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValue(null);
-        const res = await request(app).post(URL).send({ email: 't@t.com', password: 'semmaius123', firstName: 'T', lastName: 'U' });
+        const res = await request(app).post(URL).set(csrf.headers).send({ email: 't@t.com', password: 'semmaius123', firstName: 'Test', lastName: 'User', username: 'tester' });
         expect(res.status).toBe(400);
     });
 });

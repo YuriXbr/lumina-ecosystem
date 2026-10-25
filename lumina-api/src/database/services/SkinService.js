@@ -144,15 +144,14 @@ class SkinService extends DatabaseService {
     async fetchUserSkins(userId) {
         try {
             const userInventory = await UserInventoryService.getInventory(userId);
-            if (!userInventory) throw new Error('User inventory not found');
-
-            const userSkins = await Promise.all(
-                userInventory.skins.map(id => this.getSkinInfo(id))
-            );
-            return userSkins.filter(Boolean);
+            if (!userInventory?.skins?.length) return [];
+            // One catalog query instead of one database round trip per owned copy.
+            const catalog = await SkinsIdListService.get({ id: { $in: [...new Set(userInventory.skins)] } });
+            const byId = new Map(catalog.map(skin => [Number(skin.id), skin]));
+            return userInventory.skins.map(id => byId.get(Number(id))).filter(Boolean);
         } catch (error) {
             addLog('DB', 'skins.error', `Erro em fetchUserSkins (user=${userId}): ${error.message}`);
-            return null;
+            throw error;
         }
     }
 }

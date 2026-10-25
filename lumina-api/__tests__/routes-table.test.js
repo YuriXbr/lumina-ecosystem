@@ -39,12 +39,11 @@ beforeAll(() => {
     app = require('../index');
 });
 
-describe('GET / — tabela de endpoints', () => {
-    it('retorna 200 e HTML listando as rotas registradas', async () => {
+describe('GET / — sem enumeração pública de endpoints', () => {
+    it('retorna 204 sem expor a tabela de endpoints', async () => {
         const res = await request(app).get('/');
-        expect(res.status).toBe(200);
-        expect(res.type).toBe('text/html');
-        expect(res.text).toContain('Lumina API');
+        expect(res.status).toBe(204);
+        expect(res.text).toBe('');
     });
 
     it('escapa HTML nas descrições das rotas (proteção contra XSS refletido)', async () => {

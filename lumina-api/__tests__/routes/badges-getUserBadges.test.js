@@ -72,15 +72,15 @@ describe('GET /expapi/v1/badges/user/:identifier', () => {
         expect(res.status).toBe(200);
     });
 
-    it('403 PROFILE_PRIVATE quando publicProfile=false', async () => {
+    it('404 USER_NOT_FOUND para perfil privado, sem revelar sua existência', async () => {
         DashboardAccountService.getOne.mockResolvedValueOnce(
             makeAccount({ username: 'priv', publicProfile: false })
         );
 
         const res = await request(app).get(URL('priv'));
 
-        expect(res.status).toBe(403);
-        expect(res.body.code).toBe('PROFILE_PRIVATE');
+        expect(res.status).toBe(404);
+        expect(res.body.code).toBe('USER_NOT_FOUND');
     });
 
     it('404 USER_NOT_FOUND quando identifier não existe', async () => {

@@ -1,3 +1,4 @@
+import LegalLinks from '../../components/LegalLinks';
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -13,7 +14,7 @@ import { translateApiError } from '../../i18n/apiErrors.js';
 import AppShell from '../../components/AppShell';
 import SetPasswordModal from '../dashboardPage/components/SetPasswordModal';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+import { API_BASE } from '../../utils/apiBase';
 
 const TABS = [
   { id: 'profile',       labelKey: 'settings.tabs.profile',       icon: UserIcon },
@@ -172,7 +173,7 @@ export default function SettingsPage() {
       const csrfRes = await fetch(`${API_BASE}expapi/v1/csrf-token`, { credentials: 'include' });
       const { csrfToken } = await csrfRes.json();
       const res = await fetch(`${API_BASE}expapi/v1/user/set-password`, {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-Token': csrfToken,
@@ -186,6 +187,7 @@ export default function SettingsPage() {
       if (res.ok) {
         setSaveMsg({ type: 'success', text: t('settings.security.passwordChanged') });
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        await refreshUser();
       } else {
         const err = await res.json().catch(() => ({}));
         setSaveMsg({ type: 'error', text: err.error || t('settings.security.passwordChangeError') });
@@ -364,10 +366,11 @@ export default function SettingsPage() {
       await navigator.clipboard.writeText(user.accountId);
       setCopiedAccountId(true);
       setTimeout(() => setCopiedAccountId(false), 2000);
-    } catch {}
+    } catch { /* Optional state unavailable; the main flow remains usable. */ }
   };
 
-  if (loading) return <AppShell><SettingsSkeleton /></AppShell>;
+  if (loading) return <AppShell>
+<SettingsSkeleton /></AppShell>;
   if (userError || !user) {
     return (
       <AppShell>
@@ -402,6 +405,7 @@ export default function SettingsPage() {
 
   return (
     <AppShell maxWidth="max-w-5xl" title={t("settings.title")} subtitle={t("settings.subtitle")}>
+      {user && !user.emailVerified && <div className="mb-6 lumina-card p-4 flex flex-wrap justify-between items-center gap-3"><div><p className="text-sm font-semibold text-gray-900">Confirme seu email</p><p className="text-xs text-gray-500 mt-1">Proteja sua conta e mantenha a recuperação de senha disponível.</p></div><a className="lumina-button" href="/verify-email">Verificar email</a></div>}
       <div className="space-y-6">
         {/* Mensagem de save */}
         {saveMsg && (
@@ -473,8 +477,8 @@ export default function SettingsPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t("auth.register.firstName")}</label>
-                <input
+                <label htmlFor="account-firstName" className="block text-xs font-medium text-gray-600 mb-1">{t("auth.register.firstName")}</label>
+                <input id="account-firstName" name="firstName"
                   type="text"
                   value={settings.firstName}
                   onChange={(e) => handleSettingChange('firstName', e.target.value)}
@@ -482,8 +486,8 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t("auth.register.firstName")}</label>
-                <input
+                <label htmlFor="account-lastName" className="block text-xs font-medium text-gray-600 mb-1">{t("auth.register.lastName")}</label>
+                <input id="account-lastName" name="lastName"
                   type="text"
                   value={settings.lastName}
                   onChange={(e) => handleSettingChange('lastName', e.target.value)}
@@ -491,8 +495,8 @@ export default function SettingsPage() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t("auth.register.email")}</label>
-                <input
+                <label htmlFor="account-email" className="block text-xs font-medium text-gray-600 mb-1">{t("auth.register.email")}</label>
+                <input id="account-email" name="email"
                   type="email"
                   value={settings.email}
                   disabled
@@ -706,7 +710,7 @@ export default function SettingsPage() {
               <p className="text-sm text-gray-500 mt-0.5">{t("settings.account.securityDesc")}</p>
             </div>
             {showSetPassword && (
-              <SetPasswordModal onSuccess={() => setShowSetPassword(false)} onSkip={() => setShowSetPassword(false)} />
+              <SetPasswordModal onSuccess={async () => {await refreshUser();setShowSetPassword(false);}} onSkip={() => setShowSetPassword(false)} />
             )}
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <PasswordInput label={t('settings.security.currentPassword')} value={passwordData.currentPassword} onChange={(v) => setPasswordData(p => ({ ...p, currentPassword: v }))} show={showPasswords.current} onToggle={() => setShowPasswords(s => ({ ...s, current: !s.current }))} placeholder={t('settings.security.currentPasswordPlaceholder')} required />
@@ -840,6 +844,11 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+      <section aria-labelledby="settings-legal" className="lumina-card mt-8 p-5">
+        <h2 id="settings-legal" className="text-sm font-semibold text-gray-900">Termos e privacidade</h2>
+        <p className="mt-1 mb-4 text-xs text-gray-500">Conheça as regras do serviço, o uso dos seus dados e os canais de atendimento da LuminaInk.</p>
+        <LegalLinks className="text-sm text-purple-700" label="Políticas nas configurações"/>
+      </section>
     </AppShell>
   );
 }
@@ -856,6 +865,7 @@ function ToggleRow({ label, desc, checked, onChange }) {
       <button
         type="button"
         onClick={() => onChange(!checked)}
+        role="switch" aria-checked={checked} aria-label={label}
         className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
           checked ? 'bg-purple-600' : 'bg-gray-200'
         }`}

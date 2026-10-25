@@ -72,7 +72,7 @@ module.exports = {
                     icon: null,
                     memberCount: guild.memberCount || 0,
                     configured: true,
-                    botEnabled: true,
+                    botEnabled: guild.botPresent !== false,
                     welcomeEnabled: guild.memberWelcomeToggle || false,
                     moderationEnabled: !!guild.moderationChannelId,
                     musicEnabled: guild.djEnabled || false,
@@ -141,6 +141,7 @@ module.exports = {
                     // Guilda existe no banco — adiciona o icon do Discord
                     const existing = allGuildsMap.get(dg.id);
                     existing.icon = dg.icon;
+                    existing.botEnabled = true;
                     if (!existing.memberCount && dg.approximate_member_count) {
                         existing.memberCount = dg.approximate_member_count;
                     }

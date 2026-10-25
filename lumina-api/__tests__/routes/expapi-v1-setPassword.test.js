@@ -44,7 +44,11 @@ afterEach(() => jest.clearAllMocks());
 describe('POST /expapi/v1/user/set-password', () => {
     const URL = '/expapi/v1/user/set-password';
     let csrf;
-    beforeEach(async () => { csrf = await getCsrfTokens(app); });
+    beforeEach(async () => {
+        DashboardAccountService.getDashboardAccountByEmail.mockResolvedValue({accountId:'acc-123',email:'user@example.com'});
+        DashboardAccountService.getDashboardAccountByAccountId.mockResolvedValue({accountId:'acc-123',email:'user@example.com',sessionVersion:1});
+        csrf = await getCsrfTokens(app);
+    });
 
     const authHeader = () => bearerAuth(makeJwt({ accountId: 'acc-123', email: 'user@example.com' }));
 
@@ -86,7 +90,7 @@ describe('POST /expapi/v1/user/set-password', () => {
 
     // ─── 200 Sucesso ──────────────────────────────────────────────────────
     it('200 quando define senha pela 1ª vez (sem currentPassword)', async () => {
-        DashboardAccountService.changePassword.mockResolvedValueOnce(true);
+        DashboardAccountService.changePassword.mockResolvedValueOnce({accountId:'acc-123',email:'user@example.com',sessionVersion:1});
 
         const res = await request(app)
             .post(URL)
@@ -99,7 +103,7 @@ describe('POST /expapi/v1/user/set-password', () => {
     });
 
     it('200 quando altera senha com currentPassword correta', async () => {
-        DashboardAccountService.changePassword.mockResolvedValueOnce(true);
+        DashboardAccountService.changePassword.mockResolvedValueOnce({accountId:'acc-123',email:'user@example.com',sessionVersion:1});
 
         const res = await request(app)
             .post(URL)
@@ -212,15 +216,16 @@ describe('POST /expapi/v1/user/set-password', () => {
     });
 
     // ─── JWT sem accountId ────────────────────────────────────────────────
-    it('401 INVALID_TOKEN quando JWT não tem accountId', async () => {
-        const token = makeJwt({ accountId: undefined });
+    it('resolve o ID da sessão legada a partir da conta validada no banco', async () => {
+        const token = makeJwt({ accountId: undefined,email:'user@example.com' });
+        DashboardAccountService.changePassword.mockResolvedValueOnce({accountId:'acc-123',email:'user@example.com',sessionVersion:1});
         const res = await request(app)
             .post(URL)
             .set(combineAuthAndCsrf(bearerAuth(token), csrf.headers))
             .send({ newPassword: 'NovaSenha123' });
 
-        expect(res.status).toBe(401);
-        expect(res.body.code).toBe('INVALID_TOKEN');
+        expect(res.status).toBe(200);
+        expect(DashboardAccountService.changePassword).toHaveBeenCalledWith('acc-123',null,'NovaSenha123');
     });
 });
 

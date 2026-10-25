@@ -1,3 +1,4 @@
+const { decryptSecret, encryptSecret } = require('../../../../utils/secretEncryption');
 const DashboardAccountService = require('../../../../database/services/DashboardAccountService');
 const GuildService = require('../../../../database/services/GuildService');
 const BotService = require('../../../../database/services/BotService');
@@ -179,7 +180,7 @@ module.exports = {
     checkAuthNeeded: false,
 
     async execute(req, res) {
-        const { user: decoded, error: authError } = await verifyRequestAuthWithAccountCheck(req);
+        const { user: decoded, account: authedAccount, error: authError } = await verifyRequestAuthWithAccountCheck(req);
         if (authError) return res.status(authError.status).json({ error: authError.message, code: authError.code });
 
         const { guildId } = req.params;
@@ -190,7 +191,7 @@ module.exports = {
             // ─── 1. Verificar Discord vinculado ─────────────────────────────
             // account já vem populado pelo verifyRequestAuthWithAccountCheck, mas
             // pegamos uma cópia fresca para podermos atualizar em caso de refresh.
-            let account = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
+            const account = authedAccount;
             if (!account)
                 return res.status(404).json({ error: 'Conta não encontrada.', code: 'ACCOUNT_NOT_FOUND' });
 
@@ -201,40 +202,8 @@ module.exports = {
                 });
 
             // ─── 2. Verificar/refresh do token OAuth do usuário ─────────────
-            let userAccessToken = account.discordOauth2Token;
-            let userScope = account.discordOauth2TokenScope || '';
-
-            if (new Date() >= new Date(account.discordOauth2TokenExpiresAt)) {
-                try {
-                    const params = new URLSearchParams({
-                        client_id: process.env.DISCORD_CLIENT_ID,
-                        client_secret: process.env.DISCORD_CLIENT_SECRET,
-                        grant_type: 'refresh_token',
-                        refresh_token: account.discordOauth2RefreshToken,
-                        redirect_uri: process.env.DISCORD_AUTH_REDIRECT_URI,
-                        scope: 'identify email guilds guilds.members.read',
-                    });
-                    const tokenRes = await axios.post('https://discord.com/api/oauth2/token', params.toString(),
-                        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-                    const updated = await DashboardAccountService.update({ email: decoded.email }, {
-                        $set: {
-                            discordOauth2Token: tokenRes.data.access_token,
-                            discordOauth2RefreshToken: tokenRes.data.refresh_token,
-                            discordOauth2TokenExpiresAt: new Date(Date.now() + (tokenRes.data.expires_in || 3600) * 1000),
-                            discordOauth2TokenType: 'Bearer',
-                            discordOauth2TokenScope: tokenRes.data.scope || 'identify email guilds guilds.members.read',
-                        }
-                    });
-                    userAccessToken = updated?.discordOauth2Token || tokenRes.data.access_token;
-                    userScope = tokenRes.data.scope || 'identify email guilds guilds.members.read';
-                } catch (refreshError) {
-                    addLog('API', 'discord.token.refresh.fail', `Falha ao refrescar token do usuário: ${refreshError.message}`);
-                    return res.status(403).json({
-                        error: 'Sua conexão com o Discord expirou. Reconecte sua conta nas configurações.',
-                        code: 'DISCORD_TOKEN_EXPIRED',
-                    });
-                }
-            }
+            const userAccessToken = await require('../../../../utils/discordAccess').discordToken(account);
+            const userScope = account.discordOauth2TokenScope || '';
 
             // ─── 3. Verificar membership + pegar info básica da guilda ──────
             // GET /users/@me/guilds retorna todas as guildas do usuário com
@@ -279,8 +248,8 @@ module.exports = {
             }
 
             // Calcula permissões
-            const permissions = parseInt(guildInfo.permissions || '0', 10);
-            const canManage = !!guildInfo.owner || (permissions & PERM_ADMINISTRATOR) !== 0 || (permissions & PERM_MANAGE_GUILD) !== 0;
+            const permissions = BigInt(guildInfo.permissions || '0');
+            const canManage = !!guildInfo.owner || (permissions & BigInt(PERM_ADMINISTRATOR)) !== 0n || (permissions & BigInt(PERM_MANAGE_GUILD)) !== 0n;
 
             // ─── 4. Buscar info do membro (se scope permitir) ───────────────
             // GET /users/@me/guilds/{guildId}/member retorna { nick, roles, joined_at, ... }
@@ -334,21 +303,22 @@ module.exports = {
                         prefix: guildData.prefix || 'l!',
                         language: guildData.guildLocale || 'en-US',
                         welcomeEnabled: !!guildData.memberWelcomeToggle,
-                        moderationEnabled: !!guildData.moderationChannelId,
+                        moderationEnabled: guildData.moderationEnabled ?? !!guildData.moderationChannelId,
                         musicEnabled: !!guildData.djEnabled,
                         memberCount: guildData.memberCount || 0,
                         gachaEnabled: guildData.gachaEnabled ?? true,
                         gachaChestsEnabled: guildData.gachaChestsEnabled ?? true,
-                        gachaMaxRolls: guildData.gachaMaxRolls || 8,
-                        gachaRefreshInterval: guildData.gachaRollsRefreshInterval || 10800000,
+                        gachaMaxRolls: guildData.gachaMaxRolls ?? 8,
+                        gachaRefreshInterval: guildData.gachaRollsRefreshInterval ?? 10800000,
                     };
 
                     // Config de gerenciamento — só para quem pode administrar a guilda
                     if (canManage) {
-                        botConfig.warnsToMute = guildData.warnsToMute || 3;
-                        botConfig.warnsToTimeOut = guildData.warnsToTimeOut || 5;
-                        botConfig.warnsToKick = guildData.warnsToKick || 6;
-                        botConfig.warnsToBan = guildData.warnsToBan || 7;
+                        Object.assign(botConfig, require('../../../../utils/guildConfig').configDto(guildData));
+                        botConfig.warnsToMute = guildData.warnsToMute ?? 3;
+                        botConfig.warnsToTimeOut = guildData.warnsToTimeOut ?? 5;
+                        botConfig.warnsToKick = guildData.warnsToKick ?? 6;
+                        botConfig.warnsToBan = guildData.warnsToBan ?? 7;
                         botConfig.persistentMute = guildData.persistentMute ?? true;
                         botConfig.persistentWarns = guildData.persistentWarns ?? true;
                         botConfig.autoWarnPunishment = guildData.autoWarnPunishment || false;
@@ -391,6 +361,7 @@ module.exports = {
                 botRolePosition: botRolePosition || 0,
             });
         } catch (error) {
+            if (error.status) return res.status(error.status).json({error:error.message,code:error.code});
             return routeError({
                 res, error, route: ROUTE,
                 errorCode: 'FETCH_DISCORD_GUILD_ERROR',

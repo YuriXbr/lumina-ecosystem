@@ -5,22 +5,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { LanguageProvider, useI18n, useT } from './LanguageContext';
-import { UserProvider } from '../contexts/UserContext';
+import {renderWithProviders} from '../test/testUtils';
 import { MemoryRouter } from 'react-router-dom';
 
 beforeEach(() => {
   window.localStorage.clear();
 });
-
-function renderWithProviders(ui, user = null) {
-  return render(
-    <MemoryRouter>
-      <UserProvider initialUser={user}>
-        <LanguageProvider>{ui}</LanguageProvider>
-      </UserProvider>
-    </MemoryRouter>
-  );
-}
 
 function TestConsumer() {
   const { locale, setLocale, t, supportedLocales, defaultLocale } = useI18n();
@@ -70,7 +60,7 @@ describe('LanguageContext', () => {
   });
 
   it('resolve locale a partir de user.language', () => {
-    renderWithProviders(<TestConsumer />, { language: 'pt-BR' });
+    renderWithProviders(<TestConsumer />, { user: {language: 'pt-BR'} });
     expect(screen.getByTestId('locale').textContent).toBe('pt-BR');
   });
 

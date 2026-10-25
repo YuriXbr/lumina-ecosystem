@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import SkinGrid from './components/SkinGrid';
 import FilterDrawer from './components/FilterDrawer';
-import luminaLogo from '../assets/isolated-monochrome-white.svg';
+import { useUser } from '../../contexts/UserContext';
+import { apiGetJson, API_BASE } from '../../utils/apiFetch';
 import OpenChestModal from './components/OpenChestModal';
 import DailyRewardModal from './components/DailyRewardModal';
 import { useT } from '../../i18n/LanguageContext.jsx';
 
 async function getInventoryFromId(id) {
-    console.log('Buscando inventário do usuário', id);
-    const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/internal/fetchuserskins?userId=${id}`)
-        .then(response => response.json())
-        .then(data => data);
-    return response;
+    if (!/^\d{16,20}$/.test(id)) throw new Error('Informe um ID Discord válido (16 a 20 dígitos).');
+    const data = await apiGetJson(`expapi/internal/fetchuserskins?userId=${encodeURIComponent(id)}`);
+    if (!Array.isArray(data)) throw new Error('Resposta de inventário inválida.');
+    return data;
 }
 
 const RARITY_TO_K_FORMAT = {
@@ -26,7 +26,7 @@ const RARITY_TO_K_FORMAT = {
 };
 
 const RARITY_OPTIONS = [
-    { key: 'kNoRarity',     labelKey: 'inventory.rarity.noRarity' },
+    { key: 'kNoRarity',     labelKey: 'inventory.noRarity' },
     { key: 'kLegacy',       labelKey: 'inventory.rarity.legacy' },
     { key: 'kEpic',         labelKey: 'inventory.rarity.epic' },
     { key: 'kLegendary',    labelKey: 'inventory.rarity.legendary' },
@@ -40,10 +40,12 @@ export function InventoryPage() {
     const [isChestModalOpen, setIsChestModalOpen] = useState(false);
     const [isDailyModalOpen, setIsDailyModalOpen] = useState(false);
     const [skins, setSkins] = useState([]);
-    const [user, setUser] = useState(null);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [discordInfo, setDiscordInfo] = useState(null);
-    const [discordError, setDiscordError] = useState(false);
+    const { user: account, loading: sessionLoading } = useUser();
+    const user = account ? { ...account, id: account.discordOauth2Id || account.id } : null;
+    const isLoggedIn = !!account;
+    const discordError = !!account && !user?.id;
+    const [inventoryError, setInventoryError] = useState('');
+    const [viewedId, setViewedId] = useState('');
 
     // Estados dos filtros
     const [generalSearch, setGeneralSearch] = useState('');
@@ -55,7 +57,7 @@ export function InventoryPage() {
     // Estados de paginação
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 20;
-    
+
     // Estado de ordenação
     const [sortOrder, setSortOrder] = useState('alphabetical'); // alphabetical, alphabetical-desc, rarity, quantity
 
@@ -66,69 +68,13 @@ export function InventoryPage() {
     // Estado do drawer de filtros no mobile/tablet
     const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
-    // Carrega usuário e valida sessão (cookie httpOnly)
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const userParam = urlParams.get('user');
-        if (userParam) {
-            const userData = { id: userParam };
-            setUser(userData);
-            handleGetInventory(userData.id);
-        }
-
-        // Verifica sessão via cookie httpOnly (não mais localStorage)
-        fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/session`, {
-            credentials: 'include',
-        })
-            .then(res => res.ok ? res.json() : null)
-            .then(data => {
-                if (data?.authenticated) {
-                    setIsLoggedIn(true);
-                }
-            })
-            .catch(() => setIsLoggedIn(false));
-    }, []);
-
-    // Solicita informações do Discord
-    useEffect(() => {
-        fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/discordinfo`, {
-            credentials: 'include',
-        })
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error('Conta Discord não vinculada');
-                }
-                return res.json();
-            })
-            .then(data => {
-                setDiscordInfo(data);
-                setDiscordError(false);
-                setUser(prev => ({
-                    ...prev,
-                    id: data.id,
-                    username: data.username,
-                    avatar: data.avatar
-                }));
-            })
-            .catch(err => {
-                setDiscordError(true);
-                setDiscordInfo(null);
-            });
-    }, []);
-
-    // Busca automaticamente as skins do próprio usuário assim que o Discord
-    // vincula — exceto se a página já foi aberta com ?user=ID na URL, caso
-    // em que esse parâmetro tem prioridade (ex: link compartilhado de
-    // inventário de outra pessoa).
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const hasUserParam = urlParams.has('user');
-
-        if (discordInfo && discordInfo.id && !hasUserParam) {
-            setUser(prev => ({ ...prev, id: discordInfo.id }));
-            handleGetInventory(discordInfo.id);
-        }
-    }, [discordInfo]);
+        if (sessionLoading) return;
+        const requestedId = new URLSearchParams(window.location.search).get('user');
+        const id = requestedId || account?.discordOauth2Id || account?.id;
+        if (id) handleGetInventory(id);
+        else { setSkins([]); setInventoryError(''); }
+    }, [account?.discordOauth2Id, account?.id, sessionLoading]);
 
     // Evento de scroll para exibir botão de "voltar ao início"
     useEffect(() => {
@@ -149,40 +95,26 @@ export function InventoryPage() {
             return;
         }
         setInventoryLoading(true);
+        setInventoryError('');
         try {
             const inventory = await getInventoryFromId(userId);
             setSkins(inventory);
+            setViewedId(userId);
+            setCurrentPage(1);
         } catch(error) {
-            console.error("Erro ao buscar inventário:", error);
+            setInventoryError(error.message || 'Não foi possível carregar a coleção.');
+            setSkins([]);
         } finally {
             setInventoryLoading(false);
         }
     };
 
-    const loginWithDiscord = async () => {
-        const origin = window.location.href;
-        try {
-            const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/oauth2/discord/prepare`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify({ origin }),
-            });
-            const data = await response.json();
-            if (data.redirectUrl) {
-                window.location.href = data.redirectUrl;
-            } else {
-                console.error('URL de redirecionamento não recebida.');
-            }
-        } catch (error) {
-            console.error('Erro ao preparar redirecionamento para Discord:', error);
-        }
+    const loginWithDiscord = () => {
+        window.location.href = `${API_BASE}expapi/oauth2/discord/auth/start?origin=${encodeURIComponent(window.location.origin)}&intent=${account ? 'link' : 'login'}`;
     };
 
     const toggleChampion = (champion) => {
-        setSelectedChampions(prev => 
+        setSelectedChampions(prev =>
             prev.includes(champion)
                 ? prev.filter(ch => ch !== champion)
                 : [...prev, champion]
@@ -190,7 +122,7 @@ export function InventoryPage() {
     };
 
     const toggleRarity = (rarity) => {
-        setSelectedRarities(prev => 
+        setSelectedRarities(prev =>
             prev.includes(rarity)
                 ? prev.filter(r => r !== rarity)
                 : [...prev, rarity]
@@ -198,17 +130,15 @@ export function InventoryPage() {
     };
 
     // Agrupar skins por ID para contar duplicatas
-    const groupedSkins = skins.reduce((acc, skin) => {
-        if (!skin || !skin.id) return acc; // Validação de segurança
-        
-        const existing = acc.find(item => item.id === skin.id);
-        if (existing) {
-            existing.count++;
-        } else {
-            acc.push({ ...skin, count: 1 });
+    const groupedSkins = useMemo(() => {
+        const items = new Map();
+        for (const skin of skins) {
+            if (!skin?.id) continue;
+            if (items.has(skin.id)) items.get(skin.id).count++;
+            else items.set(skin.id, { ...skin, count: 1 });
         }
-        return acc;
-    }, []);
+        return [...items.values()];
+    }, [skins]);
 
     const availableChampions = Array.from(new Set(
         groupedSkins
@@ -220,17 +150,17 @@ export function InventoryPage() {
 
     const filteredSkins = groupedSkins.filter(skin => {
         if (!skin || !skin.championName || !skin.name) return false; // Validação de segurança
-        
-        const generalMatch = !generalSearch || 
+
+        const generalMatch = !generalSearch ||
             skin.championName.toLowerCase().includes(generalSearch.toLowerCase()) ||
             skin.name.toLowerCase().includes(generalSearch.toLowerCase());
-        
-        const championMatch = selectedChampions.length === 0 || 
+
+        const championMatch = selectedChampions.length === 0 ||
             selectedChampions.includes(skin.championName);
-        
-        const rarityMatch = selectedRarities.length === 0 || 
+
+        const rarityMatch = selectedRarities.length === 0 ||
             selectedRarities.includes(skin.rarity);
-        
+
         return generalMatch && championMatch && rarityMatch;
     });
 
@@ -241,17 +171,18 @@ export function InventoryPage() {
                 return (a.name || '').localeCompare(b.name || '');
             case 'alphabetical-desc':
                 return (b.name || '').localeCompare(a.name || '');
-            case 'rarity':
-                const rarityOrder = { 
-                    'kTranscendent': 7, 
-                    'kUltimate': 6, 
-                    'kMythic': 5, 
-                    'kLegendary': 4, 
-                    'kEpic': 3, 
-                    'kLegacy': 2, 
-                    'kNoRarity': 1 
+            case 'rarity': {
+                const rarityOrder = {
+                    'kTranscendent': 7,
+                    'kUltimate': 6,
+                    'kMythic': 5,
+                    'kLegendary': 4,
+                    'kEpic': 3,
+                    'kLegacy': 2,
+                    'kNoRarity': 1
                 };
                 return (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0);
+            }
             case 'quantity':
                 return (b.count || 1) - (a.count || 1);
             case 'champion':
@@ -285,7 +216,7 @@ export function InventoryPage() {
         const getPageNumbers = () => {
             const pages = [];
             const maxVisible = 5;
-            
+
             if (totalPages <= maxVisible) {
                 for (let i = 1; i <= totalPages; i++) {
                     pages.push(i);
@@ -321,7 +252,7 @@ export function InventoryPage() {
                 >
                     {t('common.previous')}
                 </button>
-                
+
                 {getPageNumbers().map((page, index) => (
                     page === '...' ? (
                         <span key={index} className="px-3 py-2 text-sm text-gray-500">...</span>
@@ -331,7 +262,7 @@ export function InventoryPage() {
                             onClick={() => onPageChange(page)}
                             className={`px-3 py-2 text-sm font-medium rounded-md ${
                                 currentPage === page
-                                    ? 'bg-indigo-600 text-white'
+                                    ? 'bg-purple-600 text-white'
                                     : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
                             }`}
                         >
@@ -339,7 +270,7 @@ export function InventoryPage() {
                         </button>
                     )
                 ))}
-                
+
                 <button
                     onClick={() => onPageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
@@ -352,76 +283,14 @@ export function InventoryPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
+        <div className="bg-gray-50">
             {/* Main Content */}
-            <section className="min-h-screen">
+            <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <div className="w-full">
-                    <div className="bg-white shadow-xl min-h-screen">
+                    <div className="lumina-card overflow-hidden">
                         {/* Enhanced Header with Navigation */}
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
-                            {/* Navigation Bar */}
-                            <nav className="flex items-center justify-between mb-6">
-                                <div className="flex items-center space-x-3">
-                                    <a href="/" className="flex items-center space-x-3">
-                                        <img 
-                                            src={luminaLogo} 
-                                            alt="LuminaBot" 
-                                            className="h-8 w-auto"
-                                        />
-                                    </a>
-                                </div>
-                                
-                                <div className="hidden lg:flex lg:space-x-8">
-                                    <a href="/commands" className="text-white/80 hover:text-white transition-colors font-medium">
-                                        {t('nav.commands')}
-                                    </a>
-                                    <a href="/inventory" className="text-white border-b border-white font-medium">
-                                        {t('nav.inventory')}
-                                    </a>
-                                    <a href="/pricing" className="text-white/80 hover:text-white transition-colors font-medium">
-                                        {t('nav.pricing')}
-                                    </a>
-                                    <a href="/about" className="text-white/80 hover:text-white transition-colors font-medium">
-                                        {t('nav.about')}
-                                    </a>
-                                </div>
-                                <div className="flex items-center space-x-4">
-                                    {isLoggedIn ? (
-                                        <a
-                                            href="/members"
-                                            className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-lg transition-colors font-medium backdrop-blur-sm border border-white/20"
-                                            title={discordInfo?.username ? t('inventory.goToMembersAreaWithUser', { user: discordInfo.username }) : t('inventory.goToMembersArea')}
-                                        >
-                                            {discordInfo?.avatar && discordInfo?.id ? (
-                                                <img
-                                                    src={`https://cdn.discordapp.com/avatars/${discordInfo.id}/${discordInfo.avatar}.png`}
-                                                    alt="Avatar"
-                                                    className="w-6 h-6 rounded-full border border-white/30"
-                                                />
-                                            ) : (
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                </svg>
-                                            )}
-                                            <span className="hidden sm:inline">
-                                                {discordInfo?.username || t('common.myAccount')}
-                                            </span>
-                                        </a>
-                                    ) : (
-                                        <a
-                                            href="/login"
-                                            className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors font-medium backdrop-blur-sm border border-white/20"
-                                        >
-                                            {t('nav.login')}
-                                        </a>
-                                    )}
-                                </div>
-                            </nav>
-                            
-                            {/* Elegant divider */}
-                            <div className="w-full h-px bg-white/20 my-6"></div>
-                            
-                            <Header 
+                        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-6">
+                            <Header
                                 generalSearch={generalSearch}
                                 setGeneralSearch={setGeneralSearch}
                                 isLoggedIn={isLoggedIn}
@@ -435,6 +304,8 @@ export function InventoryPage() {
                             />
                         </div>
 
+                        {inventoryError && <div role="alert" className="mx-6 my-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{inventoryError}<button className="ml-3 underline" onClick={() => handleGetInventory(viewedId || user?.id)}>Tentar novamente</button></div>}
+                        {viewedId && viewedId !== user?.id && <p className="px-6 pt-4 text-sm text-gray-500">Coleção pública · {viewedId}</p>}
                         {/* Content Area */}
                         <div className="flex flex-col lg:flex-row">
                             <FilterDrawer
@@ -451,10 +322,12 @@ export function InventoryPage() {
                                         setChampionSearch={setChampionSearch}
                                         availableChampions={availableChampions}
                                         selectedChampions={selectedChampions}
+                                        setSelectedChampions={setSelectedChampions}
                                         toggleChampion={toggleChampion}
                                         raritySearch={raritySearch}
                                         setRaritySearch={setRaritySearch}
                                         selectedRarities={selectedRarities}
+                                        setSelectedRarities={setSelectedRarities}
                                         toggleRarity={toggleRarity}
                                         rarityOptions={RARITY_OPTIONS}
                                     />
@@ -465,17 +338,17 @@ export function InventoryPage() {
                             <div className="flex-1 p-6 lg:p-8">
                                 {inventoryLoading ? (
                                     <div className="flex flex-col justify-center items-center h-96">
-                                        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mb-4"></div>
+                                        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mb-4"></div>
                                         <span className="text-xl font-semibold text-gray-700">{t("inventory.loadingInventory")}</span>
                                         <p className="text-gray-500 mt-2">{t("inventory.fetchingSkins")}</p>
                                     </div>
                                 ) : sortedSkins.length > 0 ? (
                                     <div>
                                         {/* Results Stats */}
-                                        <div className="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                                        <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
                                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                                 <div className="flex items-center space-x-4">
-                                                    <span className="text-indigo-700 font-semibold">
+                                                    <span className="text-purple-700 font-semibold">
                                                         {hasActiveFilters ? (
                                                             t('inventory.skinsFound', { count: sortedSkins.length })
                                                         ) : (
@@ -483,17 +356,17 @@ export function InventoryPage() {
                                                         )}
                                                     </span>
                                                     {hasActiveFilters && (
-                                                        <span className="text-sm text-indigo-600">
+                                                        <span className="text-sm text-purple-600">
                                                             ({t('inventory.filtersActive')} - {t('inventory.allSkins')})
                                                         </span>
                                                     )}
                                                     {!hasActiveFilters && totalPages > 1 && (
-                                                        <span className="text-sm text-indigo-600">
+                                                        <span className="text-sm text-purple-600">
                                                             {t('inventory.pageOf', { current: currentPage, total: totalPages })}
                                                         </span>
                                                     )}
                                                 </div>
-                                                
+
                                                 <div className="flex items-center space-x-4">
                                                     {/* Filtro de Ordenação */}
                                                     <div className="flex items-center space-x-2">
@@ -501,7 +374,7 @@ export function InventoryPage() {
                                                         <select
                                                             value={sortOrder}
                                                             onChange={(e) => setSortOrder(e.target.value)}
-                                                            className="text-sm bg-white border border-gray-300 rounded-md px-3 py-1 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                            className="text-sm bg-white border border-gray-300 rounded-md px-3 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                                         >
                                                             <option value="alphabetical">{t('inventory.sortByName')}</option>
                                                             <option value="alphabetical-desc">{t('inventory.sortByNameDesc')}</option>
@@ -520,7 +393,7 @@ export function InventoryPage() {
                                                                 setChampionSearch('');
                                                                 setRaritySearch('');
                                                             }}
-                                                            className="text-sm bg-white px-3 py-1 rounded-md border border-indigo-300 text-indigo-700 hover:bg-indigo-50 transition-colors"
+                                                            className="text-sm bg-white px-3 py-1 rounded-md border border-purple-300 text-purple-700 hover:bg-purple-50 transition-colors"
                                                         >
                                                             {t('common.clearFilters')}
                                                         </button>
@@ -531,7 +404,7 @@ export function InventoryPage() {
 
                                         {/* Paginação superior - apenas quando não há filtros ativos */}
                                         {!hasActiveFilters && (
-                                            <Pagination 
+                                            <Pagination
                                                 currentPage={currentPage}
                                                 totalPages={totalPages}
                                                 onPageChange={setCurrentPage}
@@ -544,7 +417,7 @@ export function InventoryPage() {
 
                                         {/* Paginação inferior - apenas quando não há filtros ativos */}
                                         {!hasActiveFilters && (
-                                            <Pagination 
+                                            <Pagination
                                                 currentPage={currentPage}
                                                 totalPages={totalPages}
                                                 onPageChange={setCurrentPage}
@@ -558,32 +431,32 @@ export function InventoryPage() {
                                             {t('inventory.noSkinsFound')}
                                         </h3>
                                         <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                                            {!isLoggedIn ? 
+                                            {!isLoggedIn ?
                                                 t('inventory.loginRequired') :
                                                 discordError ?
                                                 t('inventory.discordRequired') :
                                                 t('inventory.noSkins')
                                             }
                                         </p>
-                                        
+
                                         {!isLoggedIn ? (
                                             <a
                                                 href="/login"
-                                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
                                             >
                                                 {t('common.login')}
                                             </a>
                                         ) : discordError ? (
                                             <button
                                                 onClick={loginWithDiscord}
-                                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
                                             >
                                                 {t('inventory.connectDiscord')}
                                             </button>
                                         ) : (
                                             <a
                                                 href="/commands"
-                                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
                                             >
                                                 {t('inventory.viewCommands')}
                                             </a>
@@ -598,7 +471,7 @@ export function InventoryPage() {
                                         <p className="text-gray-600 mb-6">
                                             {t('inventory.noSkinsMatchDesc')}
                                         </p>
-                                        
+
                                         <button
                                             onClick={() => {
                                                 setSelectedChampions([]);
@@ -607,7 +480,7 @@ export function InventoryPage() {
                                                 setChampionSearch('');
                                                 setRaritySearch('');
                                             }}
-                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
                                         >
                                             {t('inventory.clearAllFilters')}
                                         </button>
@@ -623,7 +496,7 @@ export function InventoryPage() {
             {showScrollTop && (
                 <button
                     onClick={scrollToTop}
-                    className="fixed bottom-6 right-6 bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition-all duration-200 z-50"
+                    className="fixed bottom-6 right-6 bg-purple-600 text-white p-4 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-200 z-50"
                 >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />

@@ -7,7 +7,7 @@ import {
 import ErrorState from '../../../../components/ui/ErrorState';
 import { SkeletonRow } from '../../../../components/ui/Skeleton';
 
-const API = import.meta.env.VITE_API_BASE_URL || '/';
+import { API_BASE as API } from '../../../../utils/apiBase';
 
 // ─── Metadados de nível ───────────────────────────────────────────────────────
 const LEVEL_META = {
@@ -123,7 +123,7 @@ export default function LogsTab() {
 
       const res = await fetch(`${API}expapi/v1/admin/logs?${q}`, {
         headers: {}, credentials: 'include',
-        credentials: 'include',
+
       });
 
       if (res.status === 403) throw new Error('Permissão insuficiente para visualizar logs.');

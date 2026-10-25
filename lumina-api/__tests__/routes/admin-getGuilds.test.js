@@ -62,6 +62,15 @@ describe('GET /expapi/v1/admin/guilds', () => {
         expect(res.body.pagination.unconfigured).toBe(1);
     });
 
+    it('preserva configurações de servidores dos quais o bot saiu, sem marcar presença ativa', async () => {
+        DashboardAccountService.getDashboardAccountByEmail.mockResolvedValue(makeAdminAccount());
+        GuildService.getAll.mockResolvedValueOnce([makeGuild({guildId:'123456789012345678',botPresent:false,prefix:'l?'})]);
+        axios.get.mockResolvedValueOnce({data:[]});
+        const res = await request(app).get(URL).set(authHeader());
+        expect(res.status).toBe(200);
+        expect(res.body.guilds[0]).toMatchObject({configured:true,botEnabled:false,prefix:'l?'});
+    });
+
     it('200 continua funcionando mesmo se Discord API falhar', async () => {
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValue(makeAdminAccount());
         GuildService.getAll.mockResolvedValueOnce([makeGuild()]);

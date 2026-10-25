@@ -6,9 +6,9 @@
  */
 
 if (process.env.NODE_ENV === 'production') {
-    require('@dotenvx/dotenvx').config({ path: '.env' });
+    require('@dotenvx/dotenvx').config({ path: require('node:path').resolve(__dirname, '../.env'), quiet: true });
 } else {
-    require('@dotenvx/dotenvx').config({ path: '.env.dev' });
+    require('@dotenvx/dotenvx').config({ path: require('node:path').resolve(__dirname, '../.env.dev'), quiet: true });
 }
 
 const axios      = require('axios');

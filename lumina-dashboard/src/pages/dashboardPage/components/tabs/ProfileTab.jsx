@@ -1,3 +1,5 @@
+import {API_BASE} from '../../../../utils/apiBase';
+import { apiPost } from '../../../../utils/apiFetch';
 import { useState } from 'react';
 import { useUser } from '../../../../contexts/UserContext';
 import { 
@@ -13,21 +15,16 @@ export default function ProfileTab() {
   const [isUnlinking, setIsUnlinking] = useState(false);
 
   const getDiscordAvatarUrl = () => {
-    console.log('ProfileTab getDiscordAvatarUrl chamado', { user });
     
     // Primeiro tenta campos diretos (usado no inventory page)
     if (user && user.avatar && user.id) {
-      console.log('Avatar encontrado no ProfileTab (campos diretos):', `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`);
       return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
     }
     
     // Depois tenta campos do UserContext (discordOauth2Id + discordAvatar)
     if (user && user.discordAvatar && user.discordOauth2Id) {
-      console.log('Avatar encontrado no ProfileTab (campos discord):', `https://cdn.discordapp.com/avatars/${user.discordOauth2Id}/${user.discordAvatar}.png`);
       return `https://cdn.discordapp.com/avatars/${user.discordOauth2Id}/${user.discordAvatar}.png`;
     }
-    
-    console.log('Usando avatar padrão no ProfileTab - user:', user);
     return 'https://static.vecteezy.com/system/resources/thumbnails/003/337/584/small/default-avatar-photo-placeholder-profile-icon-vector.jpg';
   };
 
@@ -35,34 +32,14 @@ const handleLinkDiscord = () => {
     setIsLinking(true);
     const origin = window.location.origin;
     const params = new URLSearchParams({ origin, intent: 'link' });
-    if (token) params.set('linkToken', token);
-    window.location.href = `${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/oauth2/discord/auth/start?${params}`;
+    window.location.href = `${API_BASE}expapi/oauth2/discord/auth/start?${params}`;
 };
 
   const handleUnlinkDiscord = async () => {
     setIsUnlinking(true);
     try {
-      // Obter token CSRF
-      const csrfResponse = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/csrf-token`, {
-      
-      let csrfToken = '';
-      if (csrfResponse.ok) {
-        const csrfData = await csrfResponse.json();
-        csrfToken = csrfData.csrfToken;
-      }
-
-      // Deslinkar Discord
-      const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '/')}expapi/v1/unlink-discord`, { credentials: 'include' })
-      
-      if (response.ok) {
-        const data = await response.json();
-        alert('Discord deslinkado com sucesso!');
-        // Recarregar dados do usuário
-        window.location.reload();
-      } else {
-        const error = await response.json();
-        alert('Erro ao deslinkar Discord: ' + (error.error || 'Erro desconhecido'));
-      }
+      await apiPost('expapi/v1/unlink-discord', {});
+      window.location.reload();
     } catch (error) {
       console.error('Erro ao deslinkar Discord:', error);
       alert('Erro ao deslincar Discord: ' + error.message);
@@ -71,6 +48,7 @@ const handleLinkDiscord = () => {
     }
   };
 
+  if (!user) return <p className="text-sm text-gray-500">Entre para acessar seu perfil.</p>;
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Informações Pessoais */}

@@ -2,7 +2,7 @@ export default function DashboardBentoGrid() {
     return (
       <div className="bg-gray-50 py-24 sm:py-20">
         <div className="mx-auto max-w-2xl px-6 lg:max-w-7xl lg:px-8">
-          <h2 className="text-center text-base/7 font-semibold text-indigo-600">LUMINA BOT</h2>
+          <h2 className="text-center text-base/7 font-semibold text-purple-600">LUMINA BOT</h2>
           <p className="mx-auto mt-2 max-w-lg text-balance text-center text-4xl font-semibold tracking-tight text-gray-950 sm:text-5xl">
             PAINEL DE CONTROLE
           </p>
@@ -102,4 +102,4 @@ export default function DashboardBentoGrid() {
       </div>
     )
   }
-  
+

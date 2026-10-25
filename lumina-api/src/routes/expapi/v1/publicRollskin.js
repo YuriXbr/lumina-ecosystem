@@ -29,7 +29,7 @@ module.exports = {
 
         let discordId;
         try {
-            const resolved = await resolveDiscordAccount(email);
+            const resolved = await resolveDiscordAccount(req.account || email);
             discordId = resolved.discordId;
         } catch (err) {
             return routeError({

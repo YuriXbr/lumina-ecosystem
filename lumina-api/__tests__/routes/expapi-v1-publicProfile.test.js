@@ -63,7 +63,7 @@ describe('GET /expapi/v1/public-profile/:identifier', () => {
         expect(res.body).toHaveProperty('inventoryStats');
     });
 
-    it('200 retorna perfil mínimo quando publicProfile=false', async () => {
+    it('404 oculta perfil quando publicProfile=false', async () => {
         const account = makeAccount({
             username: 'privuser',
             displayName: 'Priv User',
@@ -73,9 +73,9 @@ describe('GET /expapi/v1/public-profile/:identifier', () => {
 
         const res = await request(app).get(URL('privuser'));
 
-        expect(res.status).toBe(200);
-        expect(res.body.username).toBe('privuser');
-        expect(res.body.publicProfile).toBe(false);
+        expect(res.status).toBe(404);
+        expect(res.body).not.toHaveProperty('username');
+        expect(res.body).not.toHaveProperty('publicProfile');
         // Campos extras não devem ser expostos
         expect(res.body).not.toHaveProperty('registrationDate');
         expect(res.body).not.toHaveProperty('accessType');

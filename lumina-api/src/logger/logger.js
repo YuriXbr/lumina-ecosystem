@@ -53,14 +53,14 @@ const addLog = (type, action, message, ctx = {}) => {
     // Persiste no MongoDB (fire-and-forget, não bloqueia)
     const ls = getLogService();
     if (ls) {
-        ls.write({
+        require('../utils/telemetry').background(ls.write({
             level: 'info', type, action, message,
             requestId: ctx.requestId || '',
             ip:        ctx.ip        || '',
             userEmail: ctx.userEmail || '',
             userId:    ctx.userId    || '',
             extra:     ctx.extra     || {},
-        }).catch(() => {});
+        }).catch(() => {}));
     }
 };
 
@@ -172,7 +172,7 @@ const routeError = async ({
     // Persiste no MongoDB (fire-and-forget)
     const ls = getLogService();
     if (ls) {
-        ls.write({
+        require('../utils/telemetry').background(ls.write({
             level:      status >= 500 ? 'error' : 'warn',
             type:       'API',
             action:     `route.error.${errorCode.toLowerCase()}`,
@@ -184,11 +184,11 @@ const routeError = async ({
             ip:         req?.ip || '',
             userEmail:  req?.user?.email || '',
             extra:      { errorCode, ...extra },
-        }).catch(() => {});
+        }).catch(() => {}));
     }
 
     // Discord embed (fire-and-forget)
-    setImmediate(() =>
+    require('../utils/telemetry').background(
         sendErrorEmbed({
             title:      `Erro em ${route}`,
             origin:     'API',
@@ -214,17 +214,6 @@ const routeError = async ({
  * Logging de nível 'info' para respostas normais, 'warn' para 4xx, 'error' para 5xx.
  */
 
-function extractEmailFromRequest(req) {
-    try {
-        const token = (req.cookies && req.cookies.lumina_token) ||
-            (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')
-                ? req.headers.authorization.split(' ')[1] : null);
-        if (!token) return '';
-        const decoded = jwt.decode(token);
-        return decoded?.email || '';
-    } catch { return ''; }
-}
-
 function requestLogger() {
     return function requestLoggerMiddleware(req, res, next) {
         const startedAt = process.hrtime.bigint();
@@ -237,9 +226,7 @@ function requestLogger() {
             const rid        = req.id || '';
 
             // Sanitiza a URL antes de logar — remove query params sensíveis
-            const safeUrl = req.originalUrl
-                ? req.originalUrl.replace(/([?&])(apiKey|internal-key|token|password|secret)=([^&]*)/gi, '$1$2=***REDACTED***')
-                : req.path || '';
+            const safeUrl = req.path || '/';
 
             const entry = `[${timestamp()}] [API<request>] [${rid}] ${req.method} ${safeUrl} → ${status} (${durationMs.toFixed(1)}ms)`;
             if (status >= 400) console.log(entry);
@@ -251,7 +238,7 @@ function requestLogger() {
             // Persiste no MongoDB
             const ls = getLogService();
             if (ls) {
-                ls.write({
+                require('../utils/telemetry').background(ls.write({
                     level, type: 'API', action: 'request',
                     message: `${req.method} ${safeUrl} → ${status} (${durationMs.toFixed(1)}ms)`,
                     requestId: rid,
@@ -260,10 +247,11 @@ function requestLogger() {
                     statusCode: status,
                     durationMs,
                     ip:         req.ip         || '',
-                    userEmail:  req.user?.email || extractEmailFromRequest(req),
+                    userEmail:  req.user?.email || '',
                     userId:     req.user?.id    || '',
-                    userAgent:  req.headers?.['user-agent'] || '',
-                }).catch(() => {});
+                    userAgent:  String(req.headers?.['user-agent'] || '').slice(0,256),
+                    extra: { traceId:req.traceId || '', cfRay:req.cfRay || '' },
+                }).catch(() => {}));
             }
         });
 

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useT } from '../i18n/LanguageContext.jsx';
+import { botInviteUrl } from '../utils/botInvite';
+import { Dialog,DialogPanel,DialogTitle } from '@headlessui/react';
 
 /**
  * Modal explicativo mostrado quando o usuário clica em "Adicionar Bot"
@@ -15,11 +17,7 @@ export default function AddBotModal({ guild, onClose }) {
 
   if (!guild) return null;
 
-  const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID;
-  // Permissions: base razoável para um bot de moderação + League
-  // 274877991936 = applications.commands + bot + (Manage Roles, Manage Channels, Kick, Ban, Manage Messages, Embed Links, Read History, Send Messages)
-  const permissions = '274877991936';
-  const oauthUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=${permissions}&guild_id=${guild.id}&response_type=code&redirect_uri=${encodeURIComponent(import.meta.env.VITE_DISCORD_REDIRECT_URI || window.location.origin)}&scope=bot+applications.commands`;
+  const oauthUrl = botInviteUrl(guild.id);
 
   const features = [
     { icon: '🎮', title: t('addBot.features.league'), desc: t('home.features.league.desc') },
@@ -33,8 +31,10 @@ export default function AddBotModal({ guild, onClose }) {
   const descParts = t('addBot.description', { server: '\u0000' }).split('\u0000');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div
+    <Dialog open={true} onClose={onClose} className="relative z-50">
+     <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
+     <div className="fixed inset-0 flex items-center justify-center p-4">
+      <DialogPanel
         className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
@@ -53,11 +53,11 @@ export default function AddBotModal({ guild, onClose }) {
               </div>
             )}
             <div>
-              <h3 className="text-base font-semibold text-gray-900">{t('addBot.title')}</h3>
+              <DialogTitle className="text-base font-semibold text-gray-900">{t('addBot.title')}</DialogTitle>
               <p className="text-sm text-gray-500">{toServerParts[0]}<strong>{guild.name}</strong>{toServerParts[1]}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+          <button onClick={onClose} aria-label={t('common.close')} className="text-gray-400 hover:text-gray-600 p-1">
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
@@ -93,14 +93,16 @@ export default function AddBotModal({ guild, onClose }) {
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row-reverse gap-2 sm:items-center">
           <a
-            href={oauthUrl}
+            href={oauthUrl || undefined}
+            aria-disabled={!accepted || !oauthUrl}
             className={`inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-white transition-colors ${
-              accepted ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-300 cursor-not-allowed pointer-events-none'
+              accepted && oauthUrl ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-300 cursor-not-allowed pointer-events-none'
             }`}
-            onClick={e => { if (!accepted) e.preventDefault(); }}
+            onClick={e => { if (!accepted || !oauthUrl) e.preventDefault(); }}
           >
             {t("addBot.continueToDiscord")}
           </a>
+          {!oauthUrl && <p role="alert" className="text-sm text-red-700">O convite está indisponível. Entre em contato com o suporte.</p>}
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
@@ -108,7 +110,8 @@ export default function AddBotModal({ guild, onClose }) {
             {t('common.cancel')}
           </button>
         </div>
-      </div>
-    </div>
+      </DialogPanel>
+     </div>
+    </Dialog>
   );
 }

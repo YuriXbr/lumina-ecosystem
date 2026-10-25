@@ -10,6 +10,7 @@ module.exports = {
 
                 client.emit('reloadRPC', client);
                 logger.sendStartMessage(client);
+                require('../utils/services/GuildSyncService').getGuildSync().start(client);
 
                 try {
                         startPunishmentScheduler(client);

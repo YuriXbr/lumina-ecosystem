@@ -1,5 +1,6 @@
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { useT } from '../i18n/LanguageContext.jsx';
+import {getDiscordAvatarUrl} from '../utils/membersApi';
 
 /**
  * Banner no topo da Área de Membros mostrando o perfil do usuário.
@@ -14,17 +15,14 @@ export default function DiscordBanner({ user }) {
   if (!user) return null;
 
   const discordId = user.id || user.discordOauth2Id;
-  const avatarHash = user.avatar || user.discordAvatar;
-  const avatarUrl = discordId && avatarHash
-    ? `https://cdn.discordapp.com/avatars/${discordId}/${avatarHash}.png?size=128`
-    : null;
+  const avatarUrl = getDiscordAvatarUrl(user);
 
   const bannerHash = user.discordBanner || user.banner;
   const bannerUrl = discordId && bannerHash
     ? `https://cdn.discordapp.com/banners/${discordId}/${bannerHash}.png?size=1024`
     : null;
 
-  const accentColor = user.discordAccentColor || '#7C3AED';
+  const accentColor = /^#[a-f\d]{6}$/i.test(user.discordAccentColor || '') ? user.discordAccentColor : '#7C3AED';
 
   // Nome de exibição: prioriza displayName, depois nome completo, depois username
   const displayName = user.displayName
@@ -48,9 +46,9 @@ export default function DiscordBanner({ user }) {
 
       {/* Conteúdo: avatar + info, lado a lado, com padding-top para não sobrepor o banner */}
       <div className="px-4 sm:px-6 pb-4 sm:pb-5">
-        <div className="flex items-end gap-4 -mt-12 sm:-mt-14">
+        <div className="flex items-start gap-4">
           {/* Avatar — wrapper com z-10 para garantir que aparece acima de qualquer elemento */}
-          <div className="flex-shrink-0 relative z-10">
+          <div className="flex-shrink-0 relative z-10 -mt-10 sm:-mt-12">
             {avatarUrl ? (
               <img
                 src={avatarUrl}
@@ -71,7 +69,7 @@ export default function DiscordBanner({ user }) {
           </div>
 
           {/* Nome + badges — relative z-10 para garantir que aparece acima do banner */}
-          <div className="flex-1 min-w-0 pb-1 relative z-10">
+          <div className="flex-1 min-w-0 pt-3 pb-1 relative z-10">
             <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">{displayName}</h1>
             {user.username && (
               <p className="text-xs text-gray-500 truncate">@{user.username}</p>

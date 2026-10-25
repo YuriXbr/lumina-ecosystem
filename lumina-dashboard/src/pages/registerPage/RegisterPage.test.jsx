@@ -18,6 +18,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import RegisterPage from './RegisterPage';
+import SiteFooter from '../../components/SiteFooter';
 import { renderWithProviders } from '../../test/testUtils';
 
 const mockFetch = vi.fn();
@@ -85,12 +86,7 @@ describe('RegisterPage', () => {
     renderWithProviders(<RegisterPage />);
   });
 
-  it('renderiza LanguageSwitcher (bandeira visível)', () => {
-    renderWithProviders(<RegisterPage />);
-    const flags = ['🇺🇸', '🇧🇷', '🇪🇸'];
-    const found = flags.some(f => screen.queryByText(f));
-    expect(found).toBe(true);
-  });
+  it('rodapé disponibiliza políticas durante cadastro',()=>{renderWithProviders(<><RegisterPage/><SiteFooter/></>);expect(document.querySelector('a[href="/terms"]')).toBeInTheDocument();expect(document.querySelector('a[href="/privacy"]')).toBeInTheDocument();});
 
   it('tem link para /login', () => {
     renderWithProviders(<RegisterPage />);

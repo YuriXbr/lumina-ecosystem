@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../contexts/UserContext";
+import { apiPost } from "../../utils/apiFetch";
 import { useT } from '../../i18n/LanguageContext.jsx';
+import PageState from '../../components/PageState';
 
 const OAUTH_ERROR_MESSAGES = {
     discord_already_linked: "oauth.discordAlreadyLinked",
@@ -15,13 +17,9 @@ const OAUTH_ERROR_MESSAGES = {
 /**
  * Página de destino do fluxo OAuth2.
  *
- * APÓS A MIGRAÇÃO PARA COOKIE httpOnly:
- *   O backend seta o cookie `lumina_token` (httpOnly) no redirect,
- *   e o fragmento da URL só carrega FLAGS booleanas (isNewAccount,
- *   hasPassword, linkedDiscord) — não mais o JWT.
- *
- *   O frontend não precisa mais ler token da URL nem salvar no localStorage.
- *   Apenas chama onLoginSuccess() que vai buscar /session (que usa o cookie).
+ * Troca um código de uso único, vinculado ao navegador, pelo cookie httpOnly.
+ * Remove o fragmento antes da chamada. JWTs nunca são lidos da URL ou salvos
+ * no localStorage.
  *
  * Erros chegam como query param (?oauthError=...).
  */
@@ -41,6 +39,7 @@ export default function OAuthCompletePage() {
         const hashParams  = new URLSearchParams(window.location.hash.replace(/^#/, ""));
         const queryParams = new URLSearchParams(window.location.search);
 
+        const exchangeCode = hashParams.get("code");
         const isNewAccount  = hashParams.get("isNewAccount")  === "true";
         const hasPassword   = hashParams.get("hasPassword")   === "true";
         const linkedDiscord = hashParams.get("linkedDiscord") === "true";
@@ -57,13 +56,15 @@ export default function OAuthCompletePage() {
             return;
         }
 
-        // Sucesso: o cookie httpOnly já foi setado pelo backend no redirect.
-        // Apenas carrega o user no contexto (via /session).
+        // A sessão só é criada depois que a API valida o código e o navegador.
         (async () => {
             try {
-                await onLoginSuccess();
-            } catch (err) {
-                console.error("Erro ao carregar dados do usuário após OAuth2:", err);
+                if (!exchangeCode) throw new Error("missing_code");
+                const result = await apiPost("expapi/v1/exchange-token", { code: exchangeCode });
+                await onLoginSuccess(result.user);
+            } catch {
+                setError(t("oauth.failed"));
+                return;
             }
 
             if (linkedDiscord) {
@@ -77,34 +78,7 @@ export default function OAuthCompletePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    if (error) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-violet-600/50 px-4">
-                <div className="bg-gray-100 shadow-lg rounded-lg p-8 max-w-md text-center space-y-4">
-                    <p className="text-gray-800">{error}</p>
-                    {isLinkError ? (
-                        <a href="/members" className="font-medium text-indigo-600 hover:text-indigo-500">
-                            {t("oauth.backToMembers")}
-                        </a>
-                    ) : (
-                        <a href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
-                            {t("oauth.backToLogin")}
-                        </a>
-                    )}
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-violet-600/50">
-            <div className="flex items-center gap-3 text-white">
-                <svg className="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span className="text-lg">{t("oauth.completingLogin")}</span>
-            </div>
-        </div>
-    );
+    return error
+        ? <PageState title={t('oauth.failed')} message={error} linkTo={isLinkError?'/members':'/login'} linkLabel={t(isLinkError?'oauth.backToMembers':'oauth.backToLogin')} />
+        : <PageState loading title={t('oauth.completingLogin')} />;
 }

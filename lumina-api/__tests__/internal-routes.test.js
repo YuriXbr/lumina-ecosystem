@@ -38,6 +38,7 @@ jest.mock('../src/database/services/BotService', () => ({
 }));
 
 jest.mock('../src/database/services/GuildService', () => ({
+    upsertMetadata: jest.fn(),
     getGuildData: jest.fn(),
     createGuildData: jest.fn(),
     updateGuildData: jest.fn(),
@@ -79,7 +80,12 @@ beforeAll(() => {
     process.env.JWT_SECRET = 'test-secret';
 });
 
-afterEach(() => jest.clearAllMocks());
+beforeEach(() => {
+    jest.clearAllMocks();
+    for (const service of [InventoryService, SkinService, BotService, GuildService]) {
+        for (const method of Object.values(service)) method.mockReset();
+    }
+});
 
 const withKey = (req) => req.set('internal-key', INTERNAL_KEY);
 
@@ -198,20 +204,20 @@ describe('POST /expapi/internal/fetchinventory', () => {
 
 // ─── POST /expapi/internal/fetchbot ──────────────────────────────────────────
 
-describe('POST /expapi/internal/fetchbot', () => {
+describe('GET /expapi/internal/fetchbot', () => {
     const URL = '/expapi/internal/fetchbot';
 
     it('200 retorna dados do bot', async () => {
         BotService.getBot.mockResolvedValueOnce({ prefix: 'l!', devMode: false });
 
-        const res = await withKey(request(app).post(URL)).send({});
+        const res = await withKey(request(app).get(URL)).set('x-lumina-api-key', process.env.LUMINA_API_KEY);
         expect(res.status).toBe(200);
     });
 
     it('404 quando bot não está configurado', async () => {
         BotService.getBot.mockResolvedValueOnce(null);
 
-        const res = await withKey(request(app).post(URL)).send({});
+        const res = await withKey(request(app).get(URL)).set('x-lumina-api-key', process.env.LUMINA_API_KEY);
         expect(res.status).toBe(404);
     });
 });
@@ -226,27 +232,30 @@ describe('POST /expapi/internal/newguild', () => {
         expect(res.status).toBe(400);
     });
 
-    it('409 se guild já existe', async () => {
-        GuildService.getGuildData.mockResolvedValueOnce({ guildId: 'g1' });
+    it('200 atualiza metadados se a guild já existe', async () => {
+        GuildService.upsertMetadata.mockResolvedValueOnce({guildId:'123456789012345671',prefix:'l!'});
 
         const res = await withKey(request(app).post(URL)).send({
-            guildId: 'g1',
-            guildReferenceName: 'Test Server',
-            guildOwnerId: 'owner-1',
+            guildId: '123456789012345671',
+            guildName: 'Test Server',
+            ownerId: '123456789012345672',
         });
-        expect(res.status).toBe(409);
+        expect(res.status).toBe(200);
+        expect(GuildService.upsertMetadata).toHaveBeenCalledTimes(1);
+        expect(GuildService.createGuildData).not.toHaveBeenCalled();
     });
 
     it('200 ao criar guild com sucesso', async () => {
-        GuildService.getGuildData.mockResolvedValueOnce(null);
-        GuildService.createGuildData.mockResolvedValueOnce({ guildId: 'g2' });
+        GuildService.upsertMetadata.mockResolvedValueOnce({guildId:'123456789012345673'});
 
         const res = await withKey(request(app).post(URL)).send({
-            guildId: 'g2',
-            guildReferenceName: 'New Server',
-            guildOwnerId: 'owner-2',
+            guildId: '123456789012345673',
+            guildName: 'New Server',
+            ownerId: '123456789012345674',
         });
         expect(res.status).toBe(200);
+        expect(GuildService.upsertMetadata).toHaveBeenCalledTimes(1);
+        expect(GuildService.createGuildData).not.toHaveBeenCalled();
     });
 });
 
@@ -261,6 +270,7 @@ describe('DELETE /expapi/internal/deleteguild', () => {
     });
 
     it('200 ao deletar guild existente', async () => {
+        GuildService.getGuildData.mockResolvedValueOnce({guildId:'g1'});
         GuildService.delete.mockResolvedValueOnce({ deletedCount: 1 });
 
         const res = await withKey(request(app).delete(URL)).send({ guildId: 'g1' });

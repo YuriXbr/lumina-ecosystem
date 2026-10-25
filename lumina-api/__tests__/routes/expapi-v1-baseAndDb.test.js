@@ -12,10 +12,12 @@
 const request = require('supertest');
 const {
     JWT_SECRET, INTERNAL_KEY, internalKey,
-    mockLogger,
+    mockLogger, mockDashboardAccountService, makeAccount,
 } = require('../helpers/testUtils');
 
 mockLogger();
+const accounts = mockDashboardAccountService();
+beforeEach(() => accounts.getDashboardAccountByEmail.mockImplementation(async email => makeAccount({email})));
 
 // Mock DataBaseService para /expapi/v1/db
 jest.mock('../../src/database/services/DataBaseService', function() {

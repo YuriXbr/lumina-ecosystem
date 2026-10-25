@@ -1,10 +1,4 @@
-if (process.env.NODE_ENV === 'production') {
-    console.log('Carregando variáveis de ambiente de .env');
-    require('@dotenvx/dotenvx').config({ path: '.env' });
-} else {
-    console.log('Carregando variáveis de ambiente de .env.dev');
-    require('@dotenvx/dotenvx').config({path: '.env.dev'});
-}
+require('./src/config/runtime');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -18,13 +12,14 @@ const metrics = require('./src/logger/metrics.js');
 const { checkAuth, loginLimiter, registerLimiter, internalKeyCheck } = require('./auth.js');
 
 const app = express();
-const port = process.env.PORT || process.env.DASHBOARD_PORT;
+const port = process.env.PORT || process.env.DASHBOARD_PORT || 3000;
 const ip = process.env.IP || process.env.API_BASE_URL || 'localhost';
 
 // csrfProtection agora vem de src/utils/csrfMiddleware.js (double-submit cookie pattern)
 // Substitui o pacote deprecated csurf
 
-app.set('trust proxy', 1);
+app.set('trust proxy', process.env.VERCEL ? 1 : (process.env.TRUST_PROXY || 'loopback'));
+app.disable('x-powered-by');
 
 // ─── Helmet: proteção via HTTP headers (análise completa na seção de segurança)
 // Helmet é adequado para esta API pois:
@@ -85,11 +80,7 @@ app.use(cookieParser());
 app.use(express.json({ limit: '512kb' })); // Limite explícito de payload (evita body bomb)
 
 // ─── Request-ID + requestLogger (rastreabilidade total) ───────────────────────
-app.use((req, res, next) => {
-    req.id = crypto.randomUUID();
-    res.setHeader('X-Request-Id', req.id);
-    next();
-});
+app.use(require('./src/utils/telemetry').requestTelemetry);
 // requestLogger pode ser undefined se o logger for mocked nos testes
 if (typeof requestLogger === 'function') {
     app.use(requestLogger());
@@ -104,11 +95,14 @@ app.use(cors({
     if (!origin || isAllowedOrigin(origin)) {
       return callback(null, true);
     }
-    return callback(new Error('Origin not allowed by CORS: ' + origin), false);
+    return callback(Object.assign(new Error('Origin not allowed'), { status: 403, code: 'ORIGIN_NOT_ALLOWED' }), false);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  exposedHeaders: ['X-Request-Id','X-CF-Ray','Server-Timing','Traceparent','Retry-After'],
   credentials: true
 }));
+
+app.use((req,res,next) => { res.setHeader('Cache-Control','no-store'); if (req.path !== '/expapi/v1/exchange-token' && req.cookies?.lumina_token && !['GET','HEAD','OPTIONS'].includes(req.method)) return csrfProtection(req,res,next); next(); });
 
 const routes = [];
 
@@ -127,7 +121,7 @@ const loadRoutes = (dir) => {
                 // NÃO deve crashar todo o servidor — loga e pula esta rota.
                 console.error(`[FATAL] Falha ao carregar rota ${filePath}: ${requireErr.message}`);
                 addLog('API', 'route.load.fail', `Falha ao carregar ${filePath}: ${requireErr.message}`);
-                return;
+                throw requireErr;
             }
             if (!route || typeof route !== 'object' || typeof route.route !== 'string') {
                 return;
@@ -138,7 +132,7 @@ const loadRoutes = (dir) => {
                 if (_isDev) console.log(`Rota ${route.route} precisa de apiKey`);
                 middlewares.push((req, res, next) => {
                     // Accept API key from query param (legacy) or X-Lumina-API-Key header
-                    const apiKey = req.query.apiKey || req.headers['x-lumina-api-key'] || '';
+                    const apiKey = req.headers['x-lumina-api-key'] || '';
                     const expectedKey = process.env.LUMINA_API_KEY || '';
                     const a = Buffer.from(String(apiKey));
                     const b = Buffer.from(String(expectedKey));
@@ -151,13 +145,14 @@ const loadRoutes = (dir) => {
             }
             if (route.jwtNeeded) {
                 if (_isDev) console.log(`Rota ${route.route} precisa de JWT`);
-                middlewares.push((req, res, next) => {
-                    const { verifyRequestAuth } = require('./src/utils/authHelpers');
-                    const { user, error } = verifyRequestAuth(req);
+                middlewares.push(async (req, res, next) => {
+                    const { verifyRequestAuthWithAccountCheck } = require('./src/utils/authHelpers');
+                    const { user, account, error } = await verifyRequestAuthWithAccountCheck(req);
                     if (error) {
                         return res.status(error.status).json({ error: error.message, code: error.code });
                     }
                     req.user = user;
+                    req.account = account;
                     next();
                 });
             }
@@ -174,14 +169,7 @@ const loadRoutes = (dir) => {
                 if (_isDev) console.log(`Rota ${route.route} precisa de checkAuth`);
                 middlewares.push(checkAuth);
             }
-            if (route.csrfProtectionNeeded) {
-                if (process.env.NODE_ENV !== 'test') {
-                    if (_isDev) console.log(`Rota ${route.route} precisa de csrfProtection`);
-                    middlewares.push(csrfProtection);
-                } else {
-                    if (_isDev) console.log(`Rota ${route.route} sem csrfProtection (test env)`);
-                }
-            }
+            if (route.csrfProtectionNeeded) middlewares.push(csrfProtection);
             if(route.internalKeyNeeded) {
                 if (_isDev) console.log(`Rota ${route.route} precisa de internalKey`);
                 middlewares.push(internalKeyCheck);
@@ -196,22 +184,23 @@ const loadRoutes = (dir) => {
                 middlewares.push(route.rateLimiter);
             }
 
+            const execute = (req,res,next) => Promise.resolve(route.execute(req,res)).catch(next);
             if (route.enabled) {
                 if (_isDev) if (_isDev) console.log(`Rota ${route.route} carregada com ${middlewares.length} middlewares.`);
                 if (typeof route.execute !== 'function') {
                     console.error(`Error: Route ${route.route} with method ${route.method} does not have a valid execute function.`);
                 } else {
                     if(route.method === 'both') {
-                        app.get(route.route, ...middlewares, route.execute);
-                        app.post(route.route, ...middlewares, route.execute);
+                        app.get(route.route, ...middlewares, execute);
+                        app.post(route.route, ...middlewares, execute);
                         routes.push({ method: 'get/post', route: route.route, description: route.description || 'No description provided' });
                     } else if (route.method === 'both_delete') {
                         // POST e DELETE na mesma rota (ex: deleteGuild que aceita ambos)
-                        app.post(route.route, ...middlewares, route.execute);
-                        app.delete(route.route, ...middlewares, route.execute);
+                        app.post(route.route, ...middlewares, execute);
+                        app.delete(route.route, ...middlewares, execute);
                         routes.push({ method: 'post/delete', route: route.route, description: route.description || 'No description provided' });
                     } else {
-                        app[route.method || 'get'](route.route, ...middlewares, route.execute);
+                        app[route.method || 'get'](route.route, ...middlewares, execute);
                         routes.push({
                             method: route.method || 'get',
                             route: route.route,
@@ -241,36 +230,13 @@ loadRoutes(path.join(__dirname, 'src', 'routes'));
 const swaggerRoute = require('./src/routes/docs/swagger-route.js');
 swaggerRoute(app);
 
-// ─── Audit #11: TTL index para account closure ────────────────────────────
-// MongoDB remove automaticamente documentos quando o campo de TTL expira.
-// Aqui criamos um índice TTL em `deletionScheduledFor` com partialFilterExpression
-// para afetar SOMENTE contas que tenham essa data definida (contas normais têm
-// `deletionScheduledFor: null` e não são afetadas).
-// O setTimeout garante que o mongoose esteja conectado antes de tentar criar
-// o índice; o `.catch(() => {})` silencia erros (índice já existe, DB offline,
-// etc.) — não é crítico para o startup da API.
-setTimeout(() => {
-    try {
-        const mongoose = require('mongoose');
-        if (mongoose.connection && mongoose.connection.db) {
-            mongoose.connection.db.collection('dashboardaccounts').createIndex(
-                { deletionScheduledFor: 1 },
-                { expireAfterSeconds: 0, partialFilterExpression: { deletionScheduledFor: { $type: 'date' } } }
-            ).catch(() => {});
-            addLog('DB', 'ttl.index.deletionscheduledfor', 'Índice TTL de fechamento de conta criado/verificado');
-        }
-    } catch (e) {
-        // Silencioso — não bloqueia o startup da API
-    }
-}, 5000);
-
 app.get('/expapi/v1/csrf-token', csrfProtection, (req, res) => {
     res.json({ csrfToken: req.csrfToken() });
 });
 
-app.post('/expapi/v1/validate-token', (req, res) => {
-    const { verifyRequestAuth } = require('./src/utils/authHelpers');
-    const { user, error } = verifyRequestAuth(req);
+app.post('/expapi/v1/validate-token', async (req, res, next) => {
+    const { verifyRequestAuthWithAccountCheck } = require('./src/utils/authHelpers');
+    const { user, error } = await verifyRequestAuthWithAccountCheck(req);
     if (error) {
         return res.status(401).json({ error: 'Token invalido ou nao fornecido.', code: error.code });
     }
@@ -290,6 +256,12 @@ function escapeHtml(unsafe) {
          .replace(/"/g, "&quot;")
          .replace(/'/g, "&#039;");
 }
+
+app.get('/health/live', (req,res) => res.json({ok:true}));
+app.get('/health/ready', async (req,res) => {
+    try { await require('./src/database/services/DataBaseService').connectDatabase(); return res.json({ok:true}); }
+    catch { return res.status(503).json({ok:false}); }
+});
 
 // Root endpoint removed for security (S-M5) — endpoint enumeration was possible
 app.get('/', (req, res) => res.status(204).send());
@@ -328,50 +300,24 @@ app.use((err, req, res, next) => {
 });
 
 
-// Só inicia o servidor quando este arquivo é executado diretamente
-// (node index.js), nunca quando é importado como módulo pelos testes
-// (require('../index')). Sem isso, cada arquivo de teste tentava abrir
-// a porta 3000 e o segundo encontrava EADDRINUSE.
+// Serverless imports register no timers or global process listeners.
 if (require.main === module) {
-    (async () => {
-        try {
-            app.listen(port, async () => {
-                addLog('API', 'start', `API iniciada em ${ip}`);
-                console.log(`API iniciada em ${ip}`);
-            });
-        } catch (error) {
-            addLog('API', 'start', `Erro ao iniciar API: ${error}`);
-            console.error('Error starting API:', error);
-            forceSendLogs();
-            process.exit(1);
-        }
-    })();
+    const { connectDatabase } = require('./src/database/services/DataBaseService');
+    let server, stopping = false;
+    const shutdown = async (code = 0) => {
+        if (stopping) return;
+        stopping = true;
+        const deadline = setTimeout(() => process.exit(code || 1), 10000);
+        deadline.unref();
+        if (server) await new Promise(resolve => server.close(resolve));
+        await require('mongoose').disconnect().catch(() => {});
+        process.exit(code);
+    };
+    process.once('SIGTERM', () => shutdown());
+    process.once('SIGINT', () => shutdown());
+    process.once('uncaughtException', error => { console.error('[fatal]', error.name); void shutdown(1); });
+    process.once('unhandledRejection', error => { console.error('[fatal]', error?.name || 'UnhandledRejection'); void shutdown(1); });
+    connectDatabase().then(() => { server = app.listen(port, () => console.log(`Lumina API listening on ${port}`)); })
+      .catch(error => { console.error('[startup]', error.name); process.exitCode = 1; });
 }
-
-// ─── Handlers globais de processo (graceful degradation) ─────────────────────
-// Estes handlers impedem que um erro não tratado (uncaughtException) ou uma
-// Promise rejeitada não capturada (unhandledRejection) crashe o processo.
-// Em vez disso, loga o erro e continua rodando — o Express error handler
-// já cuida de responder 500 para o cliente.
-
-process.on('uncaughtException', (err) => {
-    console.error('[UNCAUGHT EXCEPTION]', err.message);
-    if (err.stack) console.error(err.stack);
-    try {
-        addLog('API', 'uncaught.exception', `${err.message}\n${err.stack || ''}`);
-    } catch { /* logger pode não estar disponível */ }
-    // NÃO chama process.exit — continua rodando para que o erro seja
-    // corrigido sem downtime. O Express error handler cuida das respostas.
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    const msg = reason instanceof Error ? reason.message : String(reason);
-    console.error('[UNHANDLED REJECTION]', msg);
-    if (reason instanceof Error && reason.stack) console.error(reason.stack);
-    try {
-        addLog('API', 'unhandled.rejection', `${msg}\n${reason instanceof Error ? reason.stack : ''}`);
-    } catch { /* logger pode não estar disponível */ }
-    // NÃO chama process.exit — mesma lógica do uncaughtException.
-});
-
 module.exports = app;

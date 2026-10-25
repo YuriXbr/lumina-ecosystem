@@ -2,7 +2,7 @@ import NavBar from "./components/NavBar";
 
 export default function BotAdminPage() {
     return (
-        <div className="min-h-screen w-full justify-center bg-violet-300/50 flex items-center">
+        <div className="min-h-screen w-full justify-center bg-purple-300/50 flex items-center">
             <div className="w-full">
                 <NavBar />
                 {/* Guilds Container */}
@@ -30,7 +30,7 @@ export default function BotAdminPage() {
                         </div>
                         {/* Outras guilds*/}
                     </div>
-                </div>   
+                </div>
             </div>
         </div>
     );

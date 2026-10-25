@@ -34,7 +34,7 @@ export default function ErrorState({
               className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
             >
               <ArrowPathIcon className="h-3.5 w-3.5" />
-              {retryLabel}
+              {retryLabel || t('common.tryAgain')}
             </button>
           )}
         </div>
@@ -59,7 +59,7 @@ export default function ErrorState({
           className="mt-5 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
         >
           <ArrowPathIcon className="h-4 w-4" />
-          {retryLabel}
+          {retryLabel || t('common.tryAgain')}
         </button>
       )}
     </div>

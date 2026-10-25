@@ -28,6 +28,7 @@ jest.mock('../../src/database/services/DashboardAccountService', () => ({
 }));
 
 const DashboardAccountService = require('../../src/database/services/DashboardAccountService');
+jest.mock('../../src/utils/sessionStore',()=>({isRevoked:jest.fn().mockResolvedValue(false)}));
 const authHelpers = require('../../src/utils/authHelpers');
 
 beforeAll(() => {
@@ -201,6 +202,7 @@ describe('verifyRequestAuthWithAccountCheck', () => {
 // ─── requireAuth middleware ────────────────────────────────────────────────
 describe('requireAuth middleware', () => {
     it('popula req.user quando token é válido', async () => {
+        DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(makeAccount({email:'test@x.com'}));
         const app = express();
         app.use(cookieParser());
         app.get('/test', authHelpers.requireAuth, (req, res) => {

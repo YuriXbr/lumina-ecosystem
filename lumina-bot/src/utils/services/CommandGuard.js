@@ -105,11 +105,8 @@ class CommandGuard {
                 isCritical,
             );
         } catch (error) {
-            // If we can't read the config, don't block the command —
-            // the actual command will surface the real API error. We
-            // just log here so we have visibility.
             console.error('[CommandGuard] Falha ao buscar guild config:', error?.message ?? error);
-            return { allowed: true };
+            return { allowed: false, reason: 'Não foi possível verificar as permissões. Tente novamente em instantes.' };
         }
 
         // No config yet (guild not registered). Let the command run —
@@ -119,6 +116,13 @@ class CommandGuard {
         }
 
         const merged = CommandGuard._mergeDefaults(config);
+
+        if (command.category === 'moderation' && merged.moderationEnabled === false) {
+            return {allowed:false,reason:'A moderação está desativada neste servidor.'};
+        }
+        if (Array.isArray(merged.blockedChannels) && merged.blockedChannels.includes(interaction.channelId)) {
+            return {allowed:false,reason:'Comandos estão desativados neste canal.'};
+        }
 
         // ── 1. Category / command-level enable flag ──────────────────────
         // Two lookup conventions are supported:

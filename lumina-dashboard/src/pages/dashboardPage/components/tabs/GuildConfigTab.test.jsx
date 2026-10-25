@@ -1,14 +1,43 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import GuildConfigTab from './GuildConfigTab';
 import { renderWithProviders, makeAdminUser } from '../../../../test/testUtils';
-
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
-beforeEach(() => { mockFetch.mockResolvedValue(new Response(JSON.stringify({ csrfToken: 'tok' }), { status: 200, headers: { 'Content-Type': 'application/json' } })); });
-
-describe('GuildConfigTab', () => {
-  it('renderiza sem crashar', () => { renderWithProviders(<GuildConfigTab />, { user: makeAdminUser() }); });
-  it('renderiza conteúdo', () => { const { container } = renderWithProviders(<GuildConfigTab />, { user: makeAdminUser() }); expect(container.querySelector('div')).not.toBeNull(); });
+const mockFetch=vi.fn();
+global.fetch=mockFetch;
+const guild={guildId:'123456789012345678',guildName:'Servidor Teste',configured:true,memberCount:42,botEnabled:true,welcomeEnabled:false,musicEnabled:false,moderationEnabled:false,prefix:'l!',language:'pt-BR'};
+const json=body=>new Response(JSON.stringify(body),{status:200});
+beforeEach(()=>mockFetch.mockReset());
+describe('GuildConfigTab',()=>{
+  it('avança usando hasMore da API mesmo com menos de dez registros visíveis',async()=>{
+    mockFetch.mockImplementation(async url=>json({guilds:[{...guild,guildName:String(url).includes('page=2')?'Segundo servidor':'Primeiro servidor'}],pagination:{hasMore:!String(url).includes('page=2')}}));
+    renderWithProviders(<GuildConfigTab/>,{user:makeAdminUser()});
+    await screen.findByText('Primeiro servidor');
+    fireEvent.click(screen.getByRole('button',{name:'Próximo'}));
+    await screen.findByText('Segundo servidor');
+    expect(screen.getByText('Página 2')).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:'Próximo'})).toBeDisabled();
+  });
+  it('preserva foco e envia apenas os campos canônicos com CSRF',async()=>{
+    mockFetch.mockImplementation(async(url,options={})=>String(url).endsWith('/csrf-token')?json({csrfToken:'csrf-test'}):options.method==='PUT'?json({ok:true}):json({guilds:[guild],pagination:{hasMore:false}}));
+    renderWithProviders(<GuildConfigTab/>,{user:makeAdminUser({accessType:'headadmin'})});
+    await screen.findByText('Servidor Teste');
+    fireEvent.click(screen.getByRole('button',{name:'Configurar guilda'}));
+    expect(screen.getByRole('checkbox',{name:'Moderação',exact:true})).toBeDisabled();
+    const actor=userEvent.setup();
+    const input=screen.getByRole('textbox',{name:'Prefixo',exact:true});
+    await actor.clear(input); await actor.type(input,'l?');
+    expect(input).toHaveFocus();
+    expect(screen.getByRole('textbox',{name:'Prefixo',exact:true})).toBe(input);
+    await actor.click(screen.getByRole('checkbox',{name:'Boas-vindas',exact:true}));
+    await actor.click(screen.getByRole('checkbox',{name:'Música',exact:true}));
+    await actor.selectOptions(screen.getByRole('combobox',{name:'Idioma',exact:true}),'en-US');
+    fireEvent.click(screen.getByRole('button',{name:'Salvar Alterações',exact:true}));
+    await waitFor(()=>expect(mockFetch.mock.calls.some(([,options])=>options?.method==='PUT')).toBe(true));
+    const [,options]=mockFetch.mock.calls.find(([,opts])=>opts?.method==='PUT');
+    expect(JSON.parse(options.body)).toEqual({memberWelcomeToggle:true,djEnabled:true,prefix:'l?',guildLocale:'en-US'});
+    expect(options.headers['X-CSRF-Token']).toBe('csrf-test');
+    await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
 });

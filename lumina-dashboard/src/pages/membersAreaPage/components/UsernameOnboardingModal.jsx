@@ -3,7 +3,7 @@ import { useUser } from '../../../contexts/UserContext';
 import { XMarkIcon, CheckCircleIcon, ExclamationTriangleIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useT } from '../../../i18n/LanguageContext.jsx';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+import { API_BASE } from '../../../utils/apiBase';
 
 /**
  * Modal de onboarding mostrado para usuários que ainda não têm username.

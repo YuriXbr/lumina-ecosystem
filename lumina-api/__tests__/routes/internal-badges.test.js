@@ -22,6 +22,14 @@ mockUserBadgeService();
 const DashboardAccountService = require('../../src/database/services/DashboardAccountService');
 const BadgeService = require('../../src/database/services/BadgeService');
 const UserBadgeService = require('../../src/database/services/UserBadgeService');
+
+// Exercise the real redemption rules with a transaction adapter; concurrency is
+// covered separately by the isolated replica-set integration suite.
+require('../../src/database/services/DataBaseService').connectDatabase=jest.fn().mockResolvedValue();
+require('mongoose').connection.transaction=jest.fn(work=>work({}));
+BadgeService.model={findOne:({code})=>({session:()=>({lean:()=>BadgeService.getByCode(code)})}),updateOne:jest.fn().mockResolvedValue()};
+UserBadgeService.model={exists:({userEmail,badgeCode})=>({session:()=>UserBadgeService.hasRedeemed(userEmail,badgeCode)}),countDocuments:({badgeCode})=>({session:()=>UserBadgeService.countByBadge(badgeCode)}),create:([data])=>UserBadgeService.redeem(data.userEmail,data.badgeCode,data.redeemedVia)};
+
 const app = require('../../index');
 
 jest.useFakeTimers();
@@ -32,6 +40,7 @@ beforeAll(() => {
     process.env.INTERNAL_API_KEY = INTERNAL_KEY;
 });
 
+beforeEach(()=>{for(const service of [DashboardAccountService,BadgeService,UserBadgeService])Object.values(service).forEach(fn=>fn.mockReset?.());});
 afterEach(() => jest.clearAllMocks());
 
 // ─── POST /expapi/internal/createbadge ─────────────────────────────────────
@@ -152,74 +161,75 @@ describe('POST /expapi/internal/redeembadge', () => {
     it('400 MISSING_PARAMS sem discordUserId', async () => {
         const res = await request(app).post(URL).set(internalKey()).send({ code: 'X' });
         expect(res.status).toBe(400);
-        expect(res.body.code).toBe('MISSING_PARAMS');
+        expect(res.body.code).toBe('INVALID_DISCORD_ID');
     });
 
     it('400 MISSING_PARAMS sem code', async () => {
-        const res = await request(app).post(URL).set(internalKey()).send({ discordUserId: '123' });
+        DashboardAccountService.getOne.mockResolvedValueOnce(makeAccount());
+        const res = await request(app).post(URL).set(internalKey()).send({ discordUserId: '123456789012345678' });
         expect(res.status).toBe(400);
-        expect(res.body.code).toBe('MISSING_PARAMS');
+        expect(res.body.code).toBe('INVALID_CODE');
     });
 
     it('404 ACCOUNT_NOT_FOUND quando Discord ID não tem conta', async () => {
         DashboardAccountService.getOne.mockResolvedValueOnce(null);
 
         const res = await request(app).post(URL).set(internalKey())
-            .send({ discordUserId: '123', code: 'X' });
+            .send({ discordUserId: '123456789012345678', code: 'X' });
 
-        expect(res.status).toBe(404);
-        expect(res.body.code).toBe('ACCOUNT_NOT_FOUND');
+        expect(res.status).toBe(403);
+        expect(res.body.code).toBe('ACCOUNT_SUSPENDED');
     });
 
     it('404 BADGE_NOT_FOUND quando código não existe', async () => {
-        DashboardAccountService.getOne.mockResolvedValueOnce(makeAccount({ discordOauth2Id: '123' }));
+        DashboardAccountService.getOne.mockResolvedValueOnce(makeAccount({ discordOauth2Id: '123456789012345678' }));
         BadgeService.getByCode.mockResolvedValueOnce(null);
 
         const res = await request(app).post(URL).set(internalKey())
-            .send({ discordUserId: '123', code: 'NOPE' });
+            .send({ discordUserId: '123456789012345678', code: 'NOPE' });
 
         expect(res.status).toBe(404);
         expect(res.body.code).toBe('BADGE_NOT_FOUND');
     });
 
     it('409 BADGE_ALREADY_REDEEMED quando já resgatou', async () => {
-        DashboardAccountService.getOne.mockResolvedValueOnce(makeAccount({ discordOauth2Id: '123' }));
+        DashboardAccountService.getOne.mockResolvedValueOnce(makeAccount({ discordOauth2Id: '123456789012345678' }));
         BadgeService.getByCode.mockResolvedValueOnce(makeBadge({ code: 'X' }));
         UserBadgeService.hasRedeemed.mockResolvedValueOnce(true);
 
         const res = await request(app).post(URL).set(internalKey())
-            .send({ discordUserId: '123', code: 'X' });
+            .send({ discordUserId: '123456789012345678', code: 'X' });
 
         expect(res.status).toBe(409);
         expect(res.body.code).toBe('BADGE_ALREADY_REDEEMED');
     });
 
     it('403 BADGE_INACTIVE quando badge.active=false', async () => {
-        DashboardAccountService.getOne.mockResolvedValueOnce(makeAccount({ discordOauth2Id: '123' }));
+        DashboardAccountService.getOne.mockResolvedValueOnce(makeAccount({ discordOauth2Id: '123456789012345678' }));
         BadgeService.getByCode.mockResolvedValueOnce(makeBadge({ active: false }));
 
         const res = await request(app).post(URL).set(internalKey())
-            .send({ discordUserId: '123', code: 'X' });
+            .send({ discordUserId: '123456789012345678', code: 'X' });
 
         expect(res.status).toBe(403);
         expect(res.body.code).toBe('BADGE_INACTIVE');
     });
 
     it('403 BADGE_LIMIT_REACHED', async () => {
-        DashboardAccountService.getOne.mockResolvedValueOnce(makeAccount({ discordOauth2Id: '123' }));
+        DashboardAccountService.getOne.mockResolvedValueOnce(makeAccount({ discordOauth2Id: '123456789012345678' }));
         BadgeService.getByCode.mockResolvedValueOnce(makeBadge({ maxRedemptions: 10 }));
         UserBadgeService.hasRedeemed.mockResolvedValueOnce(false);
         UserBadgeService.countByBadge.mockResolvedValueOnce(10);
 
         const res = await request(app).post(URL).set(internalKey())
-            .send({ discordUserId: '123', code: 'X' });
+            .send({ discordUserId: '123456789012345678', code: 'X' });
 
         expect(res.status).toBe(403);
         expect(res.body.code).toBe('BADGE_LIMIT_REACHED');
     });
 
     it('401 sem internal-key', async () => {
-        const res = await request(app).post(URL).send({ discordUserId: '123', code: 'X' });
+        const res = await request(app).post(URL).send({ discordUserId: '123456789012345678', code: 'X' });
         expect(res.status).toBe(401);
     });
 });

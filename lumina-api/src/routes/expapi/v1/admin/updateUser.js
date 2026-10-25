@@ -37,7 +37,6 @@ module.exports = {
 
         try {
             const { userId } = req.params;
-            const adminAccount = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
             if (!adminAccount) return res.status(404).json({ error: 'Conta de administrador não encontrada.', code: 'ACCOUNT_NOT_FOUND' });
 
             const adminLevel = ACCESS_LEVELS[adminAccount.accessType] || 0;

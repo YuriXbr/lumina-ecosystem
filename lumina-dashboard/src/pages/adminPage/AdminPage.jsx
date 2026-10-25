@@ -79,6 +79,7 @@ export default function AdminPage() {
             return (
               <button
                 key={tab.id}
+                aria-pressed={active}
                 onClick={() => setActiveTab(tab.id)}
                 className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
                   active ? 'bg-purple-600 text-white' : 'text-gray-600 hover:bg-gray-100'

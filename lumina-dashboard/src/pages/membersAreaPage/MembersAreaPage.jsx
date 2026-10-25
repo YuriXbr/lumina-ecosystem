@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   SparklesIcon, ServerIcon, GiftIcon, TicketIcon,
   ArrowRightIcon
@@ -8,7 +8,7 @@ import { useUser } from '../../contexts/UserContext'
 import { useT } from '../../i18n/LanguageContext.jsx';
 import { fetchNews } from '../../utils/membersApi';
 import AppShell from '../../components/AppShell';
-import Header from '../../components/Header';
+import PageState from '../../components/PageState';
 import DiscordBanner from '../../components/DiscordBanner';
 import MutualGuildsList from '../../components/MutualGuildsList';
 import InventoryPreview from '../../components/InventoryPreview';
@@ -17,7 +17,7 @@ import UsernameOnboardingModal from './components/UsernameOnboardingModal';
 import ReauthModal from './components/ReauthModal';
 import BadgesTab from './components/BadgesTab';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/';
+import { API_BASE } from '../../utils/apiBase';
 
 // ─── Tabs da coluna principal ────────────────────────────────────────────────
 const TABS = [
@@ -48,8 +48,8 @@ function AnonymousHero({ news, newsLoading, newsError, onRetryNews }) {
   const t = useT();
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
-      <Header />
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-50">
+
 
       {/* Hero */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
@@ -126,6 +126,7 @@ function AnonymousHero({ news, newsLoading, newsError, onRetryNews }) {
 function MembersContent() {
   const t = useT();
   const { user } = useUser();
+  const hasDiscord = !!(user?.discordOauth2Id || user?.id);
   const [activeTab, setActiveTab] = useState('servers');
 
   // Inventário
@@ -134,6 +135,7 @@ function MembersContent() {
   const [invError, setInvError] = useState(null);
 
   const loadInventory = useCallback(async () => {
+    if (!hasDiscord) { setInvLoading(false); return; }
     setInvLoading(true);
     setInvError(null);
     try {
@@ -149,7 +151,7 @@ function MembersContent() {
     } finally {
       setInvLoading(false);
     }
-  }, []);
+  }, [hasDiscord]);
 
   useEffect(() => { loadInventory(); }, [loadInventory]);
 
@@ -162,25 +164,22 @@ function MembersContent() {
     }
   }, [user]);
 
-  // Modal de re-autorização do Discord (escopo antigo sem guilds.members.read)
+  // Reconnection is explicit; an absent DTO field must never interrupt login.
   const [showReauth, setShowReauth] = useState(false);
-  useEffect(() => {
-    if (user && user.discordOauth2Id) {
-      const scope = user.discordOauth2TokenScope || '';
-      // Se tem Discord vinculado mas o scope não inclui guilds.members.read
-      // (ou não tem scope registrado — contas muito antigas), pede re-auth
-      if (!scope.includes('guilds.members.read')) {
-        const timer = setTimeout(() => setShowReauth(true), 1200);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [user]);
 
   return (
     <AppShell maxWidth="max-w-7xl">
       <div className="space-y-6">
         {/* Banner Discord no topo */}
         <DiscordBanner user={user} />
+        {!hasDiscord && <div role="status" className="lumina-card p-4 text-sm text-gray-700 flex flex-wrap items-center justify-between gap-3">
+          <p>{t('apiError.discordNotLinked')}</p>
+          <Link to="/settings" className="lumina-button">{t('inventory.connectDiscord')}</Link>
+        </div>}
+        {hasDiscord && user?.discordNeedsReauth && <div role="status" className="lumina-card p-4 text-sm text-gray-700 flex flex-wrap items-center justify-between gap-3">
+          <p>Autorize o acesso aos seus servidores para gerenciá-los no dashboard.</p>
+          <button className="lumina-button" onClick={()=>setShowReauth(true)}>Reconectar Discord</button>
+        </div>}
 
         {/* Aviso de exclusão agendada */}
         {user?.deletionScheduledFor && (
@@ -218,7 +217,7 @@ function MembersContent() {
             </div>
 
             {/* Conteúdo da tab */}
-            {activeTab === 'servers' && <MutualGuildsList />}
+            {activeTab === 'servers' && hasDiscord && <MutualGuildsList />}
 
             {activeTab === 'badges' && <BadgesTab />}
 
@@ -231,7 +230,7 @@ function MembersContent() {
             )}
 
             {/* Inventário preview (só na tab de servidores) */}
-            {activeTab === 'servers' && (
+            {activeTab === 'servers' && hasDiscord && (
               <InventoryPreview
                 inventory={inventory}
                 loading={invLoading}
@@ -265,7 +264,8 @@ function MembersContent() {
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function MembersAreaPage() {
   const t = useT();
-  const { user, loading } = useUser();
+  const { user, loading, error, refreshUser } = useUser();
+  const isAuthenticated = !!user;
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState(null);
@@ -283,19 +283,10 @@ export default function MembersAreaPage() {
     }
   }, []);
 
-  useEffect(() => { loadNews(); }, [loadNews]);
+  useEffect(() => { if (!loading && !error && !isAuthenticated) loadNews(); }, [loadNews, loading, error, isAuthenticated]);
 
-  // Loading state (verificando auth)
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto" />
-          <p className="mt-4 text-sm text-gray-500">{t("common.loading")}</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <PageState title={t('common.loading')} loading />;
+  if (error) return <AppShell><PageState title="Não foi possível verificar sua sessão" message={error} onRetry={() => refreshUser().catch(() => {})} /></AppShell>;
 
   // Não logado → hero anônima + feed público
   if (!user) {

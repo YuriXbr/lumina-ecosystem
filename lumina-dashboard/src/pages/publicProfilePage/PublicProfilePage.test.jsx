@@ -118,7 +118,7 @@ describe('PublicProfilePage', () => {
     await waitFor(() => {
       // A data é formatada com toLocaleDateString
       // Apenas verifica que algum elemento com a data aparece
-      expect(screen.getByText(/jan|january|2024/i)).toBeInTheDocument();
+      expect(screen.getByText(new Date(VALID_PROFILE.registrationDate).toLocaleDateString(undefined,{year:'numeric',month:'long'}))).toBeInTheDocument();
     });
   });
 

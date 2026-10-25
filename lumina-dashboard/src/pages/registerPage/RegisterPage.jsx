@@ -4,13 +4,12 @@ import {
   ArrowLeftIcon, ArrowRightIcon, CheckIcon, EyeIcon, EyeSlashIcon,
   ExclamationTriangleIcon, SparklesIcon, UserIcon, KeyIcon, IdentificationIcon
 } from '@heroicons/react/24/outline';
-import Header from '../../components/Header';
 import { parseApiError, statusFallbackMessage, isNetworkError } from '../../utils/apiError';
 import { getCsrfToken } from '../../utils/apiFetch';
 import { useT } from '../../i18n/LanguageContext.jsx';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+import { API_BASE } from '../../utils/apiBase';
 const TOTAL_STEPS = 4; // 1: conta, 2: username, 3: revisão, 4: done
 
 export default function RegisterPage() {
@@ -135,7 +134,8 @@ export default function RegisterPage() {
       });
 
       if (res.ok) {
-        setStep(4); // done
+        const result = await res.json();
+        navigate("/verify-email", { state: { email: form.email.trim().toLowerCase(), sent: result.emailVerificationQueued || false } });
         return;
       }
 
@@ -172,10 +172,8 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Language switcher — canto superior direito, para usuários não-logados */}
-      <div className="absolute top-4 right-4 z-10">
-        <LanguageSwitcher compact />
-      </div>
-      <Header />
+
+
 
       <div className="flex-1 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-lg">
@@ -314,7 +312,7 @@ function Step1Account({ form, errors, updateField, showPassword, setShowPassword
           required
         />
         <Field
-          label={t("auth.register.firstName")}
+          label={t("auth.register.lastName")}
           value={form.lastName}
           onChange={v => updateField('lastName', v)}
           error={errors.lastName}
@@ -453,7 +451,7 @@ function Step3Review({ form }) {
       </div>
 
       <p className="text-xs text-gray-500">
-        {t('auth.register.termsAgreement')}
+        Confira os <Link to="/terms" className="text-purple-700 underline">Termos de uso</Link> e a <Link to="/privacy" className="text-purple-700 underline">Política de Privacidade</Link> antes de criar sua conta.
       </p>
     </div>
   );

@@ -1,14 +1,32 @@
 const mongoose = require('mongoose');
 const { mongoSchema } = require('../schema');
+const indexes = require('../indexes');
+let connectionPromise;
+
+async function connectDatabase() {
+  if (mongoose.connection.readyState === 1) return mongoose.connection;
+  if (!connectionPromise) {
+    if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is required');
+    connectionPromise = mongoose.connect(process.env.MONGODB_URI, {
+      maxPoolSize: 10, minPoolSize: 0, serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 15000, autoIndex: process.env.NODE_ENV !== 'production',
+      autoCreate: process.env.NODE_ENV !== 'production',
+    }).finally(() => { connectionPromise = undefined; });
+  }
+  await connectionPromise;
+  return mongoose.connection;
+}
 
 class DatabaseService {
   constructor(modelName, schema) {
     if(!modelName || !schema) {
       throw new Error('Model name and schema are required');
     }
-    
+
     if (!mongoose.models[modelName]) {
-      this.model = mongoose.model(modelName, new mongoose.Schema(schema));
+      const modelSchema = new mongoose.Schema(schema, { strict: true });
+      for (const [keys, options] of indexes[modelName] || []) modelSchema.index(keys, options);
+      this.model = mongoose.model(modelName, modelSchema);
     } else {
       this.model = mongoose.models[modelName];
     }
@@ -16,11 +34,7 @@ class DatabaseService {
   }
 
   async connect() {
-    if (!mongoose.connection.readyState) {
-      const mongoUri = process.env.MONGODB_URI;
-      await mongoose.connect(mongoUri);
-      console.log(`[${this.modelName}] Conexão estabelecida`);
-    }
+    await connectDatabase();
   }
 
   async checkConnection() {
@@ -72,7 +86,7 @@ class DatabaseService {
     // caso contrário, envolvemos automaticamente em $set para fazer um update parcial seguro.
     const hasOperators = updateData && Object.keys(updateData).some(key => key.startsWith('$'));
     const safeUpdate = hasOperators ? updateData : { $set: updateData };
-    return this.model.findOneAndUpdate(query, safeUpdate, options);
+    return this.model.findOneAndUpdate(query, safeUpdate, { runValidators: true, ...options });
   }
 
   async delete(query) {
@@ -92,3 +106,4 @@ class DatabaseService {
 }
 
 module.exports = DatabaseService;
+module.exports.connectDatabase = connectDatabase;

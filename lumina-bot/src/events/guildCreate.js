@@ -9,11 +9,7 @@ module.exports = {
 
         // Cria os dados da guilda via API
         try {
-            await api.post('/expapi/internal/newguild', {
-                guildId: guild.id,
-                ownerId: guild.ownerId,
-                guildName: guild.name
-            });
+            await require('../utils/services/GuildSyncService').getGuildSync().syncOne(guild);
         } catch (error) {
             console.error('Erro ao criar dados da guilda:', error.message);
         }

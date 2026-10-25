@@ -33,35 +33,34 @@ beforeAll(() => {
 });
 
 afterEach(() => jest.clearAllMocks());
+beforeEach(()=>Object.values(GuildService).forEach(fn=>fn.mockReset?.()));
 
 // ─── POST /expapi/internal/newguild ────────────────────────────────────────
 describe('POST /expapi/internal/newguild', () => {
     const URL = '/expapi/internal/newguild';
 
     it('200 cria guild com sucesso', async () => {
-        GuildService.getGuildData.mockResolvedValueOnce(null);
-        GuildService.createGuildData.mockResolvedValueOnce(makeGuild({ guildId: 'g-new' }));
+        GuildService.upsertMetadata.mockResolvedValueOnce(makeGuild({ guildId: '771421826974089236' }));
 
         const res = await request(app).post(URL).set(internalKey()).send({
-            guildId: 'g-new', ownerId: 'o1', guildName: 'New Server',
+            guildId: '771421826974089236', ownerId: '771421826974089237', guildName: 'New Server',
         });
 
         expect(res.status).toBe(200);
-        expect(res.body.guildId).toBe('g-new');
+        expect(res.body.guildId).toBe('771421826974089236');
     });
 
     it('200 faz upsert quando guild já existe (bot re-adicionado)', async () => {
         const existing = makeGuild({ guildId: 'g1', guildReferenceName: 'Old Name' });
-        GuildService.getGuildData.mockResolvedValueOnce(existing);
-        GuildService.updateGuildData.mockResolvedValueOnce({ ...existing, guildReferenceName: 'New Name' });
+        GuildService.upsertMetadata.mockResolvedValueOnce({ ...existing, guildReferenceName: 'New Name' });
 
         const res = await request(app).post(URL).set(internalKey()).send({
             guildId: 'g1', ownerId: 'o1', guildName: 'New Name',
         });
 
         expect(res.status).toBe(200);
-        expect(res.body._upserted).toBe(true);
-        expect(GuildService.updateGuildData).toHaveBeenCalled();
+        expect(res.body.guildReferenceName).toBe('New Name');
+        expect(GuildService.upsertMetadata).toHaveBeenCalledWith(expect.objectContaining({guildName:'New Name'}));
     });
 
     it('400 MISSING_PARAMS sem guildId', async () => {
@@ -94,7 +93,7 @@ describe('POST /expapi/internal/newguild', () => {
 
     it('500 erro ao criar', async () => {
         GuildService.getGuildData.mockResolvedValueOnce(null);
-        GuildService.createGuildData.mockRejectedValueOnce(new Error('DB down'));
+        GuildService.upsertMetadata.mockRejectedValueOnce(new Error('DB down'));
 
         const res = await request(app).post(URL).set(internalKey()).send({
             guildId: 'g', ownerId: 'o', guildName: 'n',

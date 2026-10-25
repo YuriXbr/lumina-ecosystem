@@ -1,8 +1,8 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { checkSession, apiLogout, API_BASE } from '../utils/apiFetch';
+import { checkSession, apiLogout, resetCsrfToken } from '../utils/apiFetch';
 
-const UserContext = createContext();
+export const UserContext = createContext();
 
 export const useUser = () => {
   const context = useContext(UserContext);
@@ -13,7 +13,7 @@ export const useUser = () => {
 };
 
 // Definição dos níveis de acesso e suas permissões
-const ACCESS_LEVELS = {
+export const ACCESS_LEVELS = {
   user: {
     level: 0,
     name: 'Usuário',
@@ -77,150 +77,39 @@ const ACCESS_LEVELS = {
 };
 
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const loadUser = async () => {
+  const [user,setUser]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(null);
+  const generation=useRef(0);
+  const loadUser=useCallback(async()=>{
+    const current=++generation.current;
+    setError(null);setLoading(true);
     try {
-      setError(null);
-      setLoading(true);
-      const data = await checkSession();
-
-      if (data.authenticated && data.user) {
-        setUser(data.user);
-
-        // Se tiver Discord vinculado, busca info adicional (avatar/username)
-        // já que o perfil do banco pode não ter avatar atualizado
-        if (data.user.discordOauth2Id) {
-          try {
-            const discordRes = await fetch(`${API_BASE}expapi/v1/discordinfo`, {
-              credentials: 'include',
-            });
-            if (discordRes.ok) {
-              const discordData = await discordRes.json();
-              setUser(prevUser => prevUser ? ({
-                ...prevUser,
-                id: discordData.id,
-                username: prevUser.username || discordData.username,
-                avatar: discordData.avatar,
-              }) : prevUser);
-            }
-          } catch (discordError) {
-            console.warn('Erro ao buscar informações do Discord:', discordError);
-          }
-        }
-      } else {
-        setUser(null);
-        if (data.reason) {
-          setError(data.reason === 'ACCOUNT_BANNED' ? 'Conta banida.' : 'Conta bloqueada.');
-        }
-      }
-    } catch (err) {
-      console.error('Erro ao carregar usuário:', err);
-      setUser(null);
-      setError('Erro de conexão. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadUser();
-
-    // Escuta evento de 401 disparado pelo apiFetch
-    const handleUnauthorized = () => {
-      setUser(null);
-      setError(null);
-    };
-    window.addEventListener('auth:unauthorized', handleUnauthorized);
-
-    return () => {
-      window.removeEventListener('auth:unauthorized', handleUnauthorized);
-    };
-  }, []);
-
-  const hasPermission = (permission) => {
-    if (!user) return false;
-    const userLevel = ACCESS_LEVELS[user.accessType];
-    if (!userLevel) return false;
-    return userLevel.permissions.includes('all') || userLevel.permissions.includes(permission);
-  };
-
-  const isStaff = () => {
-    if (!user) return false;
-    const userLevel = ACCESS_LEVELS[user.accessType];
-    return userLevel && userLevel.level >= 5;
-  };
-
-  const isAdmin = () => {
-    if (!user) return false;
-    const userLevel = ACCESS_LEVELS[user.accessType];
-    return userLevel && userLevel.level >= 7;
-  };
-
-  const getUserLevel = () => {
-    if (!user) return null;
-    return ACCESS_LEVELS[user.accessType];
-  };
-
-  const refreshUser = async () => {
-    await loadUser();
-  };
-
-  const logout = async () => {
-    await apiLogout();
-    setUser(null);
-  };
-
-  const onLoginSuccess = async (directUser = null) => {
-    if (directUser) {
-      // Se a API já retornou o user (ex: login response), usa diretamente
-      setUser(directUser);
-      setLoading(false);
-      // Busca info do Discord em background se tiver vinculado
-      if (directUser.discordOauth2Id) {
-        try {
-          const discordRes = await fetch(`${API_BASE}expapi/v1/discordinfo`, {
-            credentials: 'include',
-          });
-          if (discordRes.ok) {
-            const discordData = await discordRes.json();
-            setUser(prevUser => prevUser ? ({
-              ...prevUser,
-              id: discordData.id,
-              username: prevUser.username || discordData.username,
-              avatar: discordData.avatar,
-            }) : prevUser);
-          }
-        } catch {}
-      }
-    } else {
-      await loadUser();
-    }
-  };
-
-  const value = {
-    user,
-    loading,
-    error,
-    hasPermission,
-    isStaff,
-    isAdmin,
-    getUserLevel,
-    refreshUser,
-    logout,
-    onLoginSuccess,
-    ACCESS_LEVELS
-  };
-
-  return (
-    <UserContext.Provider value={value}>
-      {children}
-    </UserContext.Provider>
-  );
+      const data=await checkSession();
+      if(current!==generation.current)return null;
+      const next=data.authenticated?data.user:null;
+      setUser(next);
+      if(data.reason)setError(data.reason==='ACCOUNT_BANNED'?'Conta banida.':'Conta bloqueada.');
+      return next;
+    }catch(err){if(current===generation.current)setError('Não foi possível verificar sua sessão. Tente novamente.');throw err;}
+    finally {if(current===generation.current)setLoading(false);}
+  },[]);
+  useEffect(()=>{
+    loadUser().catch(()=>{});
+    const unauthorized=()=>{++generation.current;setUser(null);setError(null);setLoading(false);resetCsrfToken();};
+    window.addEventListener('auth:unauthorized',unauthorized);
+    return()=>{++generation.current;window.removeEventListener('auth:unauthorized',unauthorized);};
+  },[loadUser]);
+  const logout=useCallback(async()=>{await apiLogout();++generation.current;setUser(null);setError(null);},[]);
+  const onLoginSuccess=useCallback(async(directUser=null)=>{
+    resetCsrfToken();
+    if(!directUser)return loadUser();
+    ++generation.current;setUser(directUser);setError(null);setLoading(false);return directUser;
+  },[loadUser]);
+  const value=useMemo(()=>({user,loading,error,refreshUser:loadUser,logout,onLoginSuccess,ACCESS_LEVELS,
+    hasPermission:permission=>!!user&&(ACCESS_LEVELS[user.accessType]?.permissions||[]).some(p=>p==='all'||p===permission),
+    isStaff:()=>!!user&&(ACCESS_LEVELS[user.accessType]?.level||0)>=5,
+    isAdmin:()=>!!user&&(ACCESS_LEVELS[user.accessType]?.level||0)>=7,
+    getUserLevel:()=>user?ACCESS_LEVELS[user.accessType]||null:null,
+  }),[user,loading,error,loadUser,logout,onLoginSuccess]);
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 };
-
-UserProvider.propTypes = {
-  children: PropTypes.node.isRequired,
-};
+UserProvider.propTypes={children:PropTypes.node.isRequired};

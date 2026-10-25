@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "../../../contexts/UserContext";
 import WarningAlert from "./WarningAlert";
 import { parseApiError, statusFallbackMessage, isNetworkError } from "../../../utils/apiError";
-import { apiFetch, getCsrfToken } from "../../../utils/apiFetch";
+import { apiFetch, getCsrfToken, API_BASE } from "../../../utils/apiFetch";
 import { useT } from "../../../i18n/LanguageContext.jsx";
 
 export default function LoginModal() {
@@ -42,7 +42,8 @@ export default function LoginModal() {
 
       if (response.ok) {
         // Cookie já foi setado pelo backend. Apenas carrega o user no contexto.
-        await onLoginSuccess();
+        const data = await response.json();
+        await onLoginSuccess(data.user);
         navigate("/members");
         return;
       }
@@ -65,13 +66,13 @@ export default function LoginModal() {
 
   const handleDiscordLogin = () => {
     const origin = window.location.origin;
-    window.location.href = `${import.meta.env.VITE_API_BASE_URL}expapi/oauth2/discord/auth/start?origin=${encodeURIComponent(origin)}&intent=login`;
+    window.location.href = `${API_BASE}expapi/oauth2/discord/auth/start?origin=${encodeURIComponent(origin)}&intent=login`;
   };
 
   return (
-    <div className="pt-6">
-      <div className="flex min-h-full flex-1 flex-col justify-center pt-16 py-12 lg:px-8">
-        <div className="bg-gray-100 shadow-lg rounded-lg p-8">
+    <div className="w-full max-w-md">
+      <div className="w-full">
+        <div className="lumina-card p-6 sm:p-8">
           <a href="/#" className="block w-fit text-gray-500 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition ease-in-out duration-150">
             <svg className="w-6 h-6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
               <path d="M15 19l-7-7 7-7"></path>
@@ -80,9 +81,9 @@ export default function LoginModal() {
 
           <div className="sm:mx-auto px-3 sm:w-full sm:max-w-sm">
             <img src="/new-purple.svg" className="mx-auto h-20 w-auto" alt="Logo" />
-            <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-              {t("auth.login.title")} <span className="text-indigo-500 underline underline-offset-4">{t("nav.members")}</span>!
-            </h2>
+            <h1 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
+              {t("auth.login.title")} <span className="text-purple-500 underline underline-offset-4">{t("nav.members")}</span>!
+            </h1>
 
             <button
               type="button"
@@ -104,22 +105,22 @@ export default function LoginModal() {
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-6">
               <div>
-                <label htmlFor="email" className="sr-only">Email address</label>
+                <label htmlFor="email" className="lumina-label">{t("common.email")}</label>
                 <input
                   id="email"
                   name="email"
                   type="email"
-                  autoComplete="on"
+                  autoComplete="email"
                   required
                   disabled={isLoading}
-                  className="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="relative block w-full appearance-none rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-purple-500 focus:outline-none focus:ring-purple-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   placeholder={t("common.email")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div>
-                <label htmlFor="password" className="sr-only">Password</label>
+                <label htmlFor="password" className="lumina-label">{t("common.password")}</label>
                 <input
                   id="password"
                   name="password"
@@ -127,7 +128,7 @@ export default function LoginModal() {
                   autoComplete="current-password"
                   required
                   disabled={isLoading}
-                  className="relative block w-full appearance-none rounded-none rounded-b-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="relative block w-full appearance-none rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-purple-500 focus:outline-none focus:ring-purple-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   placeholder={t("common.password")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -137,7 +138,7 @@ export default function LoginModal() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="group relative flex w-full justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="group relative flex w-full justify-center rounded-md border border-transparent bg-purple-600 py-2 px-4 text-sm font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 >
                   {isLoading ? (
                     <>
@@ -149,8 +150,9 @@ export default function LoginModal() {
                     </>
                   ) : t("auth.login.submit")}
                 </button>
+                <a href="/forgot-password" className="block mt-4 text-sm text-purple-700 font-medium text-center">Esqueci minha senha</a>
                 <h3 className="mt-4 text-center text-sm text-gray-500">
-                  <a className="font-medium text-indigo-600 hover:text-indigo-500" href="/register">
+                  <a className="font-medium text-purple-600 hover:text-purple-500" href="/register">
                     {t("auth.login.noAccount")} <span className="underline">{t("auth.login.signUp")}</span>
                   </a>
                 </h3>

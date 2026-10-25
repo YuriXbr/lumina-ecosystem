@@ -2,7 +2,7 @@
  * __tests__/routes/expapi-v1-publicRollskin.test.js
  *
  * Suite para POST /expapi/v1/rollskin
- * Requer: jwtNeeded + CSRF (bypassed em test)
+ * Requer: jwtNeeded + CSRF real
  * Usa rollSkin do gachaService
  */
 
@@ -48,13 +48,17 @@ afterEach(() => jest.clearAllMocks());
 describe('POST /expapi/v1/rollskin', () => {
     const URL = '/expapi/v1/rollskin';
     let csrf;
-    beforeEach(async () => { csrf = await getCsrfTokens(app); });
+    beforeEach(async () => {
+        DashboardAccountService.getDashboardAccountByEmail.mockReset().mockResolvedValue(makeAccount({ discordOauth2Id: '123456789012345678' }));
+        csrf = await getCsrfTokens(app);
+    });
 
     const authHeader = () => bearerAuth(makeJwt());
     const withAuth = (req) => req.set(combineAuthAndCsrf(authHeader(), csrf.headers));
 
     it('200 sorteia skin hextechChests com sucesso', async () => {
         const account = makeAccount({
+            discordOauth2Id: '123456789012345678',
             discordOauth2Token: 'valid',
             discordOauth2TokenExpiresAt: new Date(Date.now() + 3600 * 1000),
         });
@@ -79,6 +83,7 @@ describe('POST /expapi/v1/rollskin', () => {
 
     it('200 sorteia skin masterWorkChests', async () => {
         const account = makeAccount({
+            discordOauth2Id: '123456789012345678',
             discordOauth2Token: 'valid',
             discordOauth2TokenExpiresAt: new Date(Date.now() + 3600 * 1000),
         });
@@ -124,6 +129,7 @@ describe('POST /expapi/v1/rollskin', () => {
     // ─── 400 Sem recursos ─────────────────────────────────────────────────
     it('400 INSUFFICIENT_RESOURCES quando rollSkin retorna null', async () => {
         const account = makeAccount({
+            discordOauth2Id: '123456789012345678',
             discordOauth2Token: 'valid',
             discordOauth2TokenExpiresAt: new Date(Date.now() + 3600 * 1000),
         });
@@ -141,6 +147,7 @@ describe('POST /expapi/v1/rollskin', () => {
     // ─── 500 Erro ─────────────────────────────────────────────────────────
     it('500 erro no rollSkin', async () => {
         const account = makeAccount({
+            discordOauth2Id: '123456789012345678',
             discordOauth2Token: 'valid',
             discordOauth2TokenExpiresAt: new Date(Date.now() + 3600 * 1000),
         });

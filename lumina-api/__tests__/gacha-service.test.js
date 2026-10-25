@@ -4,11 +4,11 @@
  * Cobre src/utils/gachaService.js:
  *   - computeProbabilities / pickRarity (funções puras)
  *   - rollSkin(): fluxo feliz, insuficiência de recursos (sem double-spend),
- *     e rollback (devolução de chave/baú) quando o sorteio falha depois do débito.
+ *     e falhas de seleção antes de qualquer alteração do inventário.
  */
 
 jest.mock('../src/database/services/UserInventoryService', () => ({
-    spendKeyAndChest: jest.fn(),
+    awardSkinAndSpend: jest.fn(),
     addInventory: jest.fn().mockResolvedValue({}),
 }));
 
@@ -31,7 +31,12 @@ const InventoryService = require('../src/database/services/UserInventoryService'
 const SkinService = require('../src/database/services/SkinService');
 const { rollSkin, computeProbabilities, pickRarity, RARITY_ORDER } = require('../src/utils/gachaService');
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+    jest.resetAllMocks();
+    SkinService.getSkinsQuantity.mockResolvedValue({ totalSkins:100, legacySkins:100, epicSkins:0, legendarySkins:0, ultimateSkins:0, transcendentSkins:0, mythicSkins:0 });
+    SkinService.getSkinsId.mockResolvedValue([42]);
+    SkinService.getSkinInfo.mockResolvedValue({ id:42, name:'Skin Teste', championId:'Ahri' });
+});
 
 describe('computeProbabilities', () => {
     const baseQuantities = {
@@ -75,8 +80,8 @@ describe('pickRarity', () => {
 });
 
 describe('rollSkin — fluxo feliz', () => {
-    it('debita atomicamente via spendKeyAndChest e retorna os dados da skin', async () => {
-        InventoryService.spendKeyAndChest.mockResolvedValue({ userId: 'u1', keys: 4, hextechChests: 2 });
+    it('debita atomicamente junto com a recompensa e retorna os dados da skin', async () => {
+        InventoryService.awardSkinAndSpend.mockResolvedValue({ userId: 'u1', keys: 4, hextechChests: 2 });
         SkinService.getSkinsQuantity.mockResolvedValue({
             totalSkins: 100, legacySkins: 100, epicSkins: 0, legendarySkins: 0,
             ultimateSkins: 0, transcendentSkins: 0, mythicSkins: 0,
@@ -87,39 +92,39 @@ describe('rollSkin — fluxo feliz', () => {
 
         const result = await rollSkin('u1', 'hextechChests');
 
-        expect(InventoryService.spendKeyAndChest).toHaveBeenCalledWith('u1', 'hextechChests');
+        expect(InventoryService.awardSkinAndSpend).toHaveBeenCalledWith('u1', 'hextechChests', 42);
         expect(result).toMatchObject({ skinId: 42, skinName: 'Skin Teste' });
-        expect(SkinService.addSkinToInventory).toHaveBeenCalledWith('u1', 42, undefined);
-    });
-});
-
-describe('rollSkin — sem recursos suficientes (proteção contra double-spend)', () => {
-    it('retorna null e NÃO consulta skins quando spendKeyAndChest não encontra saldo', async () => {
-        // Simula a operação atômica condicional não encontrando um documento
-        // que satisfaça { keys: >=1, [chest]: >=1 } — equivalente a uma
-        // segunda requisição concorrente chegando tarde demais.
-        InventoryService.spendKeyAndChest.mockResolvedValue(null);
-
-        const result = await rollSkin('u1', 'hextechChests');
-
-        expect(result).toBeNull();
-        expect(SkinService.getSkinsQuantity).not.toHaveBeenCalled();
         expect(SkinService.addSkinToInventory).not.toHaveBeenCalled();
     });
 });
 
-describe('rollSkin — rollback em caso de falha após o débito', () => {
-    it('devolve a chave e o baú debitados se o sorteio falhar depois do débito atômico', async () => {
-        InventoryService.spendKeyAndChest.mockResolvedValue({ userId: 'u1', keys: 4, hextechChests: 2 });
+describe('rollSkin — sem recursos suficientes (proteção contra double-spend)', () => {
+    it('retorna null sem conceder skin se o saldo mudou durante a seleção', async () => {
+        // Simula a operação atômica condicional não encontrando um documento
+        // que satisfaça { keys: >=1, [chest]: >=1 } — equivalente a uma
+        // segunda requisição concorrente chegando tarde demais.
+        InventoryService.awardSkinAndSpend.mockResolvedValue(null);
+
+        const result = await rollSkin('u1', 'hextechChests');
+
+        expect(result).toBeNull();
+        expect(InventoryService.awardSkinAndSpend).toHaveBeenCalledTimes(1);
+        expect(SkinService.addSkinToInventory).not.toHaveBeenCalled();
+    });
+});
+
+describe('rollSkin — falha antes da gravação', () => {
+    it('não debita nem reembolsa se não houver raridade sorteável', async () => {
+        InventoryService.awardSkinAndSpend.mockResolvedValue({ userId: 'u1', keys: 4, hextechChests: 2 });
         SkinService.getSkinsQuantity.mockResolvedValue({
             totalSkins: 100, legacySkins: 0, epicSkins: 0, legendarySkins: 0,
             ultimateSkins: 0, transcendentSkins: 0, mythicSkins: 0,
         });
-        // Nenhuma raridade sorteável -> força o branch de erro após o débito já ter ocorrido.
+        // Sem raridade sorteável, a operação de débito e prêmio não é iniciada.
 
         await expect(rollSkin('u1', 'hextechChests')).rejects.toThrow();
 
-        expect(InventoryService.addInventory).toHaveBeenCalledWith('u1', 'keys', 1);
-        expect(InventoryService.addInventory).toHaveBeenCalledWith('u1', 'hextechChests', 1);
+        expect(InventoryService.addInventory).not.toHaveBeenCalled();
+        expect(InventoryService.awardSkinAndSpend).not.toHaveBeenCalled();
     });
 });

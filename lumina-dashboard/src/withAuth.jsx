@@ -1,5 +1,6 @@
 /* eslint-disable react/display-name */
 import { useEffect } from 'react';
+import PageState from './components/PageState';
 import { Navigate } from 'react-router-dom';
 import { useUser } from './contexts/UserContext';
 
@@ -10,7 +11,7 @@ import { useUser } from './contexts/UserContext';
  */
 const withAuth = (Component) => {
   return (props) => {
-    const { user, loading } = useUser();
+    const { user, loading, error, refreshUser } = useUser();
 
     if (loading) {
       return (
@@ -23,8 +24,9 @@ const withAuth = (Component) => {
       );
     }
 
+    if (error) return <PageState title="Não foi possível verificar sua sessão" message={error} onRetry={() => refreshUser().catch(() => {})} />;
     if (!user) {
-      return <Navigate to="/login" />;
+      return <Navigate to="/login" replace />;
     }
 
     return <Component {...props} />;
@@ -69,7 +71,7 @@ const PERMISSION_BY_LEVEL = {
 
 export const withPermission = (Component, requiredPermission) => {
   return (props) => {
-    const { user, loading } = useUser();
+    const { user, loading, error, refreshUser } = useUser();
 
     if (loading) {
       return (
@@ -79,8 +81,9 @@ export const withPermission = (Component, requiredPermission) => {
       );
     }
 
+    if (error) return <PageState title="Não foi possível verificar sua sessão" message={error} onRetry={() => refreshUser().catch(() => {})} />;
     if (!user) {
-      return <Navigate to="/login" />;
+      return <Navigate to="/login" replace />;
     }
 
     // Verifica permissão

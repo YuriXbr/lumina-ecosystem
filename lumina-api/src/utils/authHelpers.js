@@ -20,6 +20,13 @@
  */
 
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const checkedRequests = new WeakMap();
+
+function issueSessionToken(account) {
+    return jwt.sign({ email: account.email, accountId: account.accountId, firstName: account.firstName, lastName: account.lastName,
+        version: account.sessionVersion || 0, jti: crypto.randomUUID() }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' });
+}
 
 const COOKIE_NAME = 'lumina_token';
 
@@ -50,7 +57,8 @@ function verifyRequestAuth(req) {
         return { user: null, error: { status: 401, code: 'MISSING_TOKEN', message: 'Token não fornecido.' } };
     }
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+        if (!decoded || typeof decoded !== 'object' || typeof decoded.email !== 'string' || !decoded.email) throw new Error('Invalid claims');
         return { user: decoded, error: null };
     } catch (err) {
         const code = err.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN';
@@ -70,6 +78,12 @@ function verifyRequestAuth(req) {
  *     JWT válido ou se a conta não existir — nesse caso error é preenchido)
  */
 async function verifyRequestAuthWithAccountCheck(req) {
+    if (checkedRequests.has(req)) return checkedRequests.get(req);
+    const promise = checkAccount(req);
+    checkedRequests.set(req, promise);
+    return promise;
+}
+async function checkAccount(req) {
     const { user, error } = verifyRequestAuth(req);
     if (error) return { user: null, account: null, error };
 
@@ -78,7 +92,7 @@ async function verifyRequestAuthWithAccountCheck(req) {
     try {
         DashboardAccountService = require('../database/services/DashboardAccountService');
     } catch {
-        return { user, account: null, error: null };
+        return { user: null, account: null, error: { status: 503, code: 'DB_UNAVAILABLE', message: 'Autenticação temporariamente indisponível.' } };
     }
 
     let account = null;
@@ -97,6 +111,15 @@ async function verifyRequestAuthWithAccountCheck(req) {
         };
     }
 
+    if ((user.accountId && user.accountId !== account.accountId) || (user.version || 0) !== (account.sessionVersion || 0)) {
+        return { user: null, account: null, error: { status: 401, code: 'SESSION_REVOKED', message: 'Sessão encerrada. Entre novamente.' } };
+    }
+    try {
+        if (await require('./sessionStore').isRevoked(extractToken(req))) return { user: null, account: null, error: { status: 401, code: 'SESSION_REVOKED', message: 'Sessão encerrada.' } };
+    } catch {
+        return { user: null, account: null, error: { status: 503, code: 'DB_UNAVAILABLE', message: 'Não foi possível validar a sessão.' } };
+    }
+
     if (account.banned) {
         return {
             user: null,
@@ -112,18 +135,22 @@ async function verifyRequestAuthWithAccountCheck(req) {
         };
     }
 
-    return { user, account, error: null };
+    const verifiedUser = {...user,accountId:account.accountId};
+    req.user = verifiedUser;
+    req.account = account;
+    return { user:verifiedUser, account, error: null };
 }
 
 /**
  * Middleware Express que exige auth (popula req.user ou retorna 401).
  */
-function requireAuth(req, res, next) {
-    const { user, error } = verifyRequestAuth(req);
+async function requireAuth(req, res, next) {
+    const { user, account, error } = await verifyRequestAuthWithAccountCheck(req);
     if (error) {
         return res.status(error.status).json({ error: error.message, code: error.code });
     }
     req.user = user;
+    req.account = account;
     next();
 }
 
@@ -178,4 +205,5 @@ module.exports = {
     optionalAuth,
     setAuthCookie,
     clearAuthCookie,
+    issueSessionToken,
 };

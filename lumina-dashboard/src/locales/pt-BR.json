@@ -473,7 +473,7 @@
       "notEnoughKeys": "Você não tem chaves suficientes.",
       "noChest": "Você não tem esse baú disponível.",
       "open": "Abrir baú",
-      "masterworkDesc": "Garante raridade épica ou superior",
+      "masterworkDesc": "Mais chances de raridades altas",
       "hextechDesc": "Qualquer raridade possível",
       "discordRequired": "Abrir baús exige que sua conta esteja vinculada ao Discord, já que seu inventário de skins vive lá.",
       "amountAvailable": "{count} disponível(is)",
@@ -725,7 +725,8 @@
       "guildId": "ID da Guilda",
       "guildHeader": "Guilda",
       "notLabel": "não",
-      "refreshError": "Falha ao atualizar: {error}"
+      "refreshError": "Falha ao atualizar: {error}",
+      "readOnlyStatus": "Os indicadores Bot Ativo e Moderação são somente leitura neste painel."
     },
     "users": {
       "title": "Gerenciamento de Usuários",
@@ -898,34 +899,29 @@
       "f11": "Analytics detalhados"
     },
     "faq": {
-      "title": "Perguntas Frequentes",
-      "items": {
-        "1": {
-          "q": "Posso mudar de plano a qualquer momento?",
-          "a": "Sim, você pode fazer upgrade ou downgrade a qualquer momento. As mudanças entram em vigor imediatamente."
-        },
-        "2": {
-          "q": "Vocês oferecem reembolso?",
-          "a": "Oferecemos garantia de devolução do dinheiro em 7 dias em todos os planos pagos."
-        },
-        "3": {
-          "q": "Quais métodos de pagamento vocês aceitam?",
-          "a": "Aceitamos todos os principais cartões de crédito e PayPal."
-        }
-      },
-      "q1": "Posso cancelar minha assinatura a qualquer momento?",
-      "a1": "Sim, você pode cancelar sua assinatura a qualquer momento sem taxas adicionais. Você manterá acesso aos recursos premium até o final do período pago.",
-      "q2": "Os preços incluem todos os recursos mencionados?",
-      "a2": "Sim, todos os recursos listados em cada plano estão inclusos no preço mensal. Não há custos ocultos ou taxas adicionais.",
-      "q3": "Posso fazer upgrade ou downgrade do meu plano?",
-      "a3": "Absolutamente! Você pode alterar seu plano a qualquer momento. As mudanças serão aplicadas no próximo ciclo de cobrança.",
-      "q4": "Oferecem desconto para pagamento anual?",
-      "a4": "Sim, oferecemos 20% de desconto para assinatura anual em todos os planos pagos. Entre em contato para mais detalhes."
+      "q1": "Posso usar o Lumina sem pagar?",
+      "a1": "Sim. O plano gratuito está disponível pelo convite oficial do bot. Não é necessário cadastrar cartão.",
+      "q2": "Já posso contratar VIP ou Enterprise?",
+      "a2": "Ainda não. Os planos pagos e seus recursos estão em estudo. Não há checkout nem cobrança pelo site.",
+      "q3": "Os recursos em planejamento já estão disponíveis?",
+      "a3": "Não. A lista indica ideias para a evolução do projeto e pode mudar antes do lançamento.",
+      "q4": "Onde posso tirar dúvidas?",
+      "a4": "Fale com suporte@luminasink.com para dúvidas sobre os recursos disponíveis e a configuração do bot."
     },
     "popular": "Mais Popular",
     "badge": "Planos para cada necessidade",
     "faqTitle": "Perguntas Frequentes",
-    "faqSubtitle": "Tudo que você precisa saber sobre nossos planos"
+    "faqSubtitle": "Tudo que você precisa saber sobre nossos planos",
+    "availability": {
+      "title": "Planos do Lumina",
+      "intro": "Use o Lumina gratuitamente. VIP e Enterprise estão em planejamento.",
+      "notice": "Apenas o plano gratuito está disponível. Não há contratação, cobrança ou assinatura de planos pagos neste site.",
+      "planned": "Em planejamento",
+      "pricePending": "Valores a definir",
+      "futureFeatures": "Recursos em estudo, ainda não incluídos em um plano disponível.",
+      "notOpen": "{plan}: contratação indisponível",
+      "plannedDescription": "Uma proposta para a evolução do Lumina, sem data de lançamento ou contratação disponível."
+    }
   },
   "about": {
     "title": "Sobre a Lumina",
@@ -1147,7 +1143,7 @@
       "dashboard": "Dashboard próprio"
     },
     "continueToDiscord": "Continuar para Discord",
-    "confirmText": "Entendo que o bot será adicionado com permissões para gerenciar cargos, canais e mensagens, e que terei acesso às configurações específicas deste servidor através do painel web."
+    "confirmText": "Entendo que o bot será adicionado com permissões para moderar membros, gerenciar cargos e mensagens, e que terei acesso às configurações específicas deste servidor através do painel web."
   },
   "guild": {
     "notConfigured": "Guilda não configurada — registre-a via bot antes de configurar",

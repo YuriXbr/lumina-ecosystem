@@ -2,7 +2,7 @@
  * __tests__/routes/expapi-v1-dailyReward.test.js
  *
  * Suite para POST /expapi/v1/dailyreward
- * Requer: jwtNeeded + CSRF (bypassed em test)
+ * Requer: jwtNeeded + CSRF real
  * Usa resolveDiscordAccount para resolver Discord ID
  */
 
@@ -39,13 +39,17 @@ afterEach(() => jest.clearAllMocks());
 describe('POST /expapi/v1/dailyreward', () => {
     const URL = '/expapi/v1/dailyreward';
     let csrf;
-    beforeEach(async () => { csrf = await getCsrfTokens(app); });
+    beforeEach(async () => {
+        DashboardAccountService.getDashboardAccountByEmail.mockReset().mockResolvedValue(makeAccount({ discordOauth2Id: '123456789012345678' }));
+        csrf = await getCsrfTokens(app);
+    });
 
     const authHeader = () => bearerAuth(makeJwt());
     const withAuth = (req) => req.set(combineAuthAndCsrf(authHeader(), csrf.headers));
 
     it('200 resgata diária com sucesso', async () => {
         const account = makeAccount({
+            discordOauth2Id: '123456789012345678',
             discordOauth2Token: 'valid',
             discordOauth2TokenExpiresAt: new Date(Date.now() + 3600 * 1000),
         });
@@ -69,6 +73,7 @@ describe('POST /expapi/v1/dailyreward', () => {
 
     it('429 DAILY_ALREADY_CLAIMED quando já resgatou', async () => {
         const account = makeAccount({
+            discordOauth2Id: '123456789012345678',
             discordOauth2Token: 'valid',
             discordOauth2TokenExpiresAt: new Date(Date.now() + 3600 * 1000),
         });
@@ -93,17 +98,18 @@ describe('POST /expapi/v1/dailyreward', () => {
         expect(res.status).toBe(401);
     });
 
-    it('400 DISCORD_NOT_LINKED quando sem Discord', async () => {
+    it('403 DISCORD_NOT_LINKED quando sem Discord', async () => {
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(
             makeAccount({ discordOauth2Token: '' })
         );
         const res = await withAuth(request(app).post(URL)).send();
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(403);
         expect(res.body.code).toBe('DISCORD_NOT_LINKED');
     });
 
     it('500 erro no claimDaily', async () => {
         const account = makeAccount({
+            discordOauth2Id: '123456789012345678',
             discordOauth2Token: 'valid',
             discordOauth2TokenExpiresAt: new Date(Date.now() + 3600 * 1000),
         });

@@ -49,8 +49,8 @@ class AutoMessageService {
                     if (now - last < m.intervalMinutes * 60000) continue;
                     try {
                         const ch = await client.channels.fetch(m.channelId);
-                        if (!ch) continue;
-                        await ch.send(m.message);
+                        if (!ch || ch.guildId !== guildId || !ch.isTextBased()) continue;
+                        await ch.send({content:m.message,allowedMentions:{parse:[]}});
                         this.sentTracker.set(key, now);
                     } catch (e) {
                         if (e.code !== 10003 && e.code !== 50013)

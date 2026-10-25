@@ -10,6 +10,8 @@ const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
+jest.mock('../src/utils/sessionStore',()=>({isRevoked:jest.fn().mockResolvedValue(false),createTransaction:jest.fn().mockResolvedValue(),consumeTransaction:jest.fn().mockResolvedValue(true),createExchange:jest.fn().mockResolvedValue('A'.repeat(43))}));
+
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
 jest.mock('../src/database/services/DashboardAccountService', () => ({
@@ -18,6 +20,7 @@ jest.mock('../src/database/services/DashboardAccountService', () => ({
     getDashboardAccountByAccountId: jest.fn(),
     createOAuthAccount: jest.fn(),
     linkOAuthProvider: jest.fn(),
+    isUsernameAvailable: jest.fn(),
     update: jest.fn(),
 }));
 
@@ -44,7 +47,8 @@ jest.useFakeTimers();
 
 const DashboardAccountService = require('../src/database/services/DashboardAccountService');
 const discordProvider = require('../src/oauthProviders/discordProvider');
-const { signState } = require('../src/oauthProviders/state');
+const {signState:signRawState}=require('../src/oauthProviders/state');
+const signState=payload=>signRawState({provider:'discord',nonce:'unit-oauth-nonce',...payload});
 
 const app = require('../index');
 const JWT_SECRET = 'test-secret';
@@ -66,6 +70,7 @@ beforeAll(() => {
     process.env.OAUTH_STATE_SECRET = 'oauth-state-secret';
 });
 
+beforeEach(()=>{Object.values(DashboardAccountService).forEach(fn=>fn.mockReset?.());discordProvider.exchangeCode.mockReset();discordProvider.getProfile.mockReset();DashboardAccountService.isUsernameAvailable.mockResolvedValue(true);});
 afterEach(() => jest.clearAllMocks());
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -74,7 +79,7 @@ afterEach(() => jest.clearAllMocks());
 function makeValidState(overrides = {}) {
     return signState({
         origin: ALLOWED_ORIGIN,
-        nonce: crypto.randomUUID(),
+        nonce: 'unit-oauth-nonce',
         issuedAt: Date.now(),
         intent: 'login',
         ...overrides,
@@ -131,7 +136,7 @@ describe('GET /expapi/oauth2/:provider/auth/start', () => {
         expect(res.headers.location).toContain('oauthError=link_no_account');
     });
 
-    it('intent link com linkToken válido redireciona para provedor', async () => {
+    it('intent link ignora credencial enviada na URL e exige sessão pelo cookie', async () => {
         const linkToken = jwt.sign({ accountId: 'acc-123' }, JWT_SECRET, { expiresIn: '1h' });
 
         const res = await request(app)
@@ -139,7 +144,7 @@ describe('GET /expapi/oauth2/:provider/auth/start', () => {
             .query({ origin: ALLOWED_ORIGIN, intent: 'link', linkToken });
 
         expect(res.status).toBe(302);
-        expect(res.headers.location).toContain('discord.com/oauth2/authorize');
+        expect(res.headers.location).toContain('oauthError=link_no_account');
     });
 
     it('intent link com linkToken expirado redireciona com erro', async () => {
@@ -164,24 +169,24 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
     const CB = (provider = 'discord') => `/expapi/oauth2/${provider}/auth/callback`;
 
     it('404 para provedor não suportado', async () => {
-        const res = await request(app).get(CB('github')).query({ code: 'abc', state: makeValidState() });
+        const res = await request(app).get(CB('github')).set('Cookie','lumina_oauth=unit-oauth-nonce').query({ code: 'abc', state: makeValidState() });
         expect(res.status).toBe(404);
     });
 
     it('400 para state inválido', async () => {
-        const res = await request(app).get(CB()).query({ code: 'abc', state: 'invalid.state' });
+        const res = await request(app).get(CB()).set('Cookie','lumina_oauth=unit-oauth-nonce').query({ code: 'abc', state: 'invalid.state' });
         expect(res.status).toBe(400);
     });
 
     it('400 para state expirado', async () => {
         const expiredState = makeValidState({ issuedAt: Date.now() - 11 * 60 * 1000 });
-        const res = await request(app).get(CB()).query({ code: 'abc', state: expiredState });
+        const res = await request(app).get(CB()).set('Cookie','lumina_oauth=unit-oauth-nonce').query({ code: 'abc', state: expiredState });
         expect(res.status).toBe(400);
     });
 
     it('redireciona com oauthError quando Discord retorna erro', async () => {
         const state = makeValidState();
-        const res = await request(app).get(CB()).query({ error: 'access_denied', state });
+        const res = await request(app).get(CB()).set('Cookie','lumina_oauth=unit-oauth-nonce').query({ error: 'access_denied', state });
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toContain('oauthError=access_denied');
@@ -189,7 +194,7 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
 
     it('redireciona com oauthError quando code está ausente', async () => {
         const state = makeValidState();
-        const res = await request(app).get(CB()).query({ state });
+        const res = await request(app).get(CB()).set('Cookie','lumina_oauth=unit-oauth-nonce').query({ state });
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toContain('oauthError=missing_code');
@@ -208,10 +213,11 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
         DashboardAccountService.update.mockResolvedValueOnce(VALID_ACCOUNT);
 
         const state = makeValidState({ intent: 'login' });
-        const res = await request(app).get(CB()).query({ code: 'valid-code', state });
+        const res = await request(app).get(CB()).set('Cookie','lumina_oauth=unit-oauth-nonce').query({ code: 'valid-code', state });
 
         expect(res.status).toBe(302);
-        expect(res.headers.location).toContain('token=');
+        expect(res.headers.location).toContain('code=');
+        expect(res.headers.location).not.toContain('token=');
         expect(res.headers.location).toContain('isNewAccount=false');
     });
 
@@ -231,7 +237,7 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
         DashboardAccountService.update.mockResolvedValueOnce({});
 
         const state = makeValidState({ intent: 'login' });
-        const res = await request(app).get(CB()).query({ code: 'code-new', state });
+        const res = await request(app).get(CB()).set('Cookie','lumina_oauth=unit-oauth-nonce').query({ code: 'code-new', state });
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toContain('isNewAccount=true');
@@ -247,7 +253,7 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
         DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(VALID_ACCOUNT); // Email existe
 
         const state = makeValidState({ intent: 'register' });
-        const res = await request(app).get(CB()).query({ code: 'code-reg', state });
+        const res = await request(app).get(CB()).set('Cookie','lumina_oauth=unit-oauth-nonce').query({ code: 'code-reg', state });
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toContain('oauthError=email_exists');
@@ -261,7 +267,7 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
 
         // State de link sem linkAccountId
         const state = makeValidState({ intent: 'link' });
-        const res = await request(app).get(CB()).query({ code: 'code-link', state });
+        const res = await request(app).get(CB()).set('Cookie','lumina_oauth=unit-oauth-nonce').query({ code: 'code-link', state });
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toContain('oauthError=link_no_account');
@@ -276,11 +282,11 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
         const myAccount = { ...VALID_ACCOUNT, accountId: 'acc-mine' };
         const otherAccount = { ...VALID_ACCOUNT, accountId: 'acc-other' };
 
-        DashboardAccountService.getDashboardAccountByAccountId.mockResolvedValueOnce(myAccount);
+        DashboardAccountService.getDashboardAccountByEmail.mockResolvedValueOnce(myAccount);
         DashboardAccountService.getDashboardAccountByProviderId.mockResolvedValueOnce(otherAccount); // já vinculado a outra
 
         const state = makeValidState({ intent: 'link', linkAccountId: 'acc-mine' });
-        const res = await request(app).get(CB()).query({ code: 'code-link', state });
+        const res = await request(app).get(CB()).set('Cookie','lumina_oauth=unit-oauth-nonce; lumina_token='+jwt.sign({accountId:myAccount.accountId,email:myAccount.email},JWT_SECRET,{expiresIn:'1h'})).query({ code: 'code-link', state });
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toContain('oauthError=discord_already_linked');
@@ -290,7 +296,7 @@ describe('GET /expapi/oauth2/:provider/auth/callback', () => {
         discordProvider.exchangeCode.mockRejectedValueOnce(new Error('Discord API down'));
 
         const state = makeValidState();
-        const res = await request(app).get(CB()).query({ code: 'bad-code', state });
+        const res = await request(app).get(CB()).set('Cookie','lumina_oauth=unit-oauth-nonce').query({ code: 'bad-code', state });
 
         expect(res.status).toBe(302);
         expect(res.headers.location).toContain('oauthError=server_error');

@@ -81,6 +81,8 @@ module.exports = {
         }
 
         try {
+            const configFields = Object.fromEntries(Object.entries(data).filter(([key]) => !['guildReferenceName','memberCount','gachaRolls','gachaRollsLastRefresh'].includes(key)));
+            if (Object.keys(configFields).length) require('../../../utils/guildConfig').validateGuildConfig(configFields);
             const updatedGuild = await GuildService.updateGuildData(guildId, data);
             return res.status(200).json({
                 message: 'Dados da guilda atualizados com sucesso.',

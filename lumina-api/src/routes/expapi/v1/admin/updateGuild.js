@@ -3,7 +3,7 @@ const GuildService              = require('../../../../database/services/GuildSe
 const { routeError, addLog }    = require('../../../../logger/logger');
 
 const ROUTE = 'PUT /expapi/v1/admin/guilds/:guildId';
-const ACCESS_LEVELS = { 
+const ACCESS_LEVELS = {
     user:0,
     vipUser:1,
     enterpriseUser:2,
@@ -15,7 +15,7 @@ const ACCESS_LEVELS = {
     headadmin:8,
     developer:9,
     coowner:10,
-    owner:11 
+    owner:11
 };
 
 // Audit #9: tipos esperados para cada campo whitelistado. Permite validar
@@ -63,12 +63,12 @@ const FIELD_TYPES = {
 module.exports = {
     route: '/expapi/v1/admin/guilds/:guildId',
     description: "Atualiza configurações de uma guilda específica",
-    apiKeyNeeded: false, 
+    apiKeyNeeded: false,
     jwtNeeded: false,
-    enabled: true, 
-    loginLimiterNeeded: false, 
+    enabled: true,
+    loginLimiterNeeded: false,
     csrfProtectionNeeded: true,
-    checkAuthNeeded: false, 
+    checkAuthNeeded: false,
     method: 'put',
 
     async execute(req, res) {
@@ -90,16 +90,16 @@ module.exports = {
             if (!guild) return res.status(404).json({ error: 'Guilda não encontrada.', code: 'GUILD_NOT_FOUND' });
 
             const allowedFields = {};
-            if (adminLevel >= 7) Object.assign(allowedFields, { 
+            if (adminLevel >= 7) Object.assign(allowedFields, {
                 djEnabled:true,
                 memberWelcomeToggle:true,
                 memberDmToggle:true,
                 persistentMute:true,
                 persistentWarns:true,
                 autoWarnPunishment:true,
-                canPunishStaff:true 
+                canPunishStaff:true
             });
-            if (adminLevel >= 8) Object.assign(allowedFields, { 
+            if (adminLevel >= 8) Object.assign(allowedFields, {
                 memberJoinChannelId:true,
                 memberLeaveChannelId:true,
                 moderationChannelId:true,
@@ -112,9 +112,9 @@ module.exports = {
                 guildLocale:true,
                 memberJoinMessage:true,
                 memberLeaveMessage:true,
-                memberJoinDmMessage:true 
+                memberJoinDmMessage:true
             });
-            if (adminLevel >= 9) Object.assign(allowedFields, { 
+            if (adminLevel >= 9) Object.assign(allowedFields, {
                 blockedChannels:true,
                 warnsToMute:true,
                 warnsToTimeOut:true,
@@ -129,7 +129,7 @@ module.exports = {
                 commandsEnabled:true,
                 autoMessages:true,
                 blockedUsers:true,
-                blockedRoles:true 
+                blockedRoles:true
             });
 
             // Audit #9: valida o TIPO de cada campo whitelistado presente no body.
@@ -156,7 +156,9 @@ module.exports = {
                 });
             }
 
-            const filteredData = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowedFields[k]));
+            const permitted = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowedFields[k]));
+            if (!Object.keys(permitted).length) return res.status(403).json({ error: 'Nenhum campo permitido para alteração.', code: 'NO_ALLOWED_FIELDS' });
+            const filteredData = require('../../../../utils/guildConfig').validateGuildConfig(permitted);
             if (!Object.keys(filteredData).length)
                 return res.status(403).json({ error: 'Nenhum campo permitido para alteração.', code: 'NO_ALLOWED_FIELDS' });
 
@@ -168,21 +170,22 @@ module.exports = {
                 extra: { guildId, updatedFields: Object.keys(filteredData) },
             });
 
-            return res.status(200).json({ 
-                message: 'Guilda atualizada com sucesso.', 
-                updatedFields: Object.keys(filteredData) 
+            return res.status(200).json({
+                message: 'Guilda atualizada com sucesso.',
+                updatedFields: Object.keys(filteredData)
             });
         } catch (error) {
-            return routeError({ 
-                res, 
-                error, 
-                route: ROUTE, 
+            if (error.status) return res.status(error.status).json({code:error.code,error:error.message});
+            return routeError({
+                res,
+                error,
+                route: ROUTE,
                 errorCode: 'UPDATE_GUILD_ADMIN_ERROR',
-                userMsg: 'Erro ao atualizar guilda.', 
-                extra: { 
-                    email: decoded?.email, 
-                    guildId: req.params?.guildId 
-                } 
+                userMsg: 'Erro ao atualizar guilda.',
+                extra: {
+                    email: decoded?.email,
+                    guildId: req.params?.guildId
+                }
             });
         }
     }

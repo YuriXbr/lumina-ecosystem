@@ -33,7 +33,7 @@ jest.mock('mongoose', () => ({
     connection: { readyState: 1 },
     model: jest.fn(() => mockIpModel),
     models: {},
-    Schema: class Schema { constructor() {} },
+    Schema: class Schema { constructor() {} index() {} },
 }));
 
 const { calcBlockDuration, BASE_BLOCK_MS, MAX_BLOCK_MS, ipRateLimiter } = require('../src/utils/ipRateLimiter');
@@ -127,7 +127,7 @@ describe('ipRateLimiter — lógica de bloqueio (NODE_ENV forçado para non-test
         const mockIpModelReq = jest.requireMock('mongoose').model();
 
         const futureDate = new Date(Date.now() + 60_000);
-        mockIpModelReq.findOne.mockResolvedValueOnce({
+        mockIpModelReq.findOneAndUpdate.mockResolvedValueOnce({
             ip: '5.5.5.5', route: '/test',
             blockCount: 1, blockedUntil: futureDate,
         });
@@ -144,7 +144,7 @@ describe('ipRateLimiter — lógica de bloqueio (NODE_ENV forçado para non-test
 
         expect(mockRes.status).toHaveBeenCalledWith(429);
         expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
-            code: 'RATE_LIMIT_BLOCKED',
+            code: 'RATE_LIMIT_EXCEEDED',
         }));
         expect(next).not.toHaveBeenCalled();
     });

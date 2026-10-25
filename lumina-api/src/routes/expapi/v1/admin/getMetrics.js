@@ -33,7 +33,6 @@ module.exports = {
             if (adminAccount.banned || adminAccount.blocked) return res.status(403).json({ error: 'Conta suspensa.', code: 'ACCOUNT_SUSPENDED' });
 
         try {
-            const adminAccount = await DashboardAccountService.getDashboardAccountByEmail(decoded.email);
             if (!adminAccount) return res.status(404).json({ error: 'Conta não encontrada.', code: 'ACCOUNT_NOT_FOUND' });
 
             if ((ACCESS_LEVELS[adminAccount.accessType] || 0) < 7) {

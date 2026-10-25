@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-24",
+  "branch": "codex/security-design-observability",
+  "environment": {
+    "node": "24.18.0",
+    "npm": "11.16.0",
+    "os": "Windows",
+    "database": "temporary isolated MongoDB replica set for integration tests"
+  },
+  "api": {
+    "command": "npm test -- --json",
+    "suites": 74,
+    "passed": 1023,
+    "failed": 0,
+    "after_full_run": "47 tests from gacha and internal routes passed in randomized order, seed 24, after removing mock state dependencies"
+  },
+  "dashboard": {
+    "command": "npm test -- --reporter=json",
+    "files": 79,
+    "passed": 518,
+    "failed": 0
+  },
+  "bot": {
+    "command": "node --test test/*.test.js",
+    "passed": 18,
+    "failed": 0
+  },
+  "build": {
+    "command": "npm run build",
+    "passed": true,
+    "initial_js_kb": 420.09,
+    "initial_js_gzip_kb": 136.34
+  },
+  "lint": {
+    "command": "npm run lint",
+    "errors": 0,
+    "warnings": 133
+  },
+  "sql": {
+    "parser": "pglast 8.7",
+    "syntax": "passed",
+    "addendum_statements": 20,
+    "combined_tables": 58,
+    "foreign_key_targets_found": 76,
+    "executed": false
+  },
+  "visual": {
+    "local_fixture": true,
+    "mobile_viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "reviewed_mobile": [
+      "members populated/empty/unlinked",
+      "inventory populated/empty/filters/chest selector",
+      "console populated/paused",
+      "login/register",
+      "password reset request/code form",
+      "code rejection confirmation/success",
+      "privacy/cookies/settings legal links",
+      "about single footer and wrapped role badges",
+      "commands long syntax",
+      "paid plan availability",
+      "admin user/guild dialogs with populated data and second page"
+    ],
+    "production": "Discord login and opening Lumina Bot server configuration; previous published version",
+    "remaining": "full desktop/mobile page-state matrix and deployed integration validation",
+    "reviewed_desktop": [
+      "commands/pricing",
+      "404",
+      "session unavailable with retry"
+    ]
+  },
+  "release": {
+    "deployed": false,
+    "production_migration_applied": false,
+    "paid_services_activated": false,
+    "pull_request": "https://github.com/YuriXbr/lumina-ecosystem/pull/9",
+    "branch_pushed": true,
+    "deployment_scope": "Production not deployed; branch push triggered automatic Vercel previews, which are separate from this local validation"
+  }
+}

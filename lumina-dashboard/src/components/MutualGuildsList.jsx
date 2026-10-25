@@ -122,6 +122,8 @@ export default function MutualGuildsList() {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all'); // all | with-bot | without-bot | manageable
   const [addBotTarget, setAddBotTarget] = useState(null);
+  const [page,setPage] = useState(1);
+  const [search,setSearch] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -129,6 +131,7 @@ export default function MutualGuildsList() {
     try {
       const data = await fetchMyGuilds();
       setGuilds(data.guilds || []);
+      setPage(1);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -169,6 +172,7 @@ export default function MutualGuildsList() {
 
   // Aplica filtro
   const filtered = guilds.filter(g => {
+    if (search && !g.name?.toLowerCase().includes(search.toLowerCase())) return false;
     if (filter === 'with-bot') return g.hasBot;
     if (filter === 'without-bot') return !g.hasBot;
     if (filter === 'manageable') return g.canManage;
@@ -191,13 +195,14 @@ export default function MutualGuildsList() {
 
   return (
     <div>
+      <label className="block mb-3"><span className="sr-only">Buscar servidor</span><input type="search" placeholder="Buscar servidor…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} className="w-full border border-gray-300 bg-white px-3 py-2 text-sm" /></label>
       {/* Filtros + refresh */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+        <div className="flex flex-wrap gap-1 bg-gray-100 p-1 rounded-lg">
           {filterButtons.map(b => (
             <button
               key={b.id}
-              onClick={() => setFilter(b.id)}
+              onClick={() => {setFilter(b.id);setPage(1);}}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
                 filter === b.id ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
               }`}
@@ -231,12 +236,13 @@ export default function MutualGuildsList() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {filtered.map(g => (
+          {filtered.slice((page-1)*12,page*12).map(g => (
             <GuildCard key={g.id} guild={g} onAddBot={setAddBotTarget} />
           ))}
         </div>
       )}
 
+      {filtered.length > 12 && <nav aria-label="Páginas de servidores" className="flex justify-center items-center gap-4 mt-5 text-sm"><button disabled={page<=1} onClick={()=>setPage(p=>p-1)} className="text-purple-700 disabled:opacity-40">Anterior</button><span>{page} / {Math.ceil(filtered.length/12)}</span><button disabled={page*12>=filtered.length} onClick={()=>setPage(p=>p+1)} className="text-purple-700 disabled:opacity-40">Próximo</button></nav>}
       {addBotTarget && (
         <AddBotModal guild={addBotTarget} onClose={() => setAddBotTarget(null)} />
       )}

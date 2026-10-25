@@ -37,21 +37,21 @@ describe('POST /expapi/internal/newpunishrecord', () => {
     const URL = '/expapi/internal/newpunishrecord';
 
     it('200 cria registro de ban', async () => {
-        BanListService.addBan.mockResolvedValueOnce({ guildId: 'g1', targetId: 't1' });
+        BanListService.addBan.mockResolvedValueOnce({ guildId: '123456789012345671', targetId: '123456789012345672' });
 
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'ban', guildId: 'g1', targetId: 't1', staffId: 's1', reason: 'spam',
+            type: 'ban', guildId: '123456789012345671', targetId: '123456789012345672', staffId: '123456789012345673', reason: 'spam',
         });
 
         expect(res.status).toBe(200);
-        expect(BanListService.addBan).toHaveBeenCalledWith('g1', 't1', 's1', 'spam', undefined);
+        expect(BanListService.addBan).toHaveBeenCalledWith('123456789012345671', '123456789012345672', '123456789012345673', 'spam', undefined);
     });
 
     it('200 cria registro de mute', async () => {
         MuteListService.addMute.mockResolvedValueOnce({});
 
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'mute', guildId: 'g1', targetId: 't1', staffId: 's1',
+            type: 'mute', guildId: '123456789012345671', targetId: '123456789012345672', staffId: '123456789012345673',
         });
 
         expect(res.status).toBe(200);
@@ -62,7 +62,7 @@ describe('POST /expapi/internal/newpunishrecord', () => {
         WarnListService.addWarn.mockResolvedValueOnce({});
 
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'warn', guildId: 'g1', targetId: 't1', staffId: 's1',
+            type: 'warn', guildId: '123456789012345671', targetId: '123456789012345672', staffId: '123456789012345673',
         });
 
         expect(res.status).toBe(200);
@@ -71,7 +71,7 @@ describe('POST /expapi/internal/newpunishrecord', () => {
 
     it('400 MISSING_PARAMS sem type', async () => {
         const res = await request(app).post(URL).set(internalKey()).send({
-            guildId: 'g1', targetId: 't1', staffId: 's1',
+            guildId: '123456789012345671', targetId: '123456789012345672', staffId: '123456789012345673',
         });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('MISSING_PARAMS');
@@ -79,7 +79,7 @@ describe('POST /expapi/internal/newpunishrecord', () => {
 
     it('400 MISSING_PARAMS sem guildId', async () => {
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'ban', targetId: 't1', staffId: 's1',
+            type: 'ban', targetId: '123456789012345672', staffId: '123456789012345673',
         });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('MISSING_PARAMS');
@@ -87,7 +87,7 @@ describe('POST /expapi/internal/newpunishrecord', () => {
 
     it('400 MISSING_PARAMS sem targetId', async () => {
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'ban', guildId: 'g1', staffId: 's1',
+            type: 'ban', guildId: '123456789012345671', staffId: '123456789012345673',
         });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('MISSING_PARAMS');
@@ -95,7 +95,7 @@ describe('POST /expapi/internal/newpunishrecord', () => {
 
     it('400 MISSING_PARAMS sem staffId', async () => {
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'ban', guildId: 'g1', targetId: 't1',
+            type: 'ban', guildId: '123456789012345671', targetId: '123456789012345672',
         });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('MISSING_PARAMS');
@@ -103,7 +103,7 @@ describe('POST /expapi/internal/newpunishrecord', () => {
 
     it('400 INVALID_TYPE para tipo desconhecido', async () => {
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'kick', guildId: 'g1', targetId: 't1', staffId: 's1',
+            type: 'kick', guildId: '123456789012345671', targetId: '123456789012345672', staffId: '123456789012345673',
         });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('INVALID_TYPE');
@@ -111,7 +111,7 @@ describe('POST /expapi/internal/newpunishrecord', () => {
 
     it('401 sem internal-key', async () => {
         const res = await request(app).post(URL).send({
-            type: 'ban', guildId: 'g', targetId: 't', staffId: 's',
+            type: 'ban', guildId: '123456789012345671', targetId: '123456789012345672', staffId: '123456789012345673',
         });
         expect(res.status).toBe(401);
     });
@@ -119,7 +119,7 @@ describe('POST /expapi/internal/newpunishrecord', () => {
     it('500 erro do service', async () => {
         BanListService.addBan.mockRejectedValueOnce(new Error('DB down'));
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'ban', guildId: 'g', targetId: 't', staffId: 's',
+            type: 'ban', guildId: '123456789012345671', targetId: '123456789012345672', staffId: '123456789012345673',
         });
         expect(res.status).toBe(500);
     });
@@ -133,7 +133,7 @@ describe('POST /expapi/internal/modifypunishrecord', () => {
         BanListService.updateBan.mockResolvedValueOnce({});
 
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'ban', guildId: 'g1', targetId: 't1',
+            type: 'ban', guildId: '123456789012345671', targetId: '123456789012345672',
             updateData: { reason: 'updated reason', endTime: new Date() },
         });
 
@@ -144,7 +144,7 @@ describe('POST /expapi/internal/modifypunishrecord', () => {
         MuteListService.updateMute.mockResolvedValueOnce({});
 
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'mute', guildId: 'g1', targetId: 't1',
+            type: 'mute', guildId: '123456789012345671', targetId: '123456789012345672',
             updateData: { reason: 'new' },
         });
 
@@ -155,7 +155,7 @@ describe('POST /expapi/internal/modifypunishrecord', () => {
         WarnListService.update.mockResolvedValueOnce({});
 
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'warn', guildId: 'g1', targetId: 't1',
+            type: 'warn', guildId: '123456789012345671', targetId: '123456789012345672',
             updateData: { reason: 'new reason' },
         });
 
@@ -166,7 +166,7 @@ describe('POST /expapi/internal/modifypunishrecord', () => {
         BanListService.updateBan.mockResolvedValueOnce({});
 
         await request(app).post(URL).set(internalKey()).send({
-            type: 'ban', guildId: 'g1', targetId: 't1',
+            type: 'ban', guildId: '123456789012345671', targetId: '123456789012345672',
             updateData: {
                 reason: 'new',
                 endTime: '2025-12-31T23:59:59Z', // string ISO (JSON serialization)
@@ -189,7 +189,7 @@ describe('POST /expapi/internal/modifypunishrecord', () => {
 
     it('400 MISSING_PARAMS sem updateData', async () => {
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'ban', guildId: 'g1', targetId: 't1',
+            type: 'ban', guildId: '123456789012345671', targetId: '123456789012345672',
         });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('MISSING_PARAMS');
@@ -197,7 +197,7 @@ describe('POST /expapi/internal/modifypunishrecord', () => {
 
     it('400 NO_VALID_FIELDS quando updateData só tem campos não-whitelistados', async () => {
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'ban', guildId: 'g1', targetId: 't1',
+            type: 'ban', guildId: '123456789012345671', targetId: '123456789012345672',
             updateData: { _id: 'hack', targetId: 'hack' },
         });
         expect(res.status).toBe(400);
@@ -206,7 +206,7 @@ describe('POST /expapi/internal/modifypunishrecord', () => {
 
     it('400 INVALID_TYPE para tipo desconhecido', async () => {
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'kick', guildId: 'g1', targetId: 't1', updateData: { reason: 'x' },
+            type: 'kick', guildId: '123456789012345671', targetId: '123456789012345672', updateData: { reason: 'x' },
         });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('INVALID_TYPE');
@@ -214,7 +214,7 @@ describe('POST /expapi/internal/modifypunishrecord', () => {
 
     it('401 sem internal-key', async () => {
         const res = await request(app).post(URL).send({
-            type: 'ban', guildId: 'g', targetId: 't', updateData: { reason: 'x' },
+            type: 'ban', guildId: '123456789012345671', targetId: '123456789012345672', updateData: { reason: 'x' },
         });
         expect(res.status).toBe(401);
     });
@@ -228,7 +228,7 @@ describe('POST /expapi/internal/removepunishrecord', () => {
         BanListService.removeBan.mockResolvedValueOnce({ deletedCount: 1 });
 
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'ban', guildId: 'g1', targetId: 't1',
+            type: 'ban', guildId: '123456789012345671', targetId: '123456789012345672',
         });
 
         expect(res.status).toBe(200);
@@ -237,7 +237,7 @@ describe('POST /expapi/internal/removepunishrecord', () => {
     it('200 remove registro de mute', async () => {
         MuteListService.removeMute.mockResolvedValueOnce({ deletedCount: 1 });
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'mute', guildId: 'g1', targetId: 't1',
+            type: 'mute', guildId: '123456789012345671', targetId: '123456789012345672',
         });
         expect(res.status).toBe(200);
     });
@@ -245,14 +245,14 @@ describe('POST /expapi/internal/removepunishrecord', () => {
     it('200 remove registro de warn', async () => {
         WarnListService.removeWarn.mockResolvedValueOnce({ deletedCount: 1 });
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'warn', guildId: 'g1', targetId: 't1',
+            type: 'warn', guildId: '123456789012345671', targetId: '123456789012345672',
         });
         expect(res.status).toBe(200);
     });
 
     it('400 MISSING_PARAMS sem type', async () => {
         const res = await request(app).post(URL).set(internalKey()).send({
-            guildId: 'g1', targetId: 't1',
+            guildId: '123456789012345671', targetId: '123456789012345672',
         });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('MISSING_PARAMS');
@@ -260,7 +260,7 @@ describe('POST /expapi/internal/removepunishrecord', () => {
 
     it('400 INVALID_TYPE para tipo desconhecido', async () => {
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'kick', guildId: 'g1', targetId: 't1',
+            type: 'kick', guildId: '123456789012345671', targetId: '123456789012345672',
         });
         expect(res.status).toBe(400);
         expect(res.body.code).toBe('INVALID_TYPE');
@@ -268,7 +268,7 @@ describe('POST /expapi/internal/removepunishrecord', () => {
 
     it('401 sem internal-key', async () => {
         const res = await request(app).post(URL).send({
-            type: 'ban', guildId: 'g', targetId: 't',
+            type: 'ban', guildId: '123456789012345671', targetId: '123456789012345672',
         });
         expect(res.status).toBe(401);
     });
@@ -276,7 +276,7 @@ describe('POST /expapi/internal/removepunishrecord', () => {
     it('500 erro do service', async () => {
         BanListService.removeBan.mockRejectedValueOnce(new Error('DB down'));
         const res = await request(app).post(URL).set(internalKey()).send({
-            type: 'ban', guildId: 'g', targetId: 't',
+            type: 'ban', guildId: '123456789012345671', targetId: '123456789012345672',
         });
         expect(res.status).toBe(500);
     });

@@ -68,7 +68,7 @@ describe('GET /expapi/v1/my-guilds', () => {
             ],
         });
 
-        GuildService.getAll.mockResolvedValueOnce([
+        GuildService.get.mockResolvedValueOnce([
             { guildId: '222', prefix: 'l!', guildLocale: 'pt-BR', memberWelcomeToggle: true, memberCount: 50 },
         ]);
 
@@ -103,7 +103,7 @@ describe('GET /expapi/v1/my-guilds', () => {
             ],
         });
 
-        GuildService.getAll.mockResolvedValueOnce([{ guildId: '3', prefix: 'l!' }]);
+        GuildService.get.mockResolvedValueOnce([{ guildId: '3', prefix: 'l!' }]);
 
         const res = await request(app).get(URL).set(authHeader());
 
@@ -201,7 +201,7 @@ describe('GET /expapi/v1/my-guilds', () => {
         });
 
         axios.get.mockResolvedValue({ data: [{ id: '1', name: 'S', owner: true, permissions: '0' }] });
-        GuildService.getAll.mockResolvedValue([]);
+        GuildService.get.mockResolvedValue([]);
 
         const res = await request(app).get(URL).set(authHeader());
 
@@ -209,7 +209,7 @@ describe('GET /expapi/v1/my-guilds', () => {
         expect(axios.post).toHaveBeenCalled(); // refresh foi chamado
     });
 
-    it('500 quando refresh token falha (sem ser 429)', async () => {
+    it('503 quando refresh token falha (sem ser 429)', async () => {
         const account = makeAccount({
             discordOauth2Token: 'expired',
             discordOauth2TokenExpiresAt: new Date(Date.now() - 1000),
@@ -221,7 +221,7 @@ describe('GET /expapi/v1/my-guilds', () => {
 
         const res = await request(app).get(URL).set(authHeader());
 
-        expect(res.status).toBe(500);
+        expect(res.status).toBe(503);
     });
 
     // ─── 500 Erro genérico ────────────────────────────────────────────────

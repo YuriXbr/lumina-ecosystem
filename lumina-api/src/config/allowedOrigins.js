@@ -23,12 +23,22 @@ const ALLOWED_ORIGINS = [
     'http://localhost',
     'http://localhost:3000',
     'http://localhost:5173',
+    'http://localhost:5179',
+    'http://localhost:5180',
     'http://localhost:8080',
     'http://127.0.0.1',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5173',
+    'http://127.0.0.1:5179',
+    'http://127.0.0.1:5180',
     'http://127.0.0.1:8080',
 ];
+const PRODUCTION_ORIGINS=['https://bot.luminasink.com','https://api-bot.luminasink.com'];
+function configuredOrigins(){
+    return (process.env.ADDITIONAL_ALLOWED_ORIGINS||'').split(',').map(value=>value.trim()).filter(value=>{
+        try{const url=new URL(value);return url.protocol==='https:'&&url.origin===value&&!url.username&&!url.password;}catch{return false;}
+    });
+}
 
 /**
  * Verifica se uma origin está na allow-list.
@@ -36,6 +46,7 @@ const ALLOWED_ORIGINS = [
  */
 function isAllowedOrigin(origin) {
     if (!origin) return false;
+    if(process.env.NODE_ENV==='production')return PRODUCTION_ORIGINS.includes(origin)||configuredOrigins().includes(origin);
     if (ALLOWED_ORIGINS.includes(origin)) return true;
 
     // Preview deployments do Vercel — apenas em não-produção
@@ -51,7 +62,7 @@ function isAllowedOrigin(origin) {
  * Retorna a array de origins para o middleware cors() do Express.
  */
 function getAllowedOrigins() {
-    return [...ALLOWED_ORIGINS];
+    return process.env.NODE_ENV==='production'?[...PRODUCTION_ORIGINS,...configuredOrigins()]:[...ALLOWED_ORIGINS];
 }
 
 module.exports = {

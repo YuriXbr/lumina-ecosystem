@@ -7,13 +7,13 @@ const ROUTE = 'GET /expapi/v1/myinventory';
 module.exports = {
     route: '/expapi/v1/myinventory',
     description: "Retorna chaves e baús do usuário logado (dashboard)",
-    apiKeyNeeded: false, 
-    internalKeyNeeded: false, 
+    apiKeyNeeded: false,
+    internalKeyNeeded: false,
     jwtNeeded: true,
-    enabled: true, 
-    loginLimiterNeeded: false, 
+    enabled: true,
+    loginLimiterNeeded: false,
     csrfProtectionNeeded: false,
-    checkAuthNeeded: false, 
+    checkAuthNeeded: false,
     method: 'get',
 
     async execute(req, res) {
@@ -24,7 +24,7 @@ module.exports = {
 
         let discordId;
         try {
-            const resolved = await resolveDiscordAccount(email);
+            const resolved = await resolveDiscordAccount(req.account || email);
             discordId = resolved.discordId;
         } catch (err) {
             return res.status(err.status || 400).json({
@@ -35,7 +35,7 @@ module.exports = {
 
         try {
             let inv = await InventoryService.getInventory(discordId);
-            if (!inv) inv = await InventoryService.create({ userId: discordId });
+            if (!inv) inv = await InventoryService.ensureInventory(discordId);
 
             const nextDailyReward = inv.nextDailyReward || null;
             return res.status(200).json({
@@ -47,13 +47,13 @@ module.exports = {
                 dailyRewardStreak: inv.dailyRewardStreak || 0,
             });
         } catch (error) {
-            return routeError({ 
-                res, 
-                error, 
-                route: ROUTE, 
+            return routeError({
+                res,
+                error,
+                route: ROUTE,
                 errorCode: 'FETCH_INVENTORY_ERROR',
-                userMsg: 'Erro ao buscar inventário.', 
-                extra: { email, discordId } 
+                userMsg: 'Erro ao buscar inventário.',
+                extra: { email, discordId }
             });
         }
     }

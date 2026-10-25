@@ -7,7 +7,7 @@ const { isAllowedOrigin: isAllowedOriginShared, ALLOWED_ORIGINS } = require('../
 const isAllowedOrigin = isAllowedOriginShared;
 
 function getStateSecret() {
-    // Usa um segredo dedicado se existir; senão reaproveita o JWT_SECRET.
+    // State signing has its own secret, separate from session tokens.
     const secret = process.env.OAUTH_STATE_SECRET;
     if (!secret) throw new Error('OAUTH_STATE_SECRET must be set — do not reuse JWT_SECRET');
     return secret;
@@ -24,7 +24,7 @@ function signState(payload) {
 }
 
 function verifyState(state) {
-    if (!state || typeof state !== 'string' || !state.includes('.')) return null;
+    if (!state || typeof state !== 'string' || state.length>8192 || state.split('.').length!==2) return null;
 
     const [base, hmac] = state.split('.');
     if (!base || !hmac) return null;

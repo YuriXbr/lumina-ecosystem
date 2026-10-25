@@ -58,12 +58,13 @@ describe('POST /expapi/v1/login', () => {
     let csrf;
 
     beforeEach(async () => {
+        Object.values(DashboardAccountService).forEach(fn=>fn.mockReset?.());
         csrf = await getCsrfTokens(app);
     });
 
     // ─── 200 Sucesso ──────────────────────────────────────────────────────
     it('200 retorna token JWT + user object em login bem-sucedido', async () => {
-        const account = makeAccount({ password: '$2a$10$hash' });
+        const account = makeAccount({ password: '$2a$10$hash',discordOauth2Id:'771421826974089236',discordOauth2TokenScope:'identify email guilds guilds.members.read' });
         DashboardAccountService.checkCredentials.mockResolvedValueOnce(account);
         DashboardAccountService.update.mockResolvedValueOnce(account);
 
@@ -73,14 +74,16 @@ describe('POST /expapi/v1/login', () => {
             .send({ email: account.email, password: 'Correct123' });
 
         expect(res.status).toBe(200);
-        expect(res.body).toHaveProperty('token');
+        expect(res.body).not.toHaveProperty('token');
         expect(res.body).toHaveProperty('hasPassword', true);
         expect(res.body.user).toHaveProperty('email', account.email);
         expect(res.body.user).toHaveProperty('accountId', account.accountId);
         expect(res.body.user).toHaveProperty('accessType', 'user');
+        expect(res.body.user.discordOauth2TokenScope).toBe(account.discordOauth2TokenScope);
+        expect(res.body.user.discordNeedsReauth).toBe(false);
 
         // Token deve ser um JWT válido
-        const decoded = jwt.verify(res.body.token, JWT_SECRET);
+        const decoded = jwt.verify(decodeURIComponent(/lumina_token=([^;]+)/.exec(res.headers['set-cookie'].find(c=>c.startsWith('lumina_token=')))[1]), JWT_SECRET);
         expect(decoded.email).toBe(account.email);
         expect(decoded.accountId).toBe(account.accountId);
     });
@@ -114,7 +117,7 @@ describe('POST /expapi/v1/login', () => {
             .set(combineAuthAndCsrf({}, csrf.headers))
             .send({ email: account.email, password: 'Correct123' });
 
-        const decoded = jwt.decode(res.body.token);
+        const decoded = jwt.decode(decodeURIComponent(/lumina_token=([^;]+)/.exec(res.headers['set-cookie'].find(c=>c.startsWith('lumina_token=')))[1]));
         expect(decoded.exp - decoded.iat).toBe(3600);
     });
 
@@ -332,8 +335,8 @@ describe('POST /expapi/v1/login', () => {
             .set(combineAuthAndCsrf({}, csrf.headers))
             .send({ email: 'user@exa\x00mple.com', password: 'Senha123' });
 
-        // Erro sem .code → 500 (default do switch)
-        expect(res.status).toBe(500);
+        // Malformed input is rejected at the route boundary.
+        expect(res.status).toBe(401);
     });
 
     // ─── Verificação de não-vazamento de informação ───────────────────────

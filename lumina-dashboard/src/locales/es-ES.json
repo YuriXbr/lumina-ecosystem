@@ -473,7 +473,7 @@
       "notEnoughKeys": "No tienes suficientes llaves.",
       "noChest": "No tienes este cofre disponible.",
       "open": "Abrir cofre",
-      "masterworkDesc": "Garantiza rareza épica o superior",
+      "masterworkDesc": "Mayor probabilidad de rarezas altas",
       "hextechDesc": "Cualquier rareza posible",
       "discordRequired": "Abrir cofres requiere que tu cuenta de Discord esté vinculada, ya que tu inventario de skins vive allí.",
       "amountAvailable": "{count} disponible(s)",
@@ -725,7 +725,8 @@
       "guildId": "ID del Servidor",
       "guildHeader": "Servidor",
       "notLabel": "no",
-      "refreshError": "Error al actualizar: {error}"
+      "refreshError": "Error al actualizar: {error}",
+      "readOnlyStatus": "Los indicadores Bot Activo y Moderación son de solo lectura en este panel."
     },
     "users": {
       "title": "Gestión de Usuarios",
@@ -898,34 +899,29 @@
       "f11": "Analytics detallados"
     },
     "faq": {
-      "title": "Preguntas Frecuentes",
-      "items": {
-        "1": {
-          "q": "¿Puedo cambiar de plan en cualquier momento?",
-          "a": "Sí, puedes subir o bajar de plan en cualquier momento. Los cambios surten efecto inmediatamente."
-        },
-        "2": {
-          "q": "¿Ofrecen reembolsos?",
-          "a": "Ofrecemos garantía de devolución de dinero de 7 días en todos los planes pagos."
-        },
-        "3": {
-          "q": "¿Qué métodos de pago aceptan?",
-          "a": "Aceptamos todas las principales tarjetas de crédito y PayPal."
-        }
-      },
-      "q1": "¿Puedo cancelar mi suscripción en cualquier momento?",
-      "a1": "Sí, puedes cancelar tu suscripción en cualquier momento sin tarifas adicionales. Mantendrás acceso a las funciones premium hasta el final del período pagado.",
-      "q2": "¿Los precios incluyen todas las funciones mencionadas?",
-      "a2": "Sí, todas las funciones listadas en cada plan están incluidas en el precio mensual. No hay costos ocultos ni tarifas adicionales.",
-      "q3": "¿Puedo subir o bajar de plan?",
-      "a3": "¡Absolutamente! Puedes cambiar tu plan en cualquier momento. Los cambios se aplicarán en el próximo ciclo de facturación.",
-      "q4": "¿Ofrecen descuento por pago anual?",
-      "a4": "Sí, ofrecemos un 20% de descuento por suscripción anual en todos los planes pagos. Contáctanos para más detalles."
+      "q1": "¿Puedo usar Lumina gratis?",
+      "a1": "Sí. El plan gratuito está disponible mediante la invitación oficial del bot. No necesitas tarjeta.",
+      "q2": "¿Puedo contratar VIP o Enterprise?",
+      "a2": "Todavía no. Los planes de pago y sus funciones están en estudio. No hay checkout ni cobros en el sitio.",
+      "q3": "¿Ya están disponibles las funciones planificadas?",
+      "a3": "No. La lista contiene ideas para el proyecto y puede cambiar antes del lanzamiento.",
+      "q4": "¿Dónde puedo hacer preguntas?",
+      "a4": "Contacta con suporte@luminasink.com para obtener ayuda con las funciones disponibles y la configuración del bot."
     },
     "popular": "Más Popular",
     "badge": "Planes para cada necesidad",
     "faqTitle": "Preguntas Frecuentes",
-    "faqSubtitle": "Todo lo que necesitas saber sobre nuestros planes"
+    "faqSubtitle": "Todo lo que necesitas saber sobre nuestros planes",
+    "availability": {
+      "title": "Planes de Lumina",
+      "intro": "Usa Lumina gratis. VIP y Enterprise están en planificación.",
+      "notice": "Solo está disponible el plan gratuito. Este sitio no permite contratar planes de pago ni realiza cobros.",
+      "planned": "En planificación",
+      "pricePending": "Precios por definir",
+      "futureFeatures": "Funciones en estudio, todavía no incluidas en un plan disponible.",
+      "notOpen": "{plan}: contratación no disponible",
+      "plannedDescription": "Una propuesta para el futuro de Lumina, sin fecha de lanzamiento ni contratación disponible."
+    }
   },
   "about": {
     "title": "Acerca de Lumina",
@@ -1147,7 +1143,7 @@
       "dashboard": "Dashboard propio"
     },
     "continueToDiscord": "Continuar a Discord",
-    "confirmText": "Entiendo que el bot será añadido con permisos para gestionar roles, canales y mensajes, y que tendré acceso a configuraciones específicas de este servidor a través del panel web."
+    "confirmText": "Entiendo que el bot será añadido con permisos para moderar miembros y gestionar roles y mensajes, y que tendré acceso a configuraciones específicas de este servidor a través del panel web."
   },
   "guild": {
     "notConfigured": "Servidor no configurado — regístralo vía bot antes de configurar",

@@ -2,7 +2,6 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Cog6ToothIcon, ShieldCheckIcon, UserIcon, ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
-import Header from './Header';
 import { useT } from '../i18n/LanguageContext.jsx';
 
 /**
@@ -29,18 +28,18 @@ export default function AppShell({ children, maxWidth = 'max-w-7xl', title, subt
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+
 
       {/* Subheader contextual */}
       {(title || isAdmin || isSettings || isServer) && (
         <div className="bg-white border-b border-gray-200">
           <div className={`mx-auto ${maxWidth} px-4 sm:px-6 lg:px-8`}>
-            <div className="flex items-center justify-between h-14">
+            <div className="flex items-center justify-between min-h-[5rem] py-4">
               <div className="flex items-center gap-3 min-w-0">
                 {backTo && (
                   <Link
                     to={backTo}
-                    className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-purple-700"
+                    className="inline-flex shrink-0 items-center gap-1 text-sm text-gray-500 hover:text-purple-700"
                   >
                     <ArrowLeftIcon className="h-4 w-4" />
                     <span className="hidden sm:inline">{backLabel || t('common.back')}</span>
@@ -48,8 +47,8 @@ export default function AppShell({ children, maxWidth = 'max-w-7xl', title, subt
                 )}
                 {title && (
                   <div className="min-w-0">
-                    <h1 className="text-base font-semibold text-gray-900 truncate">{title}</h1>
-                    {subtitle && <p className="text-xs text-gray-500 truncate">{subtitle}</p>}
+                    <h1 className="text-2xl font-bold tracking-tight text-gray-900 break-words">{title}</h1>
+                    {subtitle && <p className="text-sm leading-6 text-gray-500">{subtitle}</p>}
                   </div>
                 )}
               </div>

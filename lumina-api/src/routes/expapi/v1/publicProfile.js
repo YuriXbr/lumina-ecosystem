@@ -40,11 +40,12 @@ module.exports = {
 
             // Respeita preferência de perfil público — se desativado, só mostra mínimo
             const isPublic = !!account.publicProfile;
+            if (!isPublic || account.banned || account.blocked) return res.status(404).json({ code: 'USER_NOT_FOUND', error: 'Perfil indisponível.' });
 
             const profile = {
                 accountId: account.accountId,
                 username: account.username || '',
-                displayName: account.displayName || (account.firstName ? `${account.firstName} ${account.lastName || ''}`.trim() : ''),
+                displayName: account.displayName || account.username || '',
                 discordOauth2Id: account.discordOauth2Id || '',
                 avatar: account.discordAvatar || '',
                 publicProfile: isPublic,

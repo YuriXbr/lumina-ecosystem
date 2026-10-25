@@ -4,11 +4,10 @@ import {
   ArrowLeftIcon, ExclamationTriangleIcon, ArrowPathIcon,
   CheckCircleIcon, GiftIcon, CalendarIcon, ServerIcon,
 } from '@heroicons/react/24/outline';
-import Header from '../../components/Header';
 import ErrorState from '../../components/ui/ErrorState';
 import { useT } from '../../i18n/LanguageContext.jsx';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+import { API_BASE } from '../../utils/apiBase';
 
 export default function PublicProfilePage() {
   const t = useT();
@@ -28,7 +27,7 @@ export default function PublicProfilePage() {
         try {
           const body = await res.json();
           if (body?.error) detail = body.error;
-        } catch {}
+        } catch { /* Optional state unavailable; the main flow remains usable. */ }
         throw new Error(detail);
       }
       const data = await res.json();
@@ -63,7 +62,7 @@ export default function PublicProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+
 
       <main className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
         {/* Voltar */}

@@ -5,7 +5,7 @@
 # ao Discord via WebSocket (Gateway) e à API Lumina via HTTP.
 # ──────────────────────────────────────────────────────────────────────────────
 
-FROM node:20-slim
+FROM node:24-slim
 
 # Dependências de sistema para discord.js (opus, voice, etc.)
 # ffmpeg-static já vem no package.json, mas algumas libs nativas precisam de
@@ -22,8 +22,8 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Instala dependências
-# Usa `npm install` (não `npm ci`) para tolerar dessincronização do lock file.
-RUN npm install --omit=dev
+# Instala versões reproduzíveis do lockfile validado.
+RUN npm ci --omit=dev
 
 # Copia o código
 COPY . .
@@ -32,11 +32,12 @@ COPY . .
 # Em Docker, as variáveis de ambiente vêm do docker-compose.yml (section `environment:`),
 # não de um arquivo .env físico. O dotenvx imprime um warning se o arquivo não existe,
 # mas não é fatal — apenas polui o log. Criar um arquivo vazio silencia o warning.
-RUN touch .env
+RUN touch .env .env.dev
 
 # Define o ambiente como produção
 ENV NODE_ENV=production
 
 # O bot não expõe portas — ele só faz conexões de saída (Discord Gateway + API)
 # CMD pode ser sobrescrito no docker-compose se precisar rodar deploy-commands primeiro
+USER node
 CMD ["node", "index.js"]
